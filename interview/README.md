@@ -1,0 +1,9 @@
+# 面试准备
+
+建议的文件：
+
+- `questions.md`：常见面试题和自己的回答
+- `self-intro.md`：自我介绍（中文 / 英文）
+- `reviews/`：每次面试的复盘，用 [templates/interview-review.md](../templates/interview-review.md)
+
+> 如果以后要把仓库公开，注意具体公司的面经内容是否适合公开。
