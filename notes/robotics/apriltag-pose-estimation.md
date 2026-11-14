@@ -16,7 +16,7 @@ When a camera sees an AprilTag, it can recover the tag's **ID** and its **6-DoF 
 4. Use `H` to sample the inner black/white cells and decode the ID.
 5. Chain the camera-to-tag pose back to the robot base frame.
 
-> The original artifact has an interactive lab (sliders for focal length, translation, rotation and pixel noise). Open the source link in the frontmatter to play with it.
+> The original artifact is saved as-is in [[apriltag-pose-estimation.html]] (`assets/`). It has an interactive lab (sliders for focal length, translation, rotation and pixel noise); open the file in a web browser to use it, since Obsidian doesn't run HTML pages.
 
 Three concepts to keep apart:
 
