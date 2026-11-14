@@ -1,5 +1,3 @@
-# 机器人
+# Robotics
 
-机器人学、控制、运动规划、多智能体编队、仿真（如 MuJoCo）。
-
-新笔记可以套用 [templates/note.md](../../templates/note.md)。
+Robotics, control, motion planning, multi-agent formation, simulation (e.g. MuJoCo).

@@ -1,3 +1,3 @@
-# 知识笔记
+# Notes
 
-按主题分文件夹，每个知识点一个文件，文件名用简短的主题名，例如 `binary-search.md`、`attention.md`。
+Organized by topic, one concept per file. File names are short lowercase English with hyphens, e.g. `binary-search.md`, `attention.md`.
