@@ -13,6 +13,7 @@
 
 - [ ] （示例）操作系统核心概念
 - [ ] （示例）强化学习基础
+- [ ] AprilTag pose estimation（camera model、homography、SVD、pick-and-place 变换链）→ [[apriltag-pose-estimation]]
 
 ## 求职关键节点
 
