@@ -22,8 +22,8 @@ GitHub 私有仓库：`jinyuanzhan/learning-log`。
 
 ## 语言
 
-- **专业内容用英文**：`notes/`、`interview/`、`projects/`、`CV/` 里的技术内容、术语、定义、代码注释都用英文。
-- 个人记录（`journal/`、`thinking/`）可以用中文，但技术术语保持英文，不要翻译。
+- **专业术语一律用英文**，任何文件里都不要翻译，例如 homography、SVD、pose estimation。
+- 其他内容（解释、正文、个人记录）可以用中文。
 - **Commit message 一律用英文**，简洁、祈使句，例如 `Add notes on attention mechanism`。
 
 ## 格式
@@ -35,6 +35,5 @@ GitHub 私有仓库：`jinyuanzhan/learning-log`。
 
 ## 工作方式
 
-- 本地会话：改完后提交并推送到 `main`。
-- 云端会话 / 项目子线程：在新分支上改，完成后开 PR，不直接推 `main`。
+- 所有会话（本地、云端、项目子线程）：改完后直接提交并推送到 `main`，不开 PR。
 - 不删除已有笔记，只修改或补充；需要删除时先问我。
