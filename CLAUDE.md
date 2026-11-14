@@ -36,4 +36,8 @@ GitHub 私有仓库：`jinyuanzhan/learning-log`。
 ## 工作方式
 
 - 所有会话（本地、云端、项目子线程）：改完后直接提交并推送到 `main`，不开 PR。
+- 只保留一条线性的 `main` 历史：不建分支，不产生 merge commit。
+  1. 开始修改前先 `git pull --rebase`，拿到最新内容。
+  2. 推送前再 `git pull --rebase`，把本地提交接到远程最新提交之后，然后 `git push`。
+  3. rebase 出现冲突时，保留双方内容并解决冲突后 `git rebase --continue`；拿不准就 `git rebase --abort` 并问我。
 - 不删除已有笔记，只修改或补充；需要删除时先问我。
