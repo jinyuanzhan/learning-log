@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-17">
+<meta name="tags" content="quadrotor, rigid-body-dynamics, angular-velocity, euler-angles, rotation-matrix, underactuated, differential-flatness">
+<title>无人机动力学</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 planning-and-task-allocation-basics.html 同一套样式：左侧固定目录 + 右侧单栏笔记 */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:620px}
+.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+.opts output{font-family:var(--mono);font-size:13px;min-width:3em}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 560px;max-width:100%;min-width:0}
+.stage-side{flex:1 1 220px;min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.cv{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;touch-action:none}
+.w-grid{stroke:var(--line);stroke-width:1}
+.w-poly{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.w-traj{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.w-dot{fill:var(--accent)}
+.w-wp circle{fill:var(--a2);stroke:var(--surface);stroke-width:2;cursor:grab}
+.w-wp.stop circle{fill:var(--bad)}
+.w-wp text{fill:var(--on-agent);font-family:var(--mono);font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.w-wp .w-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.s-ax{stroke:var(--line-strong);stroke-width:1}
+.s-lim{stroke:var(--bad);stroke-width:1.2;stroke-dasharray:5 4}
+.s-tick{stroke:var(--a2);stroke-width:1;stroke-dasharray:2 3}
+.s-v{fill:none;stroke:var(--accent);stroke-width:2.2}
+.s-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:10px 0 0}
+.live p{margin:0 0 8px}
+.pill{display:inline-block;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body);margin-left:6px}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){.page{padding-left:16px;padding-right:16px}}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+
+</style>
+<style>
+/* 这一页新增 */
+.lab .row{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13.5px;margin:0 0 8px;align-items:center}
+.lab .row label{display:inline-flex;gap:6px;align-items:center}
+.lab .row .lb{color:var(--muted);min-width:4.5em}
+.lab .row input[type=range]{width:120px}
+.lab .row output{font-family:var(--mono);font-size:12.5px;min-width:4.6em;font-variant-numeric:tabular-nums}
+.x-w{stroke:var(--line-strong);stroke-width:1.2;stroke-dasharray:4 4}
+.x-wt{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.x-arm{stroke:var(--muted);stroke-width:3;stroke-linecap:round}
+.x-rot{fill:var(--surface);stroke:var(--muted);stroke-width:1.3;opacity:.92}
+.x-rot.front{fill:var(--accent-soft);stroke:var(--accent)}
+.x-hub{fill:var(--ink)}
+.v-x{stroke:var(--a1);stroke-width:2.6}
+.v-y{stroke:var(--ok);stroke-width:2.6}
+.v-z{stroke:var(--a2);stroke-width:2.6}
+.v-w{stroke:var(--bad);stroke-width:3.2}
+.v-curl{fill:none;stroke:var(--bad);stroke-width:1.8}
+.t-x{fill:var(--a1)}.t-y{fill:var(--ok)}.t-z{fill:var(--a2)}.t-w{fill:var(--bad)}
+.lt{font-family:var(--body);font-size:12.5px;font-weight:600}
+.cmp{width:auto;font-size:13px;margin-top:8px}
+.cmp td,.cmp th{padding:4px 10px}
+.cmp td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.p-ground{stroke:var(--line-strong);stroke-width:1.5}
+.p-trail{fill:var(--accent);opacity:.35}
+.p-arm{stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+.p-rot{fill:var(--muted)}
+.p-nose{fill:var(--a1)}
+.p-thr{stroke:var(--a2);stroke-width:2.4}
+.c-zero{stroke:var(--line);stroke-width:1}
+.c-line{fill:none;stroke:var(--accent);stroke-width:1.8}
+.c-cur{stroke:var(--bad);stroke-width:1.2}
+.c-lab{fill:var(--ink);font-family:var(--body);font-size:12px}
+.c-sub{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.c-val{fill:var(--accent);font-family:var(--mono);font-size:11.5px}
+.f-g{stroke:var(--muted);stroke-width:2.4}
+.f-a{stroke:var(--a1);stroke-width:2.6}
+.f-t{stroke:var(--a2);stroke-width:3}
+.f-par{stroke:var(--line-strong);stroke-width:1.2;stroke-dasharray:4 4;fill:none}
+.f-h{fill:var(--a1);stroke:var(--surface);stroke-width:2;cursor:grab}
+.f-grid{stroke:var(--line);stroke-width:1}
+.warnt{color:var(--bad);font-weight:600}
+.x-rot.ghost{fill:none;stroke-dasharray:4 3;opacity:.7}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+  <marker id="mX" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--a1)"/></marker>
+  <marker id="mY" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ok)"/></marker>
+  <marker id="mZ" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--a2)"/></marker>
+  <marker id="mW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--bad)"/></marker>
+  <marker id="mG" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+</defs></svg>
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#chain"><span class="k">01</span>一张图：同一条链的两个方向</a></li>
+  </ol>
+  <p class="toc-part">PART A · 状态与输入</p>
+  <ol>
+    <li><a href="#state"><span class="k">02</span>坐标系与 12 维状态</a></li>
+    <li><a href="#input"><span class="k">03</span>输入：4 个电机</a></li>
+    <li><a href="#omega"><span class="k">04</span>姿态与角速度</a></li>
+  </ol>
+  <p class="toc-part">PART B · 动力学</p>
+  <ol>
+    <li><a href="#eqs"><span class="k">05</span>三条方程</a></li>
+    <li><a href="#planar"><span class="k">06</span>实验台：从力矩到位置</a></li>
+  </ol>
+  <p class="toc-part">PART C · 为什么只规划 x, y, z, ψ</p>
+  <ol>
+    <li><a href="#why"><span class="k">07</span>为什么不直接规划</a></li>
+    <li><a href="#flatdef"><span class="k">08</span>Flatness 的定义与本质</a></li>
+    <li><a href="#flat"><span class="k">09</span>Quadrotor：由导数算出一切</a></li>
+  </ol>
+  <p class="toc-part">PART D · 从轨迹到电机</p>
+  <ol>
+    <li><a href="#ffb"><span class="k">10</span>算出了输入，还要 feedback？</a></li>
+    <li><a href="#se3"><span class="k">11</span>SE(3) geometric controller</a></li>
+    <li><a href="#roadmap"><span class="k">12</span>方法全景与分层架构</a></li>
+  </ol>
+  <p class="toc-part">REVIEW</p>
+  <ol>
+    <li><a href="#qa"><span class="k">13</span>面试题</a></li>
+    <li><a href="#sheet"><span class="k">14</span>速查与 Related</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>无人机动力学</h1>
+  <p>Quadrotor 有 12 个状态、4 个输入，可规划时只需要 x、y、z、ψ 四条曲线。这一页讲清楚为什么：状态和输入分别是什么，角速度这类抽象量长什么样，输入怎样一步步变成位置，以及 differential flatness 怎样把这条链倒过来用。</p>
+  <p>四个实验台：转动机身看角速度，给力矩看它怎样积分成位置，拖动加速度看姿态和推力怎样被定死，对比开环和 feedback 看为什么算出了输入还要控制器。最后 PART D 讲轨迹怎样落到电机上，以及不 flat 时的各种方法。配套页面：<a href="minimum-snap-trajectory.html">Minimum Snap 轨迹生成</a>。</p>
+</header>
+
+<section id="chain">
+<h2><span class="n">01</span>一张图：动力学和 flatness 是同一条链的两个方向</h2>
+<figure class="fig">
+<svg viewBox="0 0 880 240" role="img" aria-label="上排：力矩经过积分依次得到角速度、姿态、推力方向、加速度、速度、位置。下排：从位置求导，依次得到速度、加速度、姿态和推力、角速度、力矩。">
+  <text class="d-a" x="0" y="16">动力学（物理上发生的事）：往右积分</text>
+  <g>
+    <rect class="d-box" x="0" y="28" width="90" height="54" rx="7"/><text class="d-t" x="45" y="52" text-anchor="middle">力矩 τ</text><text class="d-s" x="45" y="71" text-anchor="middle">输入</text>
+    <rect class="d-box" x="122" y="28" width="90" height="54" rx="7"/><text class="d-t" x="167" y="52" text-anchor="middle">角速度 ω</text><text class="d-s" x="167" y="71" text-anchor="middle">转得多快</text>
+    <rect class="d-box" x="244" y="28" width="90" height="54" rx="7"/><text class="d-t" x="289" y="52" text-anchor="middle">姿态 R</text><text class="d-s" x="289" y="71" text-anchor="middle">机身朝向</text>
+    <rect class="d-hbox" x="366" y="28" width="132" height="54" rx="7"/><text class="d-t" x="432" y="52" text-anchor="middle">推力 f·z_B</text><text class="d-s" x="432" y="71" text-anchor="middle">f 是输入，方向由 R 定</text>
+    <rect class="d-box" x="530" y="28" width="96" height="54" rx="7"/><text class="d-t" x="578" y="52" text-anchor="middle">加速度 a</text><text class="d-s" x="578" y="71" text-anchor="middle">合力 / m</text>
+    <rect class="d-box" x="658" y="28" width="90" height="54" rx="7"/><text class="d-t" x="703" y="52" text-anchor="middle">速度 v</text>
+    <rect class="d-box" x="780" y="28" width="90" height="54" rx="7"/><text class="d-t" x="825" y="52" text-anchor="middle">位置 p</text>
+  </g>
+  <g class="d-ln" marker-end="url(#arr)"><path d="M90,55 H120"/><path d="M212,55 H242"/><path d="M334,55 H364"/><path d="M498,55 H528"/><path d="M626,55 H656"/><path d="M748,55 H778"/></g>
+  <g class="d-s" text-anchor="middle"><text x="106" y="98">∫ ÷J</text><text x="228" y="98">∫</text><text x="350" y="98">取 z 轴</text><text x="514" y="98">−g</text><text x="642" y="98">∫</text><text x="764" y="98">∫</text></g>
+  <text class="d-a" x="0" y="140">Flatness（规划时怎么算）：往左求导</text>
+  <g>
+    <rect class="d-hbox" x="780" y="152" width="90" height="54" rx="7"/><text class="d-t" x="825" y="176" text-anchor="middle">x, y, z, ψ</text><text class="d-s" x="825" y="195" text-anchor="middle">只规划这 4 条</text>
+    <rect class="d-box" x="530" y="152" width="218" height="54" rx="7"/><text class="d-t" x="639" y="176" text-anchor="middle">a = p̈ → f、roll、pitch</text><text class="d-s" x="639" y="195" text-anchor="middle">推力必须指向 a + g</text>
+    <rect class="d-box" x="276" y="152" width="222" height="54" rx="7"/><text class="d-t" x="387" y="176" text-anchor="middle">jerk → 角速度 ω</text><text class="d-s" x="387" y="195" text-anchor="middle">推力方向变化的快慢</text>
+    <rect class="d-box" x="0" y="152" width="244" height="54" rx="7"/><text class="d-t" x="122" y="176" text-anchor="middle">snap → 角加速度 → 力矩 τ</text><text class="d-s" x="122" y="195" text-anchor="middle">回到输入</text>
+  </g>
+  <g class="d-acc" marker-end="url(#arrA)"><path d="M780,179 H750"/><path d="M530,179 H500"/><path d="M276,179 H246"/></g>
+  <text class="d-s" x="440" y="232" text-anchor="middle">上排要积分 4 次、还要经过旋转，所以直接规划 τ 很难；下排只是求导和代公式，所以规划 x, y, z, ψ 很容易。</text>
+</svg>
+</figure>
+<p>上排是把动力学"正着用"（给 u 积分出 x），下排是"倒着用"（给 x 求导反推 u）。这两个方向是理解所有规划方法的钥匙，见 <a href="#roadmap">12</a>。</p>
+</section>
+
+<!-- ============ PART A ============ -->
+<div class="part"><div class="tag">PART A</div><h2>状态与输入</h2><p>先把"有哪些量"弄清楚，尤其是姿态和角速度。</p></div>
+
+<section id="state">
+<h2><span class="n">02</span>坐标系与 12 维状态</h2>
+<p>两个坐标系：<strong>world frame</strong> 固定在地面，z 轴朝上；<strong>body frame</strong> 固定在机身上，跟着机身转。这一页 body frame 用 FLU：x_B 指向机头（Forward），y_B 指向左（Left），z_B 朝上（Up），也就是推力方向。</p>
+<div class="tw"><table>
+<tr><th>状态</th><th>维度</th><th>含义</th></tr>
+<tr><td>位置 p = (x, y, z)</td><td>3</td><td>在哪（world frame）</td></tr>
+<tr><td>速度 v</td><td>3</td><td>往哪飞、多快（world frame）</td></tr>
+<tr><td>姿态 (φ roll, θ pitch, ψ yaw)，或旋转矩阵 R</td><td>3</td><td>机身怎么歪着</td></tr>
+<tr><td>角速度 ω = (p, q, r)</td><td>3</td><td>机身转得多快、绕哪根轴转（<strong>body frame</strong>）</td></tr>
+</table></div>
+<div class="note"><p><span class="q">符号约定</span>在 FLU 下，θ &gt; 0（绕 y_B 正向转）是<strong>机头朝下</strong>，推力向前倾，飞机向前加速。很多教材用 NED / FRD（z 朝下），符号会反过来，看公式时先确认坐标系。另外，角速度的分量 p 和位置 p 是两回事，只是习惯上都这么写。</p></div>
+</section>
+
+<section id="input">
+<h2><span class="n">03</span>输入：4 个电机 → 推力 f 和力矩 τ</h2>
+<p>真正能直接控制的只有 4 个电机的转速 ωᵢ。每个螺旋桨产生一个向上的力 Fᵢ = k_f·ωᵢ² 和一个反扭矩 Mᵢ = k_m·ωᵢ²。把 4 个电机合起来，等价于 4 个更好理解的输入：</p>
+<div class="two" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;align-items:start">
+<figure class="fig" style="margin:0">
+<svg viewBox="0 0 300 280" role="img" aria-label="俯视图：X 型四旋翼，机头朝上。1 号右前逆时针，2 号左后逆时针，3 号左前顺时针，4 号右后顺时针。" style="min-width:0">
+  <line x1="150" y1="140" x2="230" y2="60" class="x-arm"/><line x1="150" y1="140" x2="70" y2="220" class="x-arm"/>
+  <line x1="150" y1="140" x2="70" y2="60" class="x-arm"/><line x1="150" y1="140" x2="230" y2="220" class="x-arm"/>
+  <circle cx="230" cy="60" r="36" class="x-rot front"/><circle cx="70" cy="60" r="36" class="x-rot front"/>
+  <circle cx="70" cy="220" r="36" class="x-rot"/><circle cx="230" cy="220" r="36" class="x-rot"/>
+  <circle cx="150" cy="140" r="9" class="x-hub"/>
+  <g class="d-t" text-anchor="middle"><text x="230" y="65">1</text><text x="70" y="225">2</text><text x="70" y="65">3</text><text x="230" y="225">4</text></g>
+  <g class="d-s" text-anchor="middle"><text x="230" y="112">逆时针</text><text x="70" y="272">逆时针</text><text x="70" y="112">顺时针</text><text x="230" y="272">顺时针</text></g>
+  <path class="d-acc" d="M150,118 V20" marker-end="url(#arrA)"/><text class="d-a" x="158" y="22">x_B 机头</text>
+  <path class="d-ln" d="M128,140 H100" marker-end="url(#arr)"/><text class="d-s" x="96" y="134" text-anchor="end">y_B</text>
+</svg>
+<figcaption class="cap">俯视图，z_B 朝外（朝向你）。对角的两个电机转向相同。</figcaption>
+</figure>
+<div>
+<div class="eq" style="font-size:13.5px">d = 电机到中心的距离 / √2
+c = k_m / k_f
+
+f  = F₁ + F₂ + F₃ + F₄
+τx = d·(−F₁ + F₂ + F₃ − F₄)   左侧 − 右侧
+τy = d·(−F₁ + F₂ − F₃ + F₄)   后侧 − 前侧
+τz = c·(−F₁ − F₂ + F₃ + F₄)   顺时针对 − 逆时针对</div>
+<p style="font-size:14px">4 个电机和 (f, τx, τy, τz) 是一个可逆的 4×4 线性映射（mixer），所以控制器可以直接想"要多少推力、多少力矩"，最后再换算成转速。</p>
+</div>
+</div>
+<div class="tw"><table>
+<tr><th>想要</th><th>怎么改转速</th><th>原理</th></tr>
+<tr><td>上升</td><td>4 个一起加速</td><td>f 变大</td></tr>
+<tr><td>机头朝下（向前飞）</td><td>后面 2、4 加速，前面 1、3 减速</td><td>τy &gt; 0</td></tr>
+<tr><td>向左滚（左侧抬起）</td><td>左边 2、3 加速，右边 1、4 减速</td><td>τx &gt; 0</td></tr>
+<tr><td>原地转向（yaw）</td><td>顺时针的一对加速，逆时针的一对减速</td><td>反扭矩不再抵消，τz ≠ 0</td></tr>
+</table></div>
+<p><strong>关键限制</strong>：推力 f 的方向<strong>永远沿着 z_B</strong>。4 个输入里没有一个能直接产生水平方向的力。想水平移动，只能先用力矩把机身转过去。这就是 <strong>underactuated</strong>（欠驱动）：6 个自由度（3 平移 + 3 转动），只有 4 个输入。</p>
+</section>
+
+<section id="omega">
+<h2><span class="n">04</span>姿态与角速度</h2>
+<h3>姿态：R 的三列就是机身的三根轴</h3>
+<p>旋转矩阵 R 把 body frame 的向量变成 world frame 的向量。它的三列分别是 x_B、y_B、z_B 在 world frame 里的方向。所以 <strong>R 的第三列就是推力方向</strong>，后面 flatness 会反复用到这一点。</p>
+<p>Euler angles (φ, θ, ψ) 是 R 的另一种写法。这里用 ZYX 顺序：<span class="m">R = Rz(ψ)·Ry(θ)·Rx(φ)</span>，先 yaw、再 pitch、最后 roll。</p>
+<h3>角速度：一根转轴 + 一个转速</h3>
+<p>角速度 ω 是一个向量：<strong>方向</strong>是机身此刻绕着转的那根轴，<strong>长度</strong>是转速（rad/s），转动方向按<strong>右手定则</strong>：右手大拇指指向 ω，四指弯曲的方向就是转的方向。</p>
+<p>四旋翼的 ω = (p, q, r) 写在 <strong>body frame</strong> 里：p 是绕机头轴 x_B 转，q 是绕 y_B 转，r 是绕 z_B 转。陀螺仪测的就是这三个数。</p>
+<div class="note warn"><p><span class="q">最容易混的一点：ω ≠ Euler angle 的导数</span>只有机身水平时，r 才等于 ψ̇。机身一旦倾斜，"绕机身 z_B 转"和"绕世界 z 轴转"不是一回事。两者的关系是：</p>
+<div class="eq" style="margin-bottom:0">φ̇ = p + (q·sinφ + r·cosφ)·tanθ
+θ̇ = q·cosφ − r·sinφ
+ψ̇ = (q·sinφ + r·cosφ) / cosθ          θ = ±90° 时除以 0：gimbal lock</div></div>
+<div class="lab" id="attLab">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="p">只有 p：绕机头轴滚</button>
+    <button type="button" class="pre" data-p="r">只有 r：水平时偏航</button>
+    <button type="button" class="pre" data-p="tilt">先 pitch 30°，再给 r</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main">
+      <svg class="cv" id="attV" viewBox="0 0 560 380" role="img" aria-label="三维四旋翼，显示机身三根轴和角速度向量"></svg>
+      <div class="btns" style="display:flex;gap:8px;margin-top:10px">
+        <button type="button" class="pre" id="attPlay">▶ 转起来</button>
+        <button type="button" class="pre" id="attReset">回到水平</button>
+      </div>
+    </div>
+    <div class="stage-side">
+      <h4>角速度 ω（body frame，rad/s）</h4>
+      <div class="row"><label><span class="lb">p 绕 x_B</span><input type="range" id="wp" min="-2" max="2" step="0.1" value="0"></label><output id="wpO">0.0</output></div>
+      <div class="row"><label><span class="lb">q 绕 y_B</span><input type="range" id="wq" min="-2" max="2" step="0.1" value="0"></label><output id="wqO">0.0</output></div>
+      <div class="row"><label><span class="lb">r 绕 z_B</span><input type="range" id="wr" min="-2" max="2" step="0.1" value="0"></label><output id="wrO">0.0</output></div>
+      <h4>姿态（Euler angles，可直接拖）</h4>
+      <div class="row"><label><span class="lb">φ roll</span><input type="range" id="ea0" min="-90" max="90" step="1" value="0"></label><output id="ea0O">0°</output></div>
+      <div class="row"><label><span class="lb">θ pitch</span><input type="range" id="ea1" min="-85" max="85" step="1" value="0"></label><output id="ea1O">0°</output></div>
+      <div class="row"><label><span class="lb">ψ yaw</span><input type="range" id="ea2" min="-180" max="180" step="1" value="0"></label><output id="ea2O">0°</output></div>
+      <table class="cmp"><tr><th></th><th>ω（陀螺仪）</th><th>Euler rate</th></tr>
+        <tr><th>roll</th><td id="c-p">0</td><td id="c-pd">0</td></tr>
+        <tr><th>pitch</th><td id="c-q">0</td><td id="c-qd">0</td></tr>
+        <tr><th>yaw</th><td id="c-r">0</td><td id="c-rd">0</td></tr></table>
+      <div class="live" id="attLive" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>图例：</b><span class="t-x lt" style="color:var(--a1)">蓝 x_B 机头</span>，<span class="lt" style="color:var(--ok)">绿 y_B</span>，<span class="lt" style="color:var(--a2)">橙 z_B 推力方向</span>，<span class="lt" style="color:var(--bad)">红 ω 和它的转向</span>，灰色虚线是 world 坐标轴。紫色的两个螺旋桨在前面。<br><b>试试：</b>选"先 pitch 30°，再给 r"，点转起来。机身绕着自己倾斜的 z_B 转，右边表格里 ψ̇ = 1.15 ≠ r = 1，φ̇ 也不再是 0。</p>
+</div>
+</section>
+
+<!-- ============ PART B ============ -->
+<div class="part"><div class="tag">PART B</div><h2>动力学</h2><p>输入怎样一步步改变状态。</p></div>
+
+<section id="eqs">
+<h2><span class="n">05</span>三条方程</h2>
+<div class="eq">平动    m·a = R·[0, 0, f]ᵀ − m·g·e₃          推力只能沿 z_B，再加重力
+转动    J·ω̇ = τ − ω × (J·ω)                  力矩产生角加速度
+姿态    Ṙ = R·ω̂                               角速度让姿态变化</div>
+<ul>
+<li><strong>平动</strong>：<span class="m">R·[0,0,f]ᵀ = f·z_B</span>，就是"大小 f、方向沿机身 z 轴"的推力。e₃ = (0, 0, 1)。这条方程说明：<strong>加速度的方向由姿态决定</strong>，推力本身只能调大小。</li>
+<li><strong>转动</strong>：J 是 3×3 的转动惯量矩阵，相当于转动版的质量。<span class="m">ω × (J·ω)</span> 是 gyroscopic 项，机身同时绕几根轴转时才明显；转得慢时可以先忽略，看成 <span class="m">ω̇ ≈ J⁻¹τ</span>。</li>
+<li><strong>姿态</strong>：<span class="m">ω̂</span> 是 ω 的 hat map（反对称矩阵，<span class="m">ω̂·v = ω × v</span>）。右乘表示 ω 写在 body frame 里。这条方程就是 04 实验台里每一帧在做的事。</li>
+</ul>
+<p>从 τ 到位置：τ → ω̇ → ω → R → 推力方向 → a → v → p，一共要<strong>积分 4 次</strong>，中间还经过非线性的旋转。下面的实验台把这条链画出来。</p>
+</section>
+
+<section id="planar">
+<h2><span class="n">06</span>实验台：从力矩到位置</h2>
+<p>为了看清楚，只看侧视图（x–z 平面），只有 pitch 一个转动方向。推力自动调成 <span class="m">f = mg / cos θ</span>，保持高度不变，所以水平加速度就是 <span class="m">a_x = g·tan θ</span>。</p>
+<div class="lab" id="plLab">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="go">向前飞并停住</button>
+    <button type="button" class="pre" data-p="hold">倾斜后一直保持</button>
+    <button type="button" class="pre" data-p="flip">只推一下，忘了收</button>
+  </div>
+  <svg class="cv" id="plView" viewBox="0 0 560 190" role="img" aria-label="侧视图：无人机沿水平方向飞行，显示推力方向"></svg>
+  <div class="tctl" style="display:flex;gap:8px;align-items:center;margin:10px 0">
+    <button type="button" class="pre" id="plPlay">▶ 播放</button>
+    <input type="range" id="plT" min="0" max="1000" value="0" style="flex:1" aria-label="时间">
+    <output id="plTO" style="font-family:var(--mono);font-size:13px;min-width:4em;text-align:right">0.00 s</output>
+  </div>
+  <svg class="cv" id="plChart" viewBox="0 0 560 336" role="img" aria-label="六条随时间变化的曲线：力矩、角速度、倾角、水平加速度、速度、位置"></svg>
+  <div class="live" id="plLive" aria-live="polite"></div>
+</div>
+<p>从上往下，每一条都是上一条的积分（a_x 那一步是 g·tan θ）。所以力矩上一个尖锐的方波，传到位置时已经变成一条很平滑的曲线。反过来想：<strong>位置曲线要足够平滑（4 阶可导），才对应得上一个有限的力矩</strong>，这就是 minimum snap 优化 snap 的原因。</p>
+</section>
+
+<!-- ============ PART C ============ -->
+<div class="part"><div class="tag">PART C</div><h2>为什么只规划 x, y, z, ψ</h2><p>回答 minimum snap 那一页留下的问题："不需要处理完整的动力学"是什么意思。</p></div>
+
+<section id="why">
+<h2><span class="n">07</span>为什么不直接规划输入或状态</h2>
+<h3>1. 输入离位置太远</h3>
+<p>想往前飞，不能直接"给一个向前的力"。必须先用力矩把机身转过去，推力才有水平分量，然后才有水平加速度。从 τ 到位置要积分 4 次，中间还有非线性的旋转（06 实验台）。直接规划 τ(t)，很难让位置恰好经过 waypoints。</p>
+<h3>2. 欠驱动：12 个状态不能随便选</h3>
+<p>只有 4 个输入，状态之间互相绑定。给定加速度 a，机身就必须让推力指向 a + g 的方向，roll 和 pitch 被定死。如果同时规划位置和姿态，就要在每个时刻加动力学约束保证两者一致，变成一个大型、非线性、非凸的优化（direct collocation 之类）。</p>
+<h3>3. Flatness：真正能自由选的只有 4 个</h3>
+<div class="tw"><table>
+<tr><th>量</th><th>能自由选吗</th><th>原因</th></tr>
+<tr><td>x, y, z</td><td>✅</td><td>想飞到哪，自己定</td></tr>
+<tr><td>ψ yaw</td><td>✅</td><td>绕推力轴转，不改变推力方向，不影响平动</td></tr>
+<tr><td>φ roll, θ pitch</td><td>❌</td><td>由加速度决定：推力必须指向 a + g</td></tr>
+<tr><td>v、ω、f、τ</td><td>❌</td><td>由上面四条曲线的导数算出（定义见 08）</td></tr>
+</table></div>
+<p>这四个量就是 quadrotor 的 <strong>flat outputs</strong>，个数正好等于输入的个数。在 (x, y, z, ψ) 空间里规划，就是<strong>只规划能自由选的部分</strong>，其他量自动跟着确定，并且自动满足动力学。问题从"12 + 4 个变量加非线性 ODE 约束"变成"4 条光滑曲线"，可以写成 QP。</p>
+<div class="note"><p><span class="q">"不需要处理完整的动力学"的准确含义</span>动力学没有被忽略，而是藏进了 09 节那组"由导数算状态和输入"的公式里。规划时不用管它，因为任何足够光滑的 (x, y, z, ψ) 曲线都一定能被实现。唯一不保证的是输入上限：推力可能超过电机能力，所以解完还要检查。</p></div>
+</section>
+
+<section id="flatdef">
+<h2><span class="n">08</span>Differential flatness：定义与数学本质</h2>
+<h3>定义：三条同时满足</h3>
+<p>系统 <span class="m">ẋ = f(x, u)</span>，x ∈ ℝⁿ，u ∈ ℝᵐ。如果存在一组量 y ∈ ℝᵐ 同时满足下面三条，系统就是 <strong>differentially flat</strong>，y 叫 <strong>flat outputs</strong>。</p>
+<div class="tw"><table>
+<tr><th>条件</th><th>数学写法</th><th>含义</th></tr>
+<tr><td>1. 由系统算得出</td><td class="m">y = h(x, u, u̇, …, u⁽ʳ⁾)</td><td>y 是系统里的量，不是凭空加的</td></tr>
+<tr><td>2. 互相独立</td><td>y 的各分量之间不满足任何微分方程</td><td>随便给一组足够光滑的 y(t)，都能被系统实现</td></tr>
+<tr><td>3. 能反推一切</td><td class="m">x = φ(y, ẏ, …, y⁽q⁾)<br>u = ψ(y, ẏ, …, y⁽q+1⁾)</td><td>全部状态和输入都是 y 及其有限阶导数的代数函数，不需要积分</td></tr>
+</table></div>
+<p><strong>flat outputs 的个数等于输入的个数 m</strong>。直觉：系统的每个输入都是一条可以随便给的时间函数，所以"能自由选的曲线"一共就 m 条，不多不少。Quadrotor 有 4 个输入，所以是 4 个。</p>
+<p>一句话：<strong>从状态和输入里，找出那几个"能自由选、并且能决定其他所有量"的变量。</strong>规划只管它们，其余量自动确定，动力学自动满足。12 个状态加 4 个输入压缩成 4 条曲线，信息没有丢，因为其余的量都能从这 4 条曲线的导数还原。</p>
+
+<h3>本质 1：把微分方程约束"参数化"掉</h3>
+<p>和几何里用参数方程消掉约束是同一件事：</p>
+<div class="eq">几何约束     点在单位圆上：x² + y² = 1                优化时要一直带着约束
+参数化       (x, y) = (cos s, sin s)，s 随便取           约束消失，s 是自由变量
+
+动力学约束   (x(t), u(t)) 必须满足 ẋ = f(x, u)          每个时刻都要带着约束
+参数化       x = φ(y, ẏ, …)，u = ψ(y, ẏ, …)，y(t) 随便取  约束消失，y(t) 是自由曲线</div>
+<p>也就是说，<strong>系统所有可能的轨迹，和 m 条自由曲线 y(t) 一一对应</strong>。在 y 空间里规划，就不再有动力学约束，只剩光滑性和物理上限。这是 minimum snap 能写成 QP 的根本原因。</p>
+
+<h3>本质 2：换个坐标看，系统就是几条独立的积分器链</h3>
+<p>Flat 系统经过坐标变换和（动态）反馈，等价于 m 条互不相干的积分器链（Brunovsky canonical form）。每条链的最末端 vᵢ 是一个"虚拟输入"，真实输入可以由 y 的各阶导数和 v 算出来。</p>
+<div class="eq">quadrotor：  x⁽⁴⁾ = v₁    y⁽⁴⁾ = v₂    z⁽⁴⁾ = v₃    ψ̈ = v₄
+             （推力 f 要当成状态做 dynamic extension，细节不用记）</div>
+<p>位置链是 4 阶的，虚拟输入正好是 <strong>snap</strong>；yaw 链是 2 阶的，虚拟输入是 ψ̈。所以 <strong>minimum snap 就是最小化位置链虚拟输入的能量</strong>，Mellinger &amp; Kumar 对 yaw 用的也是最小化 ψ̈。控制上，flat 等价于可以用 endogenous dynamic feedback 线性化，flatness-based control 就是"由 y 的导数算 feedforward + 在积分器链上加 feedback"。</p>
+
+<h3>本质 3：线性系统是特例，非线性没有通用判定</h3>
+<ul>
+<li><strong>线性可控系统一定 flat</strong>，flat output 由 controllable canonical form 给出。例如 double integrator <span class="m">ẍ = u</span>：flat output 是 x，<span class="m">u = ẍ</span>。</li>
+<li><strong>非线性系统没有通用的判定方法和求法。</strong>单输入系统：flat ⇔ 可以 static feedback linearization；多输入系统至今没有通用的充要条件。</li>
+</ul>
+
+<h3>实际用起来：求导 + 代公式</h3>
+<p>用 flatness 时实际做的就是<strong>对规划好的曲线求导，再代进从动力学方程倒推出来的公式</strong>。需要三样东西：</p>
+<ol>
+<li><strong>选对 flat outputs</strong>：从哪几条曲线出发。四旋翼是 x、y、z、ψ，car-like 是后轴中心。选错了，链条接不上。</li>
+<li><strong>动力学模型</strong>：用来推出"倒推公式"。链条上不全是求导，有些步是把动力学方程反过来解：
+<div class="eq" style="margin-top:8px">x(t) ──求导──▶ a ──代公式──▶ θ、f、R ──求导──▶ ω ──代公式──▶ τ
+                  ↑ 由 m·a = f·z_B − m·g·e₃ 反解           ↑ 由 J·ω̇ = τ − ω×Jω 反解</div>
+这些公式（θ = atan(a/g)、f = m‖a + g‖、τ = Jω̇ + ω×Jω）<strong>事先推一次</strong>就固定了，运行时只做求导和代入。</li>
+<li><strong>曲线足够光滑</strong>：链条用到第几阶导数，曲线就要几阶可导。四旋翼用到 snap，要 4 阶可导。</li>
+</ol>
+<p><strong>Flatness 本身是系统的性质</strong>：它保证这条链能一路传到底，每一步都能唯一地反解（奇异点除外，比如 a = −g）。不 flat 的系统，链条会在某一步断掉：那一步有无穷多个解或者无解，只能改成正着积分、用优化去找 u（见 <a href="#roadmap">12</a>）。</p>
+<p>另外，链条算出的输入只在模型准确时才对。质量、J、推力系数一有偏差就只是近似，所以它的定位是 <strong>feedforward</strong>，还要配 feedback（见 <a href="#ffb">10</a>）。</p>
+<div class="note"><p><span class="q">一句话</span>Flatness 保证链条能传到底，动力学给出链条上每一环的公式，实际使用就是对规划好的曲线求导、代公式。</p></div>
+
+<h3>怎么找 flat outputs：靠物理直觉和推导</h3>
+<div class="tw"><table>
+<tr><th>系统</th><th>Flat outputs</th><th>为什么是它</th></tr>
+<tr><td>差速底盘</td><td>中心 (x, y)</td><td>轮子不侧滑，速度方向就是朝向：θ = atan2(ẏ, ẋ)，v、ω 再求导得到</td></tr>
+<tr><td>Car-like（kinematic bicycle）</td><td><strong>后轴中心</strong> (x, y)</td><td>后轮不转向、不侧滑，后轴中心的速度沿车身方向，θ 直接由速度方向得到；转向角 δ = atan(L·κ)，κ 是后轴轨迹的曲率。选前轴或车身中心，速度方向里混进了转向角，推不出来</td></tr>
+<tr><td>带多节拖车的车</td><td><strong>最后一节拖车</strong>的位置</td><td>从最后一节开始，一节一节往前推出每节的位置和朝向</td></tr>
+<tr><td>Quadrotor</td><td>x, y, z, ψ</td><td>见 <a href="#flat">09</a></td></tr>
+<tr><td>全驱动机械臂</td><td>关节角 q</td><td>平凡情况：<span class="m">u = M(q)q̈ + C(q, q̇)q̇ + G(q)</span></td></tr>
+</table></div>
+<p>Flat outputs 不一定是直观的变量，选错一个点就推不出来；同一个系统也可能有不止一组。</p>
+
+<h3>三个限制</h3>
+<ol>
+<li><strong>不是所有系统都 flat。</strong>例如带轮胎侧滑的车辆动力学模型、很多欠驱动系统。这时只能用带完整动力学的 trajectory optimization 或 MPC。</li>
+<li><strong>"能实现"不等于"在限制内"。</strong>自由选的前提是不考虑输入上限。曲线太激进，算出的推力或倾角可能超限，规划完要检查，超了就拉长时间。</li>
+<li><strong>奇异点。</strong>反推公式在某些地方除以 0：quadrotor 的 a = −g，差速底盘和 car-like 的 v = 0（停下时朝向无定义）。</li>
+</ol>
+</section>
+
+<section id="flat">
+<h2><span class="n">09</span>Quadrotor 的 flatness：由导数算出一切</h2>
+<div class="eq">推力方向  z_B = (a + g·e₃) / ‖a + g·e₃‖          ← acceleration
+推力大小  f   = m·‖a + g·e₃‖
+姿态      x_C = [cos ψ, sin ψ, 0]                        ← 用上 yaw
+          y_B = (z_B × x_C) / ‖z_B × x_C‖,   x_B = y_B × z_B,   R = [x_B y_B z_B]
+角速度    h_ω = (m/f)·( ȷ − (z_B·ȷ)·z_B )                ← jerk
+          p = −h_ω·y_B,   q = h_ω·x_B,   r = ψ̇·(e₃·z_B)
+角加速度 → 力矩 τ = J·ω̇ + ω × Jω                       ← snap</div>
+<p>第一行是核心：平动方程 <span class="m">m·a = f·z_B − m·g·e₃</span> 移项，得到 <span class="m">f·z_B = m·(a + g·e₃)</span>。左边方向是 z_B，大小是 f，所以<strong>想要的加速度一给定，推力方向和大小就都定了</strong>。下面的实验台就是这一行。</p>
+<div class="lab" id="flLab">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="0,0">悬停</button>
+    <button type="button" class="pre" data-p="2,0">向前加速 2 m/s²</button>
+    <button type="button" class="pre" data-p="-6,3">急刹并爬升</button>
+    <button type="button" class="pre" data-p="0,-9.81">自由落体</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main">
+      <svg class="cv" id="flV" viewBox="0 0 560 360" role="img" aria-label="侧视图：拖动蓝色加速度向量，橙色推力向量和机身倾角随之改变"></svg>
+    </div>
+    <div class="stage-side">
+      <h4>侧视图（m = 1 kg）</h4>
+      <div class="kv" id="flKv"></div>
+      <div class="live" id="flLive" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>图例：</b><span class="lt" style="color:var(--a1)">蓝 a 想要的加速度（拖动圆点）</span>，<span class="lt" style="color:var(--muted)">灰 −g 重力</span>，<span class="lt" style="color:var(--a2)">橙 推力 / m = a + g</span>。机身总是垂直于橙色向量。拖到"自由落体"附近，推力变成 0，方向无定义。</p>
+</div>
+<h3>数字例子</h3>
+<p>m = 1 kg，悬停时想以 a_x = 2 m/s² 向前加速：<span class="m">a + g·e₃ = (2, 0, 9.81)</span>，pitch = atan(2 / 9.81) ≈ <strong>11.5°</strong>，f = √(2² + 9.81²) ≈ <strong>10.0 N</strong>，比悬停的 9.81 N 略大。全程只是代公式，不解微分方程。</p>
+<h3>两个注意点</h3>
+<ul>
+<li><strong>奇异点</strong>：a = −g（自由落体）时 f = 0，z_B 无定义，姿态算不出来。</li>
+<li><strong>ψ 自由的代价</strong>：x_C 和 z_B 平行时（机身侧倾 90°）y_B 无定义，实际飞行一般碰不到。</li>
+</ul>
+</section>
+
+<!-- ============ PART D ============ -->
+<div class="part"><div class="tag">PART D</div><h2>从轨迹到电机</h2><p>规划出轨迹之后，机器人到底怎么执行；以及为什么有这么多种规划和控制方法。</p></div>
+
+<section id="ffb">
+<h2><span class="n">10</span>已经算出了输入，为什么还要 feedback</h2>
+<div class="note"><p><span class="q">我的问题</span>有了 flatness，minimum snap 算出 x(t)、y(t)、z(t)、ψ(t) 之后，12 维状态和 4 维输入随时间的变化（比如 thrust(t)）都能算出来。既然输入都知道了，底层为什么还需要 PID？还需要 "tracking controller + 滚动重规划"？它和不用 flatness、只靠 feedback 跟踪，本质区别是什么？</p></div>
+<h3>结论</h3>
+<p>Flatness 算出的 u(t) 是 <strong>open-loop feedforward</strong>，只有在"模型完全准、起点完全准、没有扰动"时才对。真实机器人一定会偏，所以要加 feedback。两者是<strong>相加</strong>的关系，不是二选一：</p>
+<div class="eq">u(t) = u_ff(t)  +  K · ( x_ref(t) − x̂(t) )
+       ↑ 由参考轨迹算出      ↑ 由测量误差算出（x̂ 是传感器估计的状态）</div>
+
+<h3>开环为什么不行</h3>
+<ul>
+<li><strong>模型参数不准</strong>：质量、转动惯量有误差；推力系数 k_f 会随电池电压下降而变。</li>
+<li><strong>没建模的效应</strong>：电机响应延迟、风、地面效应、桨叶空气动力。</li>
+<li><strong>起点有误差</strong>：起飞时的姿态、位置不可能刚好等于参考值。</li>
+</ul>
+<p>四旋翼还特别怕误差：从力矩到位置是 4 次积分，积分器链自己不会回到原位，误差只会累积。设 J = 0.02，力矩只偏 1%（0.0005 N·m），位置误差约 g·α·t⁴/24：</p>
+<div class="tw"><table style="width:auto">
+<tr><th>开环飞了</th><td>1 s</td><td>2 s</td><td>3 s</td><td>4 s</td></tr>
+<tr><th>位置误差</th><td>1 cm</td><td>16 cm</td><td>83 cm</td><td><strong>2.6 m</strong></td></tr>
+</table></div>
+<p>误差按 <strong>t⁴</strong> 增长，倾角也一直在累积，最后就是 06 实验台里"只推一下，忘了收"的结局。</p>
+
+<h3>Feedforward 和 feedback 各管什么</h3>
+<div class="tw"><table>
+<tr><th></th><th>Feedforward u_ff(t)</th><th>Feedback K·e</th></tr>
+<tr><td>来源</td><td>参考轨迹（flatness 或 trajectory optimization）</td><td>传感器测出的误差</td></tr>
+<tr><td>什么时候起作用</td><td><strong>提前</strong>，误差出现之前</td><td><strong>事后</strong>，误差出现之后</td></tr>
+<tr><td>负责</td><td>绝大部分输入："按计划该怎么飞"</td><td>小修正："偏了拉回来"</td></tr>
+<tr><td>弱点</td><td>看不见误差</td><td>必然滞后；增益调大会放大噪声、振荡</td></tr>
+</table></div>
+<p><strong>开车类比</strong>：看到前面有弯，提前打方向盘，这是 feedforward；过弯时发现往外飘，再微调，这是 feedback。只用 feedback，相当于等车已经压线了才开始打方向。</p>
+<ul>
+<li><strong>只用 feedback</strong>：控制器只知道"现在偏了多少"，不知道"接下来要转弯"。机器人必须先偏，控制器才会动，永远在追。轨迹越激进误差越大；想减小误差只能加大增益，带来噪声放大和振荡。</li>
+<li><strong>加上 feedforward</strong>：标称输入已经对了，feedback 只处理模型误差和扰动那一小部分。误差能小一个量级，增益不用很大。</li>
+</ul>
+<p>所以 flatness 的价值是：<strong>解析地、很便宜地给出一个和动力学完全一致的 feedforward</strong>。它不替代 feedback。</p>
+
+<h3>实验台：开环、只用 feedback、两者相加</h3>
+<p>还是 06 那个"向前飞并停住"，后面多悬停 3 秒。参考轨迹按标称模型算出（J = 0.02，无风）。真实飞机的 J 有误差，还有风和力矩偏差。三种控制方式同时飞：</p>
+<div class="lab" id="cmpLab">
+  <div class="row"><label><span class="lb">J 误差</span><input type="range" id="cJ" min="-30" max="30" step="5" value="15"></label><output id="cJO"></output>
+    <label><span class="lb">风</span><input type="range" id="cW" min="0" max="1" step="0.05" value="0.2"></label><output id="cWO"></output>
+    <label><span class="lb">力矩偏差</span><input type="range" id="cB" min="0" max="3" step="0.25" value="1"></label><output id="cBO"></output></div>
+  <h4>位置 x(t)，灰色虚线是参考轨迹</h4>
+  <svg class="cv" id="cmpX" viewBox="0 0 560 190" role="img" aria-label="三种控制方式的位置曲线和参考轨迹"></svg>
+  <h4>跟踪误差 x − x_ref（超出 ±1 m 的部分被截掉）</h4>
+  <svg class="cv" id="cmpE" viewBox="0 0 560 150" role="img" aria-label="三种控制方式的跟踪误差"></svg>
+  <div class="tw" style="margin-top:10px"><table class="cmp" id="cmpTbl"></table></div>
+  <div class="live" id="cmpLive" aria-live="polite"></div>
+  <p class="try"><b>图例：</b><span class="lt" style="color:var(--bad)">红 只有 feedforward（开环）</span>，<span class="lt" style="color:var(--a2)">橙 只有 feedback</span>，<span class="lt" style="color:var(--accent)">紫 feedforward + feedback</span>。<br><b>试试：</b>① 三个误差都拉到 0：开环和参考完全重合，只用 feedback 仍然落后，因为它要先有误差才会动。② 只加力矩偏差：开环误差按 t⁴ 爆炸。③ 加风：两种带 feedback 的最后都停在一个小的稳态误差上，PID 里的 I 项就是用来消它的。</p>
+</div>
+
+<h3>实际飞控里怎么串起来</h3>
+<figure class="fig">
+<svg viewBox="0 0 880 270" role="img" aria-label="串级控制：参考轨迹给每一环提供 feedforward，状态估计给每一环提供 feedback。位置环、flatness 公式、姿态环、角速度环、mixer、电机依次相连。">
+  <rect class="d-hbox" x="0" y="8" width="660" height="44" rx="7"/>
+  <text class="d-t" x="330" y="28" text-anchor="middle">参考轨迹（minimum snap 采样）</text>
+  <text class="d-s" x="330" y="45" text-anchor="middle">p_ref, v_ref, a_ref → 位置环；jerk → ω_ref；snap → τ_ref；ψ_ref</text>
+  <g class="d-acc" marker-end="url(#arrA)"><path d="M55,52 V108"/><path d="M345,52 V108"/><path d="M485,52 V108"/></g>
+  <g class="d-a"><text x="62" y="84">p, v, a_ref</text><text x="352" y="84">ω_ref</text><text x="492" y="84">τ_ref</text></g>
+  <g>
+    <rect class="d-box" x="0" y="110" width="110" height="56" rx="7"/><text class="d-t" x="55" y="134" text-anchor="middle">位置环</text><text class="d-s" x="55" y="154" text-anchor="middle">50–250 Hz</text>
+    <rect class="d-box" x="145" y="110" width="140" height="56" rx="7"/><text class="d-t" x="215" y="134" text-anchor="middle">flatness 公式</text><text class="d-s" x="215" y="154" text-anchor="middle">a_cmd → R_des, f</text>
+    <rect class="d-box" x="290" y="110" width="110" height="56" rx="7"/><text class="d-t" x="345" y="134" text-anchor="middle">姿态环</text><text class="d-s" x="345" y="154" text-anchor="middle">250–1000 Hz</text>
+    <rect class="d-box" x="430" y="110" width="110" height="56" rx="7"/><text class="d-t" x="485" y="134" text-anchor="middle">角速度环</text><text class="d-s" x="485" y="154" text-anchor="middle">1–8 kHz</text>
+    <rect class="d-box" x="580" y="110" width="80" height="56" rx="7"/><text class="d-t" x="620" y="143" text-anchor="middle">mixer</text>
+    <rect class="d-box" x="700" y="110" width="180" height="56" rx="7"/><text class="d-t" x="790" y="134" text-anchor="middle">ESC → 电机 → 机身</text><text class="d-s" x="790" y="154" text-anchor="middle">真实物理</text>
+  </g>
+  <g class="d-ln" marker-end="url(#arr)"><path d="M110,138 H143"/><path d="M285,138 H288"/><path d="M400,138 H428"/><path d="M540,138 H578"/><path d="M660,138 H698"/></g>
+  <g class="d-s" text-anchor="middle"><text x="127" y="104">a_cmd</text><text x="415" y="104">ω_cmd</text><text x="560" y="104">f, τ</text><text x="680" y="104">转速</text></g>
+  <rect class="d-box" x="0" y="218" width="880" height="44" rx="7"/>
+  <text class="d-t" x="440" y="238" text-anchor="middle">状态估计：IMU、GPS / 动捕 → p̂, v̂, R̂, ω̂</text>
+  <text class="d-s" x="440" y="255" text-anchor="middle">每一环都拿"参考值 − 估计值"做 feedback</text>
+  <g class="d-ln" marker-end="url(#arr)"><path d="M55,218 V168"/><path d="M345,218 V168"/><path d="M485,218 V168"/><path d="M790,168 V216"/></g>
+  <g class="d-s"><text x="62" y="198">p̂, v̂</text><text x="352" y="198">R̂</text><text x="492" y="198">ω̂</text><text x="797" y="198">传感器</text></g>
+</svg>
+</figure>
+<div class="eq">位置环    a_cmd = a_ref + Kp·(p_ref − p̂) + Kd·(v_ref − v̂)
+flatness  z_B,des = (a_cmd + g)/‖a_cmd + g‖，  f = m·‖a_cmd + g‖
+姿态环    ω_cmd = ω_ref + K_R·e_R
+角速度环  τ_cmd = τ_ref + PID(ω_cmd − ω̂)</div>
+<p>Flatness 公式在控制器里<strong>也在用</strong>，只是代入的不是 a_ref，而是加了修正之后的 a_cmd。SE(3) controller（Lee et al.）就是这个结构：每一环 = flatness 给的参考值 + 这一环的 feedback。实验台里紫色那条也是按这个结构写的。</p>
+
+<h3>重规划又解决什么</h3>
+<p>Feedback 只能修正小偏差，前提是参考轨迹本身还有效。出现新障碍、目标变了、被风吹得太远、多机计划改了，参考轨迹就失效了，再怎么跟踪也没用，只能从当前状态重新规划。</p>
+<div class="tw"><table>
+<tr><th>做什么</th><th>时间尺度</th><th>解决什么</th></tr>
+<tr><td>重规划</td><td>秒级</td><td>计划不对了</td></tr>
+<tr><td>跟踪控制</td><td>毫秒级</td><td>执行偏了</td></tr>
+<tr><td>内环</td><td>亚毫秒级</td><td>电机、姿态的快速响应</td></tr>
+</table></div>
+</section>
+
+<section id="se3">
+<h2><span class="n">11</span>SE(3) geometric controller</h2>
+<div class="note"><p><span class="q">我的问题</span>SE(3) 几何控制器的原理是什么？和普通的控制器有什么区别？它替代的是底层 tracking controller 的 PID 吗？</p></div>
+<h3>结论：它在哪一层，替代什么</h3>
+<ul>
+<li>它属于<strong>跟踪控制层</strong>：负责位置环和姿态环，输出推力 f 和力矩 M。下面的角速度环、mixer、ESC <strong>不变</strong>。原论文直接输出力矩；工程实现（比如 PX4 的姿态环）常常只取前半部分，输出 ω_cmd 给角速度 PID。</li>
+<li>它替代的是<strong>"基于 Euler angle、在悬停附近线性化的串级 PID"</strong>。</li>
+<li>它<strong>仍然是 feedforward + feedback</strong>，增益也还是 PD 形式（K_p、K_v、K_R、K_ω）。变的只有两件事：<strong>姿态用旋转矩阵 R 表示，而不是 Euler angles；误差直接在旋转矩阵上定义，而不是角度相减。</strong></li>
+</ul>
+
+<h3>普通做法：小角度线性化 + Euler angle PID</h3>
+<div class="eq">期望姿态（假设 ψ = 0、倾角很小）   θ_des ≈ a_x / g，   φ_des ≈ −a_y / g，   f ≈ m·(g + a_z)
+姿态误差（三个角各自相减）           e = (φ_des − φ,  θ_des − θ,  ψ_des − ψ)
+三个轴各接一个 PID</div>
+<p>悬停附近够用，但有四个问题：</p>
+<ol>
+<li><strong>只在小角度下成立。</strong>tan θ ≈ θ、各轴解耦这些近似，倾角一大就不准，激进机动会飞不稳。</li>
+<li><strong>Euler angles 有奇异点。</strong>θ = ±90° 时 gimbal lock，φ 和 ψ 无法区分。</li>
+<li><strong>角度有 ±180° 跳变。</strong>实际 ψ = 170°、期望 −170°，相减得 340°，控制器会绕远路转一大圈，而实际只差 20°。</li>
+<li><strong>角度相减不是"真正的旋转误差"。</strong>机身倾斜时，三个角的差值和"该绕哪根轴转多少"并不对应，三个轴互相耦合。</li>
+</ol>
+
+<h3>SE(3) 的想法</h3>
+<p>无人机的位姿 = 位置 p ∈ ℝ³ + 姿态 R ∈ SO(3)，合起来就是 <strong>SE(3)</strong>（special Euclidean group，三维刚体位姿的空间）。SO(3) 是所有旋转矩阵组成的集合。<strong>不做任何参数化，也不线性化，直接在 R 上定义误差和控制律</strong>，所以在全部姿态上都有效，没有奇异点，也没有 ±180° 跳变。</p>
+
+<h3>算法：六步</h3>
+<div class="eq">参考来自 flatness：p_ref, v_ref, a_ref, ψ_ref，以及由 jerk、snap 算出的 ω_des, ω̇_des
+
+1  位置误差   e_p = p − p_ref,   e_v = v − v_ref
+2  期望合力   F_des = m·a_ref + m·g·e₃ − K_p·e_p − K_v·e_v           feedforward + feedback
+3  期望姿态   b₃,des = F_des / ‖F_des‖                                 推力该指的方向
+              b₂,des = (b₃,des × b₁,c) / ‖·‖,  b₁,des = b₂,des × b₃,des   b₁,c = (cos ψ_ref, sin ψ_ref, 0)
+              R_des = [b₁,des  b₂,des  b₃,des]
+4  推力       f = F_des · (R·e₃)                                       投影到当前机身 z 轴
+5  姿态误差   e_R = ½·(R_desᵀR − RᵀR_des)^∨,   e_ω = ω − RᵀR_des·ω_des
+6  力矩       M = −K_R·e_R − K_ω·e_ω + ω × Jω − J·(ω̂·RᵀR_des·ω_des − RᵀR_des·ω̇_des)</div>
+<p>逐条看关键点：</p>
+<ul>
+<li><strong>第 2、3 步就是 flatness 公式</strong>，只是代入的不是 a_ref，而是加了位置 feedback 之后的期望合力。所以位置误差会自动变成"姿态该怎么倾"。</li>
+<li><strong>第 4 步只取投影。</strong>推力只能沿当前的 z_B，所以只用 F_des 在 z_B 上的分量。姿态还没转到位时推力自动变小，不会往错误的方向猛推；偏了 90° 时推力为 0。</li>
+<li><strong>第 5 步 e_R 是核心。</strong><span class="m">R_desᵀR</span> 是"从期望姿态转到实际姿态"的那个旋转。任何旋转都等价于"绕某根轴转某个角度"，取它的反对称部分再用 vee（^∨，把 3×3 反对称矩阵变回 3 维向量），得到的向量<strong>方向就是那根轴，长度是 sin(转角)</strong>。小角度时约等于"轴 × 角度"。没有角度相减，所以不会跳变，也没有奇异点。</li>
+<li><strong>e_ω</strong> 先用 <span class="m">RᵀR_des</span> 把期望角速度转到当前机身坐标系，再和 ω 比较。两个向量必须在同一个坐标系里才能相减。</li>
+<li><strong>第 6 步后两项是 feedforward</strong>：<span class="m">ω × Jω</span> 抵消 gyroscopic 项，ω̇_des（来自 snap）给出提前量。前两项是 PD feedback。</li>
+</ul>
+
+<h3>实验台：Euler 差值 vs 几何误差</h3>
+<p>同一对"实际姿态 / 期望姿态"，看普通 PID 看到的误差（三个角相减）和 SE(3) 看到的误差（e_R）有什么不同。</p>
+<div class="lab" id="seLab">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="small">小角度</button>
+    <button type="button" class="pre" data-p="wrap">ψ 跨 ±180°</button>
+    <button type="button" class="pre" data-p="lock">接近 gimbal lock</button>
+    <button type="button" class="pre" data-p="flip">误差接近 180°</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main">
+      <svg class="cv" id="seV" viewBox="0 0 560 360" role="img" aria-label="实际姿态（实线）和期望姿态（虚线）的四旋翼，以及误差转轴"></svg>
+    </div>
+    <div class="stage-side">
+      <h4>实际姿态（°）</h4>
+      <div class="row"><label><span class="lb">φ</span><input type="range" id="sa0" min="-180" max="180" step="1"></label><output id="sa0O"></output></div>
+      <div class="row"><label><span class="lb">θ</span><input type="range" id="sa1" min="-89" max="89" step="1"></label><output id="sa1O"></output></div>
+      <div class="row"><label><span class="lb">ψ</span><input type="range" id="sa2" min="-180" max="180" step="1"></label><output id="sa2O"></output></div>
+      <h4>期望姿态（°）</h4>
+      <div class="row"><label><span class="lb">φ</span><input type="range" id="sd0" min="-180" max="180" step="1"></label><output id="sd0O"></output></div>
+      <div class="row"><label><span class="lb">θ</span><input type="range" id="sd1" min="-89" max="89" step="1"></label><output id="sd1O"></output></div>
+      <div class="row"><label><span class="lb">ψ</span><input type="range" id="sd2" min="-180" max="180" step="1"></label><output id="sd2O"></output></div>
+      <table class="cmp" id="seTbl"></table>
+      <div class="live" id="seLive" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>图例：</b>实线是实际姿态，虚线是期望姿态，<span class="lt" style="color:var(--a2)">橙</span>是各自的 z_B，<span class="lt" style="color:var(--bad)">红</span>是从期望转到实际的转轴（e_R 的方向）。</p>
+</div>
+
+<h3>和普通做法对比</h3>
+<div class="tw"><table>
+<tr><th></th><th>Euler angle 串级 PID</th><th>SE(3) geometric controller</th></tr>
+<tr><td>姿态表示</td><td>φ, θ, ψ</td><td>旋转矩阵 R（工程上常用四元数，思想相同）</td></tr>
+<tr><td>期望姿态</td><td>小角度线性化：θ_des ≈ a_x / g</td><td>精确：b₃,des = F_des / ‖F_des‖</td></tr>
+<tr><td>姿态误差</td><td>三个角相减</td><td>e_R = ½(R_desᵀR − RᵀR_des)^∨，真实的转轴和转角</td></tr>
+<tr><td>推力</td><td>f ≈ m(g + a_z)</td><td>f = F_des · z_B，随实际姿态自动调整</td></tr>
+<tr><td>适用范围</td><td>悬停附近，小角度</td><td>大角度、激进机动、翻转</td></tr>
+<tr><td>奇异点 / 跳变</td><td>gimbal lock，±180° 跳变</td><td>都没有</td></tr>
+<tr><td>理论保证</td><td>只在线性化点附近</td><td>姿态误差 &lt; 90° 时指数稳定；几乎所有初始姿态都能收敛（Lee et al. 2010）</td></tr>
+<tr><td>结构</td><td colspan="2">两者都是 feedforward + PD feedback，层级位置相同</td></tr>
+</table></div>
+<div class="note"><p><span class="q">一个局限</span>|e_R| = sin(转角)，转角超过 90° 后反而变小，到 180° 时为 0，这时"往哪边转"是模糊的。所以理论上只有一个零测集（正好倒过来）收敛不了，实际飞行基本碰不到。实验台的"误差接近 180°"能看到这一点。</p></div>
+</section>
+
+<section id="roadmap">
+<h2><span class="n">12</span>方法全景：为什么不一定需要 flatness</h2>
+<div class="note"><p><span class="q">我的问题</span>系统不 flat 的时候，为什么还有这么多种方法都能用？背后的第一性原理是什么？最后落到机器人上能执行的底层是什么？这些方法本质上在做什么映射？</p></div>
+<h3>第一性原理</h3>
+<ol>
+<li><strong>机器人最终只执行执行器指令。</strong>四旋翼是 4 个电机的转速（PWM / DShot → ESC → 电压电流 → 转矩 → 转速 → 推力）；机械臂是每个关节电机的电流（力矩）；差速车是两个轮子的速度。所有方法最后都要回答：<strong>每一时刻给执行器什么 u</strong>。</li>
+<li><strong>难点只有一个：想控制的是 x，能选的只有 u。</strong>x 是由 <span class="m">ẋ = f(x, u)</span> 积分出来的，这条微分方程把"想要的 x"和"能给的 u"绑在一起。</li>
+<li><strong>还有不确定性。</strong>模型 f 不准，有扰动，x 只能由传感器估计。</li>
+</ol>
+<h3>同一条约束，正着用和倒着用</h3>
+<p>所有规划方法都在处理 <span class="m">ẋ = f(x, u)</span> 这条约束，区别只是用的方向：</p>
+<div class="eq">                正着用：积分（仿真）
+   u(t)  ──────────────────────────────▶  x(t)
+         ◀──────────────────────────────
+                倒着用：求导（反推）</div>
+<div class="tw"><table>
+<tr><th>方向</th><th>做法</th><th>哪些方法</th></tr>
+<tr><td><strong>正着用</strong></td><td>给定 u(t)，一步步积分得到 x(t)。这就是仿真</td><td>shooting、iLQR、DDP、MPC 的预测、sampling 的 motion primitives</td></tr>
+<tr><td><strong>倒着用</strong></td><td>给定 x(t)，求导反推 u(t)</td><td>flatness、inverse dynamics</td></tr>
+<tr><td>两头一起</td><td>x、u 都当变量，ẋ = f 写成每个离散点上的等式约束</td><td>direct collocation</td></tr>
+</table></div>
+<p><strong>这句话背后的意义：</strong></p>
+<ul>
+<li><strong>正着用一定可行，但很难"指哪打哪"。</strong>u 的效果要积分好几次才体现到位置上，中间的小误差还会累积（06 实验台，10 节的 t⁴）。想让 x 经过指定的点，只能"猜 u → 积分 → 看结果 → 改 u"反复迭代。这就是数值优化：慢、非凸、可能陷入局部最优、需要好的初值。</li>
+<li><strong>倒着用直接"指哪打哪"。</strong>先画好想要的 x(t)，求导就得到 u，一步到位，不用迭代。求导是积分的逆运算，所以 flatness 能"绕开"积分：直接画 x、y、z、ψ 四条曲线，对它们求导就得到 u。这就是 01 节那张图的下排。</li>
+<li><strong>倒着用有前提：必须"倒得回去"。</strong>只有 flat 或全驱动的系统，任意画的光滑曲线都能唯一反推出 u。非 flat 的欠驱动系统，随便画的 x(t) 可能根本没有 u 能实现（比如让 car-like 横着平移），这时只能正着用。<strong>这就是"不 flat 就得靠数值优化"的根本原因。</strong></li>
+</ul>
+<h3>例子：把"倒着用"算一遍</h3>
+<p>最简单的系统：质量 m 的小车，输入是推力 u，动力学 <span class="m">ẍ = u / m</span>。目标：2 秒内从 x = 0 走到 x = 1，起点和终点都静止。</p>
+<div class="eq">正着用：先猜 u(t)，再积分两次，看 x(t) 落在哪
+   v(t) = ∫ u/m dt,   x(t) = ∫ v dt
+   猜 u = 常数 → 一直加速，停不下来
+   猜"先推后拉" → 推多大、推多久？只能试 → 改 → 再试，这就是优化
+
+倒着用：先画想要的 x(t)，再求导
+   x(t) = 0.75·t² − 0.25·t³          满足 x(0) = 0, x(2) = 1, ẋ(0) = ẋ(2) = 0
+   ẍ(t) = 1.5 − 1.5·t
+   u(t) = m·ẍ(t) = m·(1.5 − 1.5·t)     前 1 秒推，后 1 秒拉，一步得出</div>
+<p>四旋翼（侧视，06 节的模型）只是链更长，每一步仍然是求导或代公式：</p>
+<div class="eq">画 x(t)  →  a = ẍ  →  θ = atan(a / g)  →  ω = θ̇  →  τ = J·ω̇
+            求导      代公式（flatness）       求导        求导</div>
+<p><strong>为什么说"绕开"了积分：</strong></p>
+<ul>
+<li><strong>积分要历史，求导只看当下。</strong>算 x(t) 要知道从 0 到 t 的全部 u 和初始状态，只能一步步往前推，误差还会累积；算 ẍ(t) 只需要曲线在 t 附近的形状，代入公式就行，精确而且瞬时。</li>
+<li><strong>信息没有丢。</strong>积分多出来的常数（初始位置、初始速度）由画出的曲线起点决定，所以倒着算不缺条件。</li>
+<li><strong>物理上机器人仍然在"正着积分"。</strong>规划器只是倒着算出"哪个 u 能让物理积分出这条曲线"，然后把这个 u 当 feedforward 交下去（10 节）。</li>
+<li><strong>两个前提。</strong>一是曲线要足够光滑：四旋翼要求 x(t) 4 阶可导，否则 τ 是无穷大，这就是 minimum snap 用 7 次多项式、让 snap 平滑的原因。二是每一步都能唯一反推：θ = atan(a / g) 只有一个解，这正是 flatness 保证的；不 flat 的系统在某一步卡住，就倒不回去。</li>
+</ul>
+<p>对照两个实验台：06 是正着用（给 τ，看 x 怎么积出来），09 是倒着用（给 a，直接算出姿态和推力）。</p>
+<p>所以问题自然分成两半：</p>
+<ul>
+<li><strong>规划</strong>：在模型上找一对满足 ẋ = f(x, u) 和约束、并且"好"的 (x*(t), u*(t))。对付难点 2。</li>
+<li><strong>控制</strong>：真实系统偏离时，把它拉回 (x*, u*) 附近。对付难点 3。</li>
+</ul>
+<p><strong>各种方法，就是对这两件事、尤其是"怎么处理 ẋ = f(x, u)"的不同回答。</strong></p>
+
+<h3>每种方法在做什么映射</h3>
+<div class="tw"><table>
+<tr><th>方法</th><th>映射：输入 → 输出</th><th>怎么处理 ẋ = f(x, u)</th><th>代价</th></tr>
+<tr><td><strong>Differential flatness</strong></td><td>自由曲线 y(t) → (x(t), u(t))</td><td>参数化掉，代公式</td><td>只适用于 flat 系统</td></tr>
+<tr><td><strong>Inverse dynamics</strong></td><td>关节轨迹 q(t) → 力矩 τ(t)</td><td>全驱动，直接反解</td><td>只适用于全驱动</td></tr>
+<tr><td><strong>Shooting / iLQR / DDP</strong></td><td>猜 u(t) → 仿真积分得 x(t) → 算 cost → 改进 u</td><td>前向积分，天然满足</td><td>非凸、局部最优、要初值</td></tr>
+<tr><td><strong>Direct collocation</strong></td><td>离散点上的 (x, u) 都当变量 → 优化</td><td>写成每个点上的等式约束</td><td>变量多，要 NLP solver</td></tr>
+<tr><td><strong>Kinodynamic sampling / state lattice</strong></td><td>一串离散动作 → 拼出轨迹</td><td>每段 motion primitive 都是仿真出来的</td><td>有分辨率限制，维度高时慢</td></tr>
+<tr><td><strong>MPC</strong></td><td>当前状态 x̂ → 此刻的 u</td><td>每个周期在线做一次短时域 traj opt</td><td>计算量大，要实时解完</td></tr>
+<tr><td><strong>Feedback controller</strong>（PID / LQR / SE(3)）</td><td>误差 x_ref − x̂ → 修正 Δu</td><td>不规划，只在参考附近局部修正</td><td>需要好的参考</td></tr>
+<tr><td><strong>只给位置，靠 feedback 硬追</strong></td><td>p_ref(t) → u</td><td>不处理</td><td>参考不一定可行，可能跟不上</td></tr>
+<tr><td><strong>Learning / RL policy</strong></td><td>x̂ → u（学出来的函数）</td><td>在仿真里大量试错，隐式学会</td><td>训练成本高，难给保证</td></tr>
+</table></div>
+
+<h3>统一视角：最后都在构造"u 从哪来"</h3>
+<div class="eq">open-loop     u = u*(t)                         时间 → 输入，规划的产物
+closed-loop   u = π(x̂, t)                       状态 → 输入，控制器的产物
+
+规划 + 跟踪   u = u*(t) + K·(x*(t) − x̂)         flatness / traj opt 给 u*、x*，PID / LQR 给 K
+MPC           u = π(x̂)，π 由每个周期在线解一次优化隐式定义
+RL            u = π(x̂)，π 直接是一个训练好的网络</div>
+<p><strong>Flatness 只是"得到 (x*, u*)"的一种特别便宜的方式。</strong>系统不 flat 时，一样能得到 (x*, u*)，只是要靠数值优化去满足 ẋ = f。后面接的控制层完全一样：feedforward + feedback。</p>
+
+<h3>为什么有这么多方法</h3>
+<p>没有一种方法能同时做到所有事。权衡主要在：系统结构（flat？全驱动？线性？）、约束复杂度（非凸障碍、输入上限）、时间预算（离线、10 Hz、1 kHz）、不确定性大小、要不要最优或保证。</p>
+<div class="tw"><table>
+<tr><th>场景</th><th>常见组合</th></tr>
+<tr><td>四旋翼常规飞行</td><td>flatness + minimum snap + 串级 PID 或 SE(3)</td></tr>
+<tr><td>四旋翼极限机动、竞速</td><td>time-optimal trajectory optimization + MPC</td></tr>
+<tr><td>Car-like 低速</td><td>flatness（kinematic）规划 + pure pursuit 或 MPC</td></tr>
+<tr><td>Car-like 高速、轮胎侧滑</td><td>不 flat → 动力学模型上的 MPC</td></tr>
+<tr><td>机械臂自由运动</td><td>inverse dynamics（computed torque）+ PD</td></tr>
+<tr><td>腿足机器人（有接触，不 flat）</td><td>简化模型上的 MPC + whole-body control，越来越多用 RL policy</td></tr>
+<tr><td>仓储 AGV</td><td>差速底盘 flat，简单速度规划 + 轮速 PID</td></tr>
+</table></div>
+
+<h3>落到机器人上：分层架构</h3>
+<figure class="fig">
+<svg viewBox="0 0 880 340" role="img" aria-label="分层架构：从上到下依次是任务规划、轨迹生成、跟踪控制、内环、执行器驱动、物理，越往下频率越高。MPC 和 RL policy 跨轨迹生成和跟踪控制两层。">
+  <g class="d-s">
+    <rect class="d-box" x="0" y="0" width="880" height="52" rx="6"/>
+    <rect class="d-box" x="0" y="56" width="880" height="52" rx="6"/>
+    <rect class="d-box" x="0" y="112" width="880" height="52" rx="6"/>
+    <rect class="d-box" x="0" y="168" width="880" height="52" rx="6"/>
+    <rect class="d-box" x="0" y="224" width="880" height="52" rx="6"/>
+    <rect class="d-box" x="0" y="280" width="880" height="52" rx="6"/>
+  </g>
+  <g class="d-t"><text x="14" y="24">任务 / 路径规划</text><text x="14" y="80">轨迹生成</text><text x="14" y="136">跟踪控制</text><text x="14" y="192">内环</text><text x="14" y="248">执行器驱动</text><text x="14" y="304">物理</text></g>
+  <g class="d-s"><text x="14" y="42">0.1–1 Hz</text><text x="14" y="98">1–10 Hz</text><text x="14" y="154">50–500 Hz</text><text x="14" y="210">0.5–8 kHz</text><text x="14" y="266">10–50 kHz</text></g>
+  <g class="d-a">
+    <text x="170" y="31">A* · CBS · RRT</text>
+    <text x="170" y="87">flatness + min snap · traj opt · lattice</text>
+    <text x="170" y="143">PID + ff · SE(3) · LQR · inverse dynamics</text>
+    <text x="170" y="199">角速度 PID · 电流环</text>
+    <text x="170" y="255">ESC · 电机驱动器</text>
+    <text x="170" y="311">电机 · 桨叶 · 车轮</text>
+  </g>
+  <rect class="d-hbox" x="520" y="64" width="80" height="92" rx="7"/><text class="d-t" x="560" y="115" text-anchor="middle">MPC</text>
+  <rect class="d-hbox" x="612" y="64" width="80" height="92" rx="7"/><text class="d-t" x="652" y="108" text-anchor="middle">RL</text><text class="d-s" x="652" y="126" text-anchor="middle">policy</text>
+  <g class="d-s" text-anchor="end"><text x="866" y="31">waypoints</text><text x="866" y="87">(x*(t), u*(t))</text><text x="866" y="143">期望姿态、推力 / 力矩</text><text x="866" y="199">电机指令</text><text x="866" y="255">PWM 电压</text><text x="866" y="311">推力</text></g>
+</svg>
+<figcaption class="cap">越往下越快、越简单、越可靠；越往上越慢、越聪明、看得越远。MPC 和 RL policy 常常把"轨迹生成"和"跟踪控制"合成一层。</figcaption>
+</figure>
+<p>上层方法五花八门，下层几乎都是 PID 一类的简单闭环。<strong>不管上层选了哪种方法，往下交出去的都是同一类东西：给内环的 setpoint</strong>，最终变成电机上的电压。</p>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<div class="part"><div class="tag">REVIEW</div><h2>复习</h2></div>
+
+<section id="qa">
+<h2><span class="n">13</span>面试题</h2>
+<details class="qa"><summary>四旋翼的状态和输入是什么？为什么说它是欠驱动的？</summary><div class="a">
+<p>状态 12 维：位置、速度、姿态、角速度各 3 维。输入 4 维：4 个电机转速，等价于总推力 f 和三个力矩。推力只能沿机身 z 轴，没有输入能直接产生水平力，6 个自由度只有 4 个输入，所以是 underactuated。水平移动必须先倾斜机身。</p>
+</div></details>
+<details class="qa"><summary>角速度 ω 和 Euler angle 的导数有什么区别？</summary><div class="a">
+<p>ω = (p, q, r) 是 body frame 下绕机身三根轴的转速，陀螺仪直接测它。Euler rates (φ̇, θ̇, ψ̇) 是三个角度的变化率。只有机身水平时两者相等；倾斜时要通过一个依赖 φ、θ 的矩阵换算，θ = ±90° 时这个矩阵奇异（gimbal lock）。所以姿态积分一般用 <span class="m">Ṙ = R·ω̂</span> 或四元数，不直接积分 Euler angles。</p>
+</div></details>
+<details class="qa"><summary>想让无人机往前飞，从电机到位置经过哪些环节？</summary><div class="a">
+<p>后面两个电机加速、前面两个减速，产生 pitch 力矩 → 角加速度 → 角速度 → 机身前倾 → 推力有了向前的分量 → 水平加速度 → 速度 → 位置。要积分 4 次。想停下来，还得先反向力矩把机身扳回来，否则会一直转下去。</p>
+</div></details>
+<details class="qa"><summary>什么是 differential flatness？它的本质是什么？</summary><div class="a">
+<p>如果能找到 m 个量 y（m 是输入个数），它们由系统状态和输入算得出、彼此之间没有微分方程约束、并且全部状态和输入都能写成 y 及其有限阶导数的代数函数，系统就是 differentially flat。本质是把动力学约束参数化掉：系统所有轨迹和 m 条自由曲线一一对应，所以在 y 空间规划不用再处理 ODE 约束。等价地，换到 flat 坐标下系统就是几条独立的积分器链；quadrotor 位置链是 4 阶，虚拟输入就是 snap，这正是 minimum snap 的来源。</p>
+</div></details>
+<details class="qa"><summary>为什么 flat outputs 是 (x, y, z, ψ)，而不是 roll 或 pitch？</summary><div class="a">
+<p>给定加速度后，推力必须指向 a + g，roll 和 pitch 被唯一确定，不能自由选。yaw 是绕推力轴的转动，不影响推力方向，所以能自由选。自由的量正好是 x、y、z、ψ 四个，等于输入个数；其余状态和输入都能由它们的导数代数地算出。</p>
+</div></details>
+<details class="qa"><summary>给定想要的加速度，怎么算姿态和推力？什么时候会失效？</summary><div class="a">
+<p>由 <span class="m">f·z_B = m·(a + g·e₃)</span>：推力方向 z_B 是 a + g 的单位向量，推力大小 f = m·‖a + g‖，再用 ψ 补全 x_B、y_B。a = −g 时推力为 0，方向无定义；另外算出的 f 或倾角可能超过物理上限，需要检查并拉长轨迹时间。</p>
+</div></details>
+<details class="qa"><summary>Flatness 已经算出了全部输入，为什么还需要 PID 这类 tracking controller？</summary><div class="a">
+<p>算出的是 open-loop feedforward，只在模型准确、没有扰动时才对。四旋翼从力矩到位置是 4 次积分，力矩偏 1%，开环 4 秒位置就偏 2.6 m。所以实际输入是 u = u_ff + K·e：feedforward 负责"按计划该怎么飞"，提前给出绝大部分输入；feedback 负责把偏差拉回来。只用 feedback 会因为必须先有误差才动作而一直滞后。参考轨迹本身失效时（新障碍、偏太远），就要重规划。</p>
+</div></details>
+<details class="qa"><summary>系统不 flat 时有哪些方法？它们本质上有什么共同点？</summary><div class="a">
+<p>核心难点是 x 不能直接选，只能通过 ẋ = f(x, u) 由 u 积分出来。各方法的区别是怎么处理这条约束：flatness 参数化掉；inverse dynamics 直接反解；shooting / iLQR 靠前向仿真；collocation 写成等式约束；sampling / lattice 用仿真好的 motion primitives；MPC 在线反复做短时域优化；RL 直接学 x → u 的映射。最后都是在构造 u，或者是 open-loop 的 u*(t)，或者是 closed-loop 的 π(x̂)，交给下层的内环和电机驱动去执行。</p>
+</div></details>
+<details class="qa"><summary>SE(3) geometric controller 是什么？和普通 PID 有什么区别？</summary><div class="a">
+<p>它是跟踪控制层（位置环 + 姿态环）的一种写法，替代基于 Euler angle、小角度线性化的串级 PID，下面的角速度环和 mixer 不变。结构仍是 feedforward + PD feedback，区别在于：期望姿态由 F_des / ‖F_des‖ 精确算出（就是 flatness 公式代入修正后的合力），推力取 F_des 在当前 z_B 上的投影，姿态误差用 e_R = ½(R_desᵀR − RᵀR_des)^∨ 直接在旋转矩阵上定义。所以没有 gimbal lock 和 ±180° 跳变，大角度、翻转都能用，姿态误差小于 90° 时有指数稳定的证明。</p>
+</div></details>
+</section>
+
+<section id="sheet">
+<h2><span class="n">14</span>速查与 Related</h2>
+<div class="eq">状态 12：p, v, R(φ θ ψ), ω(p q r，body frame)     输入 4：f（沿 z_B）, τ
+m·a = f·z_B − m·g·e₃      J·ω̇ = τ − ω×Jω      Ṙ = R·ω̂
+动力学：τ →∫ ω →∫ R → z_B → a →∫ v →∫ p        （4 次积分）
+Flatness：x,y,z,ψ → a: f, roll, pitch → jerk: ω → snap: τ   （只求导）
+本质：m 条自由曲线参数化全部轨迹 = m 条积分器链（位置链 4 阶 → snap）
+执行：u = u_ff（flatness / traj opt）+ K·e（feedback）；参考失效 → 重规划
+SE(3)：F_des = m·a_ref + mg·e₃ − K_p·e_p − K_v·e_v；b₃,des = F_des/‖F_des‖；f = F_des·z_B；e_R = ½(R_dᵀR − RᵀR_d)^∨
+规划方向：正着用 u →∫→ x（shooting、iLQR）；倒着用 x →d/dt→ u（flatness）
+z_B = (a+g)/‖a+g‖，f = m‖a+g‖，奇异：a = −g</div>
+<ul>
+<li><a href="minimum-snap-trajectory.html">Minimum Snap 轨迹生成</a>：flat outputs 怎样被规划成多项式</li>
+<li><a href="transforms-and-manipulation.html">Transforms 与 Manipulation</a>：旋转矩阵、坐标变换的基础</li>
+<li>D. Mellinger, V. Kumar. <em>Minimum snap trajectory generation and control for quadrotors.</em> ICRA 2011（flatness 公式出处）</li>
+<li>T. Lee, M. Leok, N. H. McClamroch. <em>Geometric tracking control of a quadrotor UAV on SE(3).</em> CDC 2010</li>
+</ul>
+</section>
+</main>
+</div>
+
+<script>
+// ---------- 04 实验台：三维姿态与角速度 ----------
+(function(){
+  const svg = document.getElementById('attV'), NS = 'http://www.w3.org/2000/svg';
+  const CX = 280, CY = 200, S = 105, D2R = Math.PI / 180;
+  const az = 40 * D2R, el = 22 * D2R;
+  const rv = [-Math.sin(az), Math.cos(az), 0];
+  const uv = [-Math.sin(el)*Math.cos(az), -Math.sin(el)*Math.sin(az), Math.cos(el)];
+  const dv = [Math.cos(el)*Math.cos(az), Math.cos(el)*Math.sin(az), Math.sin(el)];
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+  const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+  const norm = a => Math.hypot(a[0], a[1], a[2]);
+  const sc = (a, k) => [a[0]*k, a[1]*k, a[2]*k], add = (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]];
+  const P = v => [CX + S*dot(v, rv), CY - S*dot(v, uv)];
+  const mv = (R, v) => [0,1,2].map(i => R[i][0]*v[0] + R[i][1]*v[1] + R[i][2]*v[2]);
+  const mm = (A, B) => [0,1,2].map(i => [0,1,2].map(j => A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]));
+  const el_ = (tag, a, p) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); (p || svg).appendChild(e); return e; };
+  function euler2R(ph, th, ps){
+    const [cf, sf, ct, st, cp, sp] = [Math.cos(ph), Math.sin(ph), Math.cos(th), Math.sin(th), Math.cos(ps), Math.sin(ps)];
+    const Rz = [[cp,-sp,0],[sp,cp,0],[0,0,1]], Ry = [[ct,0,st],[0,1,0],[-st,0,ct]], Rx = [[1,0,0],[0,cf,-sf],[0,sf,cf]];
+    return mm(mm(Rz, Ry), Rx);
+  }
+  const R2euler = R => [Math.atan2(R[2][1], R[2][2]), -Math.asin(Math.max(-1, Math.min(1, R[2][0]))), Math.atan2(R[1][0], R[0][0])];
+  function orth(R){ // Gram-Schmidt on columns
+    let c0 = [R[0][0],R[1][0],R[2][0]], c1 = [R[0][1],R[1][1],R[2][1]];
+    c0 = sc(c0, 1/norm(c0)); c1 = add(c1, sc(c0, -dot(c0, c1))); c1 = sc(c1, 1/norm(c1));
+    const c2 = cross(c0, c1);
+    return [0,1,2].map(i => [c0[i], c1[i], c2[i]]);
+  }
+  let R = euler2R(0,0,0), playing = false, last = 0;
+  const w = () => ['wp','wq','wr'].map(id => +document.getElementById(id).value);
+  const ea = ['ea0','ea1','ea2'].map(id => document.getElementById(id));
+  const playBtn = document.getElementById('attPlay');
+
+  function draw(){
+    svg.innerHTML = '';
+    // world axes
+    [[[1.7,0,0],'x_W'],[[0,1.7,0],'y_W'],[[0,0,1.5],'z_W']].forEach(([v, t]) => {
+      const a = P([0,0,0]), b = P(v);
+      el_('line', { class:'x-w', x1:a[0], y1:a[1], x2:b[0], y2:b[1] });
+      const tx = el_('text', { class:'x-wt', x:b[0] + 4, y:b[1] + 4 }); tx.textContent = t;
+    });
+    // arms + rotors，按深度排序
+    const L = 0.72, rr = 0.36, items = [];
+    [[L,-L],[-L,L],[L,L],[-L,-L]].forEach(([bx, by]) => {
+      const c = mv(R, [bx, by, 0]);
+      const pts = []; for (let k = 0; k < 28; k++){ const a = k/28*2*Math.PI; pts.push(P(mv(R, [bx + rr*Math.cos(a), by + rr*Math.sin(a), 0]))); }
+      items.push({ d: dot(c, dv), f: () => {
+        const p0 = P([0,0,0]), p1 = P(c);
+        el_('line', { class:'x-arm', x1:p0[0], y1:p0[1], x2:p1[0], y2:p1[1] });
+        el_('polygon', { class:'x-rot' + (bx > 0 ? ' front' : ''), points: pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ') });
+      }});
+    });
+    items.sort((a, b) => a.d - b.d).forEach(it => it.f());
+    const h = P([0,0,0]); el_('circle', { class:'x-hub', cx:h[0], cy:h[1], r:6 });
+    // body axes
+    const arrow = (v, cls, mk, label, tcls) => {
+      const a = P([0,0,0]), b = P(v);
+      el_('line', { class:cls, x1:a[0], y1:a[1], x2:b[0], y2:b[1], 'marker-end':'url(#' + mk + ')' });
+      const t = el_('text', { class:'lt ' + tcls, x:b[0] + 6, y:b[1] - 4 }); t.textContent = label;
+    };
+    arrow(mv(R, [1.35,0,0]), 'v-x', 'mX', 'x_B', 't-x');
+    arrow(mv(R, [0,1.25,0]), 'v-y', 'mY', 'y_B', 't-y');
+    arrow(mv(R, [0,0,1.3]), 'v-z', 'mZ', 'z_B 推力', 't-z');
+    // omega
+    const wb = w(), n = norm(wb);
+    if (n > 1e-6){
+      const k = sc(mv(R, wb), 1/n), len = 0.55 + 0.35*n;
+      arrow(sc(k, len), 'v-w', 'mW', 'ω', 't-w');
+      let e1 = cross(k, [0,0,1]); if (norm(e1) < 0.2) e1 = cross(k, [1,0,0]); e1 = sc(e1, 1/norm(e1));
+      const e2 = cross(k, e1), c = sc(k, len*0.72), pts = [];
+      for (let i = 0; i <= 30; i++){ const a = i/30*1.6*Math.PI; pts.push(P(add(c, add(sc(e1, 0.2*Math.cos(a)), sc(e2, 0.2*Math.sin(a)))))); }
+      el_('polyline', { class:'v-curl', points: pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' '), 'marker-end':'url(#mW)' });
+    }
+    // readouts
+    const [ph, th, ps] = R2euler(R), [p, q, r] = wb;
+    ea[0].value = Math.round(ph/D2R); ea[1].value = Math.round(th/D2R); ea[2].value = Math.round(ps/D2R);
+    ['ea0O','ea1O','ea2O'].forEach((id, i) => document.getElementById(id).textContent = ([ph, th, ps][i]/D2R).toFixed(0) + '°');
+    ['wpO','wqO','wrO'].forEach((id, i) => document.getElementById(id).textContent = wb[i].toFixed(1));
+    const ct = Math.cos(th), s = q*Math.sin(ph) + r*Math.cos(ph);
+    const rates = [p + s*Math.tan(th), q*Math.cos(ph) - r*Math.sin(ph), s/ct];
+    ['c-p','c-q','c-r'].forEach((id, i) => document.getElementById(id).textContent = wb[i].toFixed(2));
+    ['c-pd','c-qd','c-rd'].forEach((id, i) => document.getElementById(id).textContent = Math.abs(ct) < 0.05 ? '∞' : rates[i].toFixed(2));
+    const live = document.getElementById('attLive'), same = rates.every((x, i) => Math.abs(x - wb[i]) < 0.005);
+    live.innerHTML = Math.abs(ct) < 0.1 ? '<p class="warnt">θ 接近 ±90°：Euler rate 爆掉了，这就是 gimbal lock。ω 本身完全正常。</p>'
+      : n < 1e-6 ? '<p>ω = 0：机身不转。拖动 p、q、r 给一个角速度，再点"转起来"。</p>'
+      : same ? '<p>机身是水平的（或只绕一根轴转），所以 ω 和 Euler rate 恰好相等。</p>'
+      : '<p>机身倾斜了：ω 和 Euler rate <b>不相等</b>。ω 是绕机身轴的转速，Euler rate 是三个角度的变化率。</p>';
+  }
+  function step(ts){
+    if (!playing) return;
+    const dt = Math.min(0.05, (ts - last) / 1000); last = ts;
+    const wb = w(), n = norm(wb);
+    if (n > 1e-9){
+      const a = n*dt, k = sc(wb, 1/n), K = [[0,-k[2],k[1]],[k[2],0,-k[0]],[-k[1],k[0],0]], K2 = mm(K, K);
+      const Dl = [0,1,2].map(i => [0,1,2].map(j => (i === j ? 1 : 0) + Math.sin(a)*K[i][j] + (1 - Math.cos(a))*K2[i][j]));
+      R = orth(mm(R, Dl));   // Ṙ = R·ω̂：body frame 角速度右乘
+    }
+    draw(); requestAnimationFrame(step);
+  }
+  function setPlay(on){ playing = on; playBtn.textContent = on ? '❚❚ 暂停' : '▶ 转起来'; if (on){ last = performance.now(); requestAnimationFrame(step); } }
+  playBtn.addEventListener('click', () => setPlay(!playing));
+  document.getElementById('attReset').addEventListener('click', () => { R = euler2R(0,0,0); draw(); });
+  ['wp','wq','wr'].forEach(id => document.getElementById(id).addEventListener('input', draw));
+  ea.forEach(s => s.addEventListener('input', () => { R = euler2R(+ea[0].value*D2R, +ea[1].value*D2R, +ea[2].value*D2R); draw(); }));
+  const presets = { p:[[0,0,0],[1,0,0]], r:[[0,0,0],[0,0,1]], tilt:[[0,30,0],[0,0,1]] };
+  document.querySelectorAll('#attLab button[data-p]').forEach(b => b.addEventListener('click', () => {
+    const [e, wv] = presets[b.dataset.p];
+    document.querySelectorAll('#attLab button[data-p]').forEach(x => x.classList.toggle('on', x === b));
+    R = euler2R(e[0]*D2R, e[1]*D2R, e[2]*D2R);
+    ['wp','wq','wr'].forEach((id, i) => document.getElementById(id).value = wv[i]);
+    draw(); setPlay(true);
+  }));
+  draw();
+})();
+
+// ---------- 06 实验台：平面四旋翼，力矩一路积分到位置 ----------
+(function(){
+  const NS = 'http://www.w3.org/2000/svg', m = 1, g = 9.81, J = 0.02, T0 = 0.05;
+  const t1 = 0.3, t2 = 0.3 * Math.SQRT2, H = 0.6;
+  const SCHED = {
+    go:   [[0.4,0],[t1,T0],[t1,-T0],[H,0],[t2,-T0],[t2,T0],[H,0],[t1,T0],[t1,-T0],[0.6,0]],
+    hold: [[0.4,0],[t1,T0],[t1,-T0],[2.4,0]],
+    flip: [[0.4,0],[t1,T0],[3.0,0]],
+  };
+  const MSG = {
+    go:   '<p>力矩是 3 对正负脉冲：先前倾，再扳成后仰减速，最后扳回水平。每对的第二个脉冲负责把角速度刹回 0。注意 θ 保持不变的那两段，力矩是 0、角速度也是 0，但飞机还在加速或减速。<b>倾角对应的是加速度，不是速度。</b></p>',
+    hold: '<p>倾斜后保持不动：a_x 恒定，v_x 一直线性增加，x 是抛物线。想停下来，必须主动把机身扳到反方向。</p>',
+    flip: '<p>只给了一个正力矩，没有反向力矩把角速度刹住。ω 一直保持，θ 一直增大，过了 60° 推力不够托住重量，最后翻掉坠毁。<b>力矩改变的是角速度，不是角度。</b></p>',
+  };
+  const view = document.getElementById('plView'), chart = document.getElementById('plChart');
+  const slider = document.getElementById('plT'), tOut = document.getElementById('plTO'), playBtn = document.getElementById('plPlay');
+  const el = (tag, a, p) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  let data = [], idx = 0, playing = false, last = 0, crashed = false, cursorEls = [], valEls = [], droneG = null, trail = null, X = null;
+
+  function simulate(sched){
+    const dt = 0.001, out = []; let t = 0, x = 0, z = 1.6, vx = 0, vz = 0, th = 0, om = 0, k = 0, i = 0, edge = sched[0][0];
+    const total = sched.reduce((s, a) => s + a[0], 0); crashed = false;
+    while (t < total - 1e-9){
+      while (t >= edge - 1e-12 && i < sched.length - 1){ i++; edge += sched[i][0]; }
+      const tau = sched[i][1], c = Math.cos(th);
+      const f = c > 0.5 ? m*g / c : 2*m*g;               // 保持高度，最多 2 倍重力
+      const ax = f*Math.sin(th)/m, az = f*c/m - g;
+      if (k % 10 === 0) out.push({ t, tau, om, th, ax, vx, x, z, f });
+      om += tau/J*dt; th += om*dt; vx += ax*dt; vz += az*dt; x += vx*dt; z += vz*dt; t += dt; k++;
+      if (z <= 0){ crashed = true; out.push({ t, tau, om, th, ax, vx, x, z:0, f }); break; }
+    }
+    return out;
+  }
+  const ROWS = [
+    ['τ', '力矩（输入）', d => d.tau, 'N·m'],
+    ['ω = θ̇', '= ∫ τ/J dt', d => d.om, 'rad/s'],
+    ['θ', '= ∫ ω dt', d => d.th * 180/Math.PI, '°'],
+    ['a_x', '= g·tan θ', d => d.ax, 'm/s²'],
+    ['v_x', '= ∫ a_x dt', d => d.vx, 'm/s'],
+    ['x', '= ∫ v_x dt', d => d.x, 'm'],
+  ];
+  function build(p){
+    data = simulate(SCHED[p]); idx = 0;
+    const T = data[data.length - 1].t;
+    // 侧视图
+    view.innerHTML = '';
+    const xs = data.map(d => d.x), lo = Math.min(...xs) - 0.6, hi = Math.max(...xs) + 0.6;
+    const sx = Math.min(520 / (hi - lo), 160), ox = 280 - sx * (lo + hi) / 2;
+    X = { x: x => ox + x*sx, z: z => 170 - z*55, s: sx };
+    el('line', { class:'p-ground', x1:0, y1:170, x2:560, y2:170 }, view);
+    trail = el('g', {}, view); droneG = el('g', {}, view);
+    // 曲线
+    chart.innerHTML = ''; cursorEls = []; valEls = [];
+    const RH = 56, L0 = 8, W = 552;
+    ROWS.forEach(([name, sub, fn, unit], r) => {
+      const y0 = r*RH, vals = data.map(fn), mn = Math.min(0, ...vals), mx = Math.max(0, ...vals), span = (mx - mn) || 1;
+      const py = v => y0 + 50 - (v - mn) / span * 32, px = t => L0 + t / T * (W - L0);
+      const t1_ = el('text', { class:'c-lab', x:L0, y:y0 + 13 }, chart); t1_.textContent = name + ' ';
+      const ts = el('tspan', { class:'c-sub' }, t1_); ts.textContent = sub + '（' + unit + '）';
+      valEls.push([el('text', { class:'c-val', x:W, y:y0 + 13, 'text-anchor':'end' }, chart), fn]);
+      el('line', { class:'c-zero', x1:L0, y1:py(0), x2:W, y2:py(0) }, chart);
+      el('polyline', { class:'c-line', points: data.map((d, i) => px(d.t).toFixed(1) + ',' + py(vals[i]).toFixed(1)).join(' ') }, chart);
+      cursorEls.push([el('line', { class:'c-cur', x1:L0, y1:y0 + 16, x2:L0, y2:y0 + 52 }, chart), px]);
+    });
+    slider.max = data.length - 1; slider.value = 0;
+    document.getElementById('plLive').innerHTML = MSG[p];
+    show();
+  }
+  function show(){
+    const d = data[idx];
+    tOut.textContent = d.t.toFixed(2) + ' s';
+    cursorEls.forEach(([ln, px]) => { const x = px(d.t); ln.setAttribute('x1', x); ln.setAttribute('x2', x); });
+    valEls.forEach(([t, fn]) => t.textContent = fn(d).toFixed(2));
+    trail.innerHTML = '';
+    for (let i = 0; i <= idx; i += 15) el('circle', { class:'p-trail', cx:X.x(data[i].x), cy:X.z(data[i].z), r:2 }, trail);
+    droneG.innerHTML = '';
+    const cx = X.x(d.x), cz = X.z(d.z), bx = [Math.cos(d.th), Math.sin(d.th)], bz = [Math.sin(d.th), -Math.cos(d.th)], L = 26;
+    el('line', { class:'p-thr', x1:cx, y1:cz, x2:cx + bz[0]*30*d.f/(m*g), y2:cz + bz[1]*30*d.f/(m*g), 'marker-end':'url(#mZ)' }, droneG);
+    el('line', { class:'p-arm', x1:cx - bx[0]*L, y1:cz - bx[1]*L, x2:cx + bx[0]*L, y2:cz + bx[1]*L }, droneG);
+    [[-1],[1]].forEach(([s]) => el('rect', { class:'p-rot', x:cx + s*bx[0]*L - 9 + bz[0]*4, y:cz + s*bx[1]*L - 2 + bz[1]*4, width:18, height:4, rx:2,
+      transform:'rotate(' + (d.th*180/Math.PI) + ' ' + (cx + s*bx[0]*L + bz[0]*4) + ' ' + (cz + s*bx[1]*L + bz[1]*4) + ')' }, droneG));
+    el('circle', { class:'p-nose', cx:cx + bx[0]*L, cy:cz + bx[1]*L, r:4 }, droneG);
+    if (crashed && idx === data.length - 1){ const t = el('text', { class:'c-lab', x:cx, y:cz - 20, 'text-anchor':'middle', fill:'var(--bad)' }, droneG); t.textContent = '坠毁'; t.style.fill = 'var(--bad)'; }
+  }
+  function step(ts){
+    if (!playing) return;
+    const dt = (ts - last) / 1000; last = ts;
+    const target = data[idx].t + dt;
+    while (idx < data.length - 1 && data[idx].t < target) idx++;
+    slider.value = idx; show();
+    if (idx >= data.length - 1) setPlay(false); else requestAnimationFrame(step);
+  }
+  function setPlay(on){
+    playing = on; playBtn.textContent = on ? '❚❚ 暂停' : '▶ 播放';
+    if (on){ if (idx >= data.length - 1) idx = 0; last = performance.now(); requestAnimationFrame(step); }
+  }
+  playBtn.addEventListener('click', () => setPlay(!playing));
+  slider.addEventListener('input', () => { idx = +slider.value; show(); });
+  document.querySelectorAll('#plLab button[data-p]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#plLab button[data-p]').forEach(x => x.classList.toggle('on', x === b));
+    setPlay(false); build(b.dataset.p); setPlay(true);
+  }));
+  document.querySelector('#plLab button[data-p="go"]').classList.add('on');
+  build('go');
+})();
+
+// ---------- 08 实验台：给加速度，推力和姿态被定死 ----------
+(function(){
+  const svg = document.getElementById('flV'), NS = 'http://www.w3.org/2000/svg', g = 9.81, m = 1;
+  const OX = 280, OY = 195, K = 13;
+  let a = [2, 0], drag = false;
+  const el = (tag, at, p) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (p || svg).appendChild(e); return e; };
+  const S = v => [OX + K*v[0], OY - K*v[1]];
+  function draw(){
+    svg.innerHTML = '';
+    for (let x = -20; x <= 20; x += 5){ const p = S([x, 0]); el('line', { class:'f-grid', x1:p[0], y1:0, x2:p[0], y2:360 }); }
+    for (let z = -15; z <= 15; z += 5){ const p = S([0, z]); el('line', { class:'f-grid', x1:0, y1:p[1], x2:560, y2:p[1] }); }
+    const T = [a[0], a[1] + g], tn = Math.hypot(T[0], T[1]);
+    const o = S([0,0]), pa = S(a), pt = S(T), pg = S([0, -g]);
+    el('path', { class:'f-par', d:'M' + pt[0] + ',' + pt[1] + ' L' + pa[0] + ',' + pa[1] + ' M' + pg[0] + ',' + pg[1] + ' L' + pa[0] + ',' + pa[1] });
+    el('line', { class:'f-g', x1:o[0], y1:o[1], x2:pg[0], y2:pg[1], 'marker-end':'url(#mG)' });
+    if (tn > 0.05) el('line', { class:'f-t', x1:o[0], y1:o[1], x2:pt[0], y2:pt[1], 'marker-end':'url(#mZ)' });
+    el('line', { class:'f-a', x1:o[0], y1:o[1], x2:pa[0], y2:pa[1], 'marker-end':'url(#mX)' });
+    // 机身：垂直于推力方向
+    const zb = tn > 0.05 ? [T[0]/tn, T[1]/tn] : [0, 1], xb = [zb[1], -zb[0]], L = 3.2;
+    const p1 = S([-xb[0]*L, -xb[1]*L]), p2 = S([xb[0]*L, xb[1]*L]);
+    el('line', { class:'p-arm', x1:p1[0], y1:p1[1], x2:p2[0], y2:p2[1], opacity: tn > 0.05 ? 1 : 0.35 });
+    el('circle', { class:'p-nose', cx:p2[0], cy:p2[1], r:4 });
+    const lab = (v, s, c) => { const p = S(v); const t = el('text', { class:'lt', x:p[0] + 8, y:p[1] + 4 }); t.textContent = s; t.style.fill = c; };
+    lab([0, -g], '−g', 'var(--muted)'); if (tn > 0.05) lab(T, 'a + g', 'var(--a2)'); lab(a, 'a', 'var(--a1)');
+    const h = el('circle', { class:'f-h', cx:pa[0], cy:pa[1], r:9, tabindex:0, role:'slider', 'aria-label':'加速度向量，方向键可移动' });
+    h.addEventListener('keydown', e => { const d = { ArrowLeft:[-.5,0], ArrowRight:[.5,0], ArrowUp:[0,.5], ArrowDown:[0,-.5] }[e.key]; if (!d) return; e.preventDefault(); set([a[0]+d[0], a[1]+d[1]]); svg.querySelector('.f-h').focus(); });
+    const tilt = Math.atan2(T[0], T[1]) * 180 / Math.PI;
+    document.getElementById('flKv').innerHTML =
+      '<span>想要的 a</span><span>(' + a[0].toFixed(2) + ', ' + a[1].toFixed(2) + ') m/s²</span>' +
+      '<span>a + g</span><span>(' + T[0].toFixed(2) + ', ' + T[1].toFixed(2) + ')</span>' +
+      '<span>推力 f</span><span>' + (m*tn).toFixed(2) + ' N（悬停的 ' + (tn/g).toFixed(2) + ' 倍）</span>' +
+      '<span>pitch</span><span>' + (tn > 0.05 ? tilt.toFixed(1) + '°' : '无定义') + '</span>';
+    document.getElementById('flLive').innerHTML = tn < 0.5
+      ? '<p class="warnt">推力几乎为 0：a ≈ −g，机身朝向无定义。这就是 flatness 的奇异点。</p>'
+      : (tn/g > 2 ? '<p class="warnt">推力超过悬停的 2 倍，一般电机做不到。flatness 只保证"有解"，不保证不超限。</p>'
+      : '<p>' + (Math.abs(tilt) < 0.5 ? '只需要竖直方向的推力，机身水平。' : '想要水平加速度，机身必须倾斜 ' + Math.abs(tilt).toFixed(1) + '°' + (tilt > 0 ? '（机头朝下）' : '（机头朝上）') + '。这个角度不能自己选。') + '</p>');
+  }
+  function set(v){ a = [Math.max(-20, Math.min(20, v[0])), Math.max(-12, Math.min(5, v[1]))]; draw(); }
+  const toA = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(svg.getScreenCTM().inverse()); return [(q.x - OX)/K, (OY - q.y)/K]; };
+  svg.addEventListener('pointerdown', e => { drag = true; svg.setPointerCapture(e.pointerId); set(toA(e)); e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (drag) set(toA(e)); });
+  svg.addEventListener('pointerup', () => drag = false); svg.addEventListener('pointercancel', () => drag = false);
+  document.querySelectorAll('#flLab button[data-p]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#flLab button[data-p]').forEach(x => x.classList.toggle('on', x === b));
+    set(b.dataset.p.split(',').map(Number));
+  }));
+  draw();
+})();
+
+// ---------- 10 实验台：开环 / 只用 feedback / feedforward + feedback ----------
+(function(){
+  const NS = 'http://www.w3.org/2000/svg', g = 9.81, J = 0.02, T0 = 0.05, dt = 0.001;
+  const t1 = 0.3, t2 = 0.3 * Math.SQRT2, H = 0.6;
+  const SCHED = [[0.5,0],[t1,T0],[t1,-T0],[H,0],[t2,-T0],[t2,T0],[H,0],[t1,T0],[t1,-T0],[3.0,0]];
+  const KP = 2, KD = 2.8, KT = 10, KW = 40;   // 位置环、姿态环、角速度环增益
+  const MODES = [
+    { key:'open', name:'只有 feedforward（开环）', color:'var(--bad)' },
+    { key:'fb',   name:'只有 feedback',           color:'var(--a2)' },
+    { key:'fffb', name:'feedforward + feedback',  color:'var(--accent)' },
+  ];
+  const el = (tag, a, p) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+
+  // 参考轨迹：标称模型，和 06 的"向前飞并停住"相同
+  const REF = (() => {
+    const ref = [], total = SCHED.reduce((s, a) => s + a[0], 0);
+    let t = 0, x = 0, v = 0, th = 0, om = 0, i = 0, edge = SCHED[0][0];
+    while (t < total - 1e-9){
+      while (t >= edge - 1e-12 && i < SCHED.length - 1){ i++; edge += SCHED[i][0]; }
+      const tau = SCHED[i][1], a = g * Math.tan(th);
+      ref.push({ t, x, v, a, th, om, tau });
+      om += tau / J * dt; th += om * dt; v += a * dt; x += v * dt; t += dt;
+    }
+    return ref;
+  })();
+
+  // 真实飞机：J 有误差、有风、有力矩偏差；高度由推力保持，所以 ẍ = g·tanθ + 风
+  function run(mode, dJ, wind, bias){
+    const Jt = J * (1 + dJ), xs = [];
+    let x = 0, v = 0, th = 0, om = 0;
+    for (let k = 0; k < REF.length; k++){
+      const r = REF[k]; let tau;
+      if (mode === 'open') tau = r.tau;
+      else {
+        const ff = mode === 'fffb' ? 1 : 0;
+        const acmd = ff * r.a + KP * (r.x - x) + KD * (r.v - v);              // 位置环
+        const thc = Math.atan(Math.max(-0.6, Math.min(0.6, acmd / g)));       // flatness 公式
+        const omc = ff * r.om + KT * (thc - th);                              // 姿态环
+        tau = ff * r.tau + J * KW * (omc - om);                               // 角速度环（用标称 J）
+      }
+      tau += bias;
+      const a = g * Math.tan(Math.max(-1.2, Math.min(1.2, th))) + wind;
+      if (k % 10 === 0) xs.push(x);
+      om += tau / Jt * dt; th += om * dt; v += a * dt; x += v * dt;
+    }
+    return xs;
+  }
+
+  const sJ = document.getElementById('cJ'), sW = document.getElementById('cW'), sB = document.getElementById('cB');
+  const svgX = document.getElementById('cmpX'), svgE = document.getElementById('cmpE');
+  const refX = REF.filter((_, k) => k % 10 === 0).map(r => r.x), N = refX.length, T = REF[REF.length - 1].t;
+
+  function plot(svg, H_, series, lo, hi, refLine){
+    svg.innerHTML = '';
+    const L0 = 36, W = 552, top = 8, bot = H_ - 22;
+    const px = i => L0 + i / (N - 1) * (W - L0), py = v => bot - (v - lo) / (hi - lo) * (bot - top);
+    const id = svg.id + '-clip';
+    const defs = el('defs', {}, svg), cp = el('clipPath', { id }, defs); el('rect', { x:L0, y:top, width:W - L0, height:bot - top }, cp);
+    el('line', { class:'c-zero', x1:L0, y1:py(0), x2:W, y2:py(0) }, svg);
+    el('line', { class:'s-ax', x1:L0, y1:top, x2:L0, y2:bot }, svg);
+    [[lo, lo.toFixed(1)], [hi, hi.toFixed(1)], [0, '0']].forEach(([v, s]) => { const t = el('text', { class:'s-t', x:L0 - 4, y:py(v) + 4, 'text-anchor':'end' }, svg); t.textContent = s; });
+    const tl = el('text', { class:'s-t', x:W, y:H_ - 6, 'text-anchor':'end' }, svg); tl.textContent = T.toFixed(1) + ' s';
+    const t0 = el('text', { class:'s-t', x:L0, y:H_ - 6 }, svg); t0.textContent = '0 s';
+    const g_ = el('g', { 'clip-path':'url(#' + id + ')' }, svg);
+    if (refLine) el('polyline', { points: refLine.map((v, i) => px(i).toFixed(1) + ',' + py(v).toFixed(1)).join(' '), fill:'none', stroke:'var(--muted)', 'stroke-width':2, 'stroke-dasharray':'6 4' }, g_);
+    series.forEach(([ys, color]) => el('polyline', { points: ys.map((v, i) => px(i).toFixed(1) + ',' + py(v).toFixed(1)).join(' '), fill:'none', stroke:color, 'stroke-width':2.2 }, g_));
+  }
+
+  function update(){
+    const dJ = +sJ.value / 100, wind = +sW.value, bias = +sB.value / 100 * T0;
+    document.getElementById('cJO').textContent = (dJ >= 0 ? '+' : '') + sJ.value + '%';
+    document.getElementById('cWO').textContent = wind.toFixed(2) + ' m/s²';
+    document.getElementById('cBO').textContent = sB.value + '%';
+    const res = MODES.map(m => { const xs = run(m.key, dJ, wind, bias), e = xs.map((x, i) => x - refX[i]);
+      return { m, xs, e, maxE: Math.max(...e.map(Math.abs)), endE: Math.abs(e[e.length - 1]) }; });
+    const rlo = Math.min(...refX), rhi = Math.max(...refX);
+    plot(svgX, 190, res.map(r => [r.xs, r.m.color]), rlo - 1, rhi + 1, refX);
+    plot(svgE, 150, res.map(r => [r.e, r.m.color]), -1, 1);
+    const fmt = v => v > 99 ? '&gt; 99 m' : (v < 0.01 ? '&lt; 1 cm' : v < 1 ? (v * 100).toFixed(0) + ' cm' : v.toFixed(2) + ' m');
+    document.getElementById('cmpTbl').innerHTML = '<tr><th>控制方式</th><th>最大误差</th><th>结束时误差</th></tr>' +
+      res.map(r => '<tr><th style="color:' + r.m.color + '">' + r.m.name + '</th><td>' + fmt(r.maxE) + '</td><td>' + fmt(r.endE) + '</td></tr>').join('');
+    const [o, f, b] = res, msg = [];
+    if (dJ === 0 && wind === 0 && bias === 0) msg.push('<p>模型完全准确：开环和参考<b>完全重合</b>，这就是 flatness 算出的 feedforward 的本来含义。只用 feedback 的仍有 ' + fmt(f.maxE) + ' 的滞后误差，因为它必须先偏离才会动。</p>');
+    else {
+      msg.push('<p>开环最大误差 ' + fmt(o.maxE) + '，而且没有任何机制把它拉回来。');
+      msg.push('只用 feedback 最大误差 ' + fmt(f.maxE) + '，加上 feedforward 后降到 ' + fmt(b.maxE) + '：标称输入已经对了，feedback 只需处理模型误差和扰动。</p>');
+      if (wind > 0) msg.push('<p>两种带 feedback 的最后都留下约 ' + fmt(b.endE) + ' 的稳态误差（≈ 风 / Kp）。PID 的 I 项会把它积分掉。</p>');
+    }
+    document.getElementById('cmpLive').innerHTML = msg.join('');
+  }
+  [sJ, sW, sB].forEach(s => s.addEventListener('input', update));
+  update();
+})();
+
+// ---------- 11 实验台：Euler 差值 vs SO(3) 几何误差 ----------
+(function(){
+  const svg = document.getElementById('seV'), NS = 'http://www.w3.org/2000/svg', D2R = Math.PI / 180;
+  const CX = 280, CY = 190, S = 100, az = 40 * D2R, el = 22 * D2R;
+  const rv = [-Math.sin(az), Math.cos(az), 0], uv = [-Math.sin(el)*Math.cos(az), -Math.sin(el)*Math.sin(az), Math.cos(el)];
+  const dv = [Math.cos(el)*Math.cos(az), Math.cos(el)*Math.sin(az), Math.sin(el)];
+  const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2], sc = (a, k) => a.map(x => x*k);
+  const P = v => [CX + S*dot(v, rv), CY - S*dot(v, uv)];
+  const mv = (R, v) => [0,1,2].map(i => R[i][0]*v[0] + R[i][1]*v[1] + R[i][2]*v[2]);
+  const mm = (A, B) => [0,1,2].map(i => [0,1,2].map(j => A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]));
+  const tr = A => [0,1,2].map(i => [0,1,2].map(j => A[j][i]));
+  const el_ = (tag, a) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); svg.appendChild(e); return e; };
+  function euler2R(ph, th, ps){
+    const [cf, sf, ct, st, cp, sp] = [Math.cos(ph), Math.sin(ph), Math.cos(th), Math.sin(th), Math.cos(ps), Math.sin(ps)];
+    return mm(mm([[cp,-sp,0],[sp,cp,0],[0,0,1]], [[ct,0,st],[0,1,0],[-st,0,ct]]), [[1,0,0],[0,cf,-sf],[0,sf,cf]]);
+  }
+  const ids = ['sa0','sa1','sa2','sd0','sd1','sd2'], sl = ids.map(id => document.getElementById(id));
+  const PRESETS = { small:[5,0,0, 0,0,0], wrap:[0,0,170, 0,0,-170], lock:[0,88,0, 30,88,30], flip:[170,0,0, 0,0,0] };
+
+  function drone(R, ghost){
+    const L = 0.72, rr = 0.34, items = [];
+    [[L,-L],[-L,L],[L,L],[-L,-L]].forEach(([bx, by]) => {
+      const c = mv(R, [bx, by, 0]), pts = [];
+      for (let k = 0; k < 24; k++){ const a = k/24*2*Math.PI; pts.push(P(mv(R, [bx + rr*Math.cos(a), by + rr*Math.sin(a), 0]))); }
+      items.push({ d: dot(c, dv), f: () => {
+        const p0 = P([0,0,0]), p1 = P(c);
+        el_('line', { class:'x-arm', x1:p0[0], y1:p0[1], x2:p1[0], y2:p1[1], opacity: ghost ? .35 : 1 });
+        el_('polygon', { class:'x-rot' + (bx > 0 ? ' front' : '') + (ghost ? ' ghost' : ''), points: pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ') });
+      }});
+    });
+    items.sort((a, b) => a.d - b.d).forEach(it => it.f());
+    const a = P([0,0,0]), b = P(mv(R, [0,0,1.25]));
+    el_('line', { class:'v-z', x1:a[0], y1:a[1], x2:b[0], y2:b[1], 'marker-end':'url(#mZ)', 'stroke-dasharray': ghost ? '5 4' : 'none' });
+  }
+
+  function update(){
+    const v = sl.map(s => +s.value);
+    ids.forEach((id, i) => document.getElementById(id + 'O').textContent = v[i] + '°');
+    const R = euler2R(v[0]*D2R, v[1]*D2R, v[2]*D2R), Rd = euler2R(v[3]*D2R, v[4]*D2R, v[5]*D2R);
+    const E = mm(tr(Rd), R);                                             // 从期望转到实际
+    const ang = Math.acos(Math.max(-1, Math.min(1, (E[0][0] + E[1][1] + E[2][2] - 1) / 2)));
+    const eR = [(E[2][1] - E[1][2]) / 2, (E[0][2] - E[2][0]) / 2, (E[1][0] - E[0][1]) / 2];   // vee(½(E − Eᵀ))
+    const n = Math.hypot(...eR);
+    svg.innerHTML = '';
+    [[[1.6,0,0],'x_W'],[[0,1.6,0],'y_W'],[[0,0,1.45],'z_W']].forEach(([w, t]) => {
+      const a = P([0,0,0]), b = P(w); el_('line', { class:'x-w', x1:a[0], y1:a[1], x2:b[0], y2:b[1] });
+      const tx = el_('text', { class:'x-wt', x:b[0] + 4, y:b[1] + 4 }); tx.textContent = t;
+    });
+    drone(Rd, true); drone(R, false);
+    if (n > 1e-3){
+      const axW = mv(Rd, sc(eR, 1/n)), a = P(sc(axW, -0.2)), b = P(sc(axW, 1.5));
+      el_('line', { class:'v-w', x1:a[0], y1:a[1], x2:b[0], y2:b[1], 'marker-end':'url(#mW)' });
+      const t = el_('text', { class:'lt t-w', x:b[0] + 6, y:b[1] - 4 }); t.textContent = '转轴';
+    }
+    const diff = [0,1,2].map(i => v[i] - v[i+3]), f = x => x.toFixed(0) + '°';
+    document.getElementById('seTbl').innerHTML =
+      '<tr><th></th><th>roll</th><th>pitch</th><th>yaw</th></tr>' +
+      '<tr><th>Euler 相减</th>' + diff.map(d => '<td>' + f(d) + '</td>').join('') + '</tr>' +
+      '<tr><th>e_R（body）</th>' + eR.map(x => '<td>' + x.toFixed(2) + '</td>').join('') + '</tr>' +
+      '<tr><th>真实转角</th><td colspan="3">' + (ang / D2R).toFixed(1) + '°（|e_R| = sin = ' + n.toFixed(2) + '）</td></tr>';
+    const maxD = Math.max(...diff.map(Math.abs)), deg = ang / D2R, msg = [];
+    if (deg > 150) msg.push('<p>真实转角 ' + deg.toFixed(0) + '°，但 |e_R| = sin(转角) 只有 ' + n.toFixed(2) + '：越接近 180°，"往哪边转"越模糊。这是 SE(3) 控制器唯一的弱点。</p>');
+    else if (maxD > deg + 5) msg.push('<p>Euler 相减最大有 ' + f(maxD) + '，可实际只差 ' + deg.toFixed(1) + '°。普通 PID 会按夸大的误差去转，甚至绕远路；e_R 给出的是真实的转轴和最短的转法。</p>');
+    else msg.push('<p>小角度时两种误差几乎一样，所以悬停附近普通 PID 也够用。差别出现在大角度、跨 ±180° 和接近 gimbal lock 时。</p>');
+    document.getElementById('seLive').innerHTML = msg.join('');
+  }
+  function setPreset(p){
+    PRESETS[p].forEach((x, i) => sl[i].value = x);
+    document.querySelectorAll('#seLab button[data-p]').forEach(b => b.classList.toggle('on', b.dataset.p === p));
+    update();
+  }
+  sl.forEach(s => s.addEventListener('input', () => { document.querySelectorAll('#seLab button[data-p]').forEach(b => b.classList.remove('on')); update(); }));
+  document.querySelectorAll('#seLab button[data-p]').forEach(b => b.addEventListener('click', () => setPreset(b.dataset.p)));
+  setPreset('wrap');
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>

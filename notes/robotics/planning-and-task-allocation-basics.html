@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-14">
+<meta name="tags" content="heuristic-search, bfs, dfs, dijkstra, a-star, motion-planning, rrt, task-allocation, hungarian-algorithm, tsp, operations-research, inventory-management">
+<title>Planning 与 Task Allocation 基础算法</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 apriltag-pose-estimation.html、transforms-and-manipulation.html 同一套样式：左侧固定目录 + 右侧单栏笔记。
+     a1..a4 固定表示 agent A B C D，bad 只用来标 conflict */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --a3:#2F8F3A; --a4:#8A4FC8; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2; --wall:#8E99AB;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --a3:#63C36C; --a4:#B58AF0; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422; --wall:#566176;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --a3:#63C36C; --a4:#B58AF0; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422; --wall:#566176;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}.g-agent{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,tr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:520px}
+.fig figcaption,.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-okbox{fill:var(--bg);stroke:var(--ok);stroke-width:1.5}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12.5px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ok{fill:var(--ok);font-size:12.5px;font-family:var(--body)}
+.d-m{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+.d-dash{stroke:var(--line-strong);fill:none;stroke-width:1.5;stroke-dasharray:5 4}
+
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+button.pre:disabled{opacity:.45;cursor:default;border-color:var(--line-strong);color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:start}
+.stage-main{min-width:280px}
+.stage-side{min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.grid{display:block;max-width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.g-cell{fill:var(--surface);stroke:var(--line-strong);stroke-width:1}
+.g-wall{fill:var(--wall);stroke:var(--wall);stroke-width:1}
+.g-lab{fill:var(--muted);font-family:var(--mono);font-size:11px;text-anchor:middle}
+.g-goal{fill:none;stroke-width:2;stroke-dasharray:4 3}
+.g-goal-t{font-family:var(--body);font-size:10.5px;font-weight:600}
+.g-path{fill:none;stroke-width:3.5;opacity:.38;stroke-linecap:round;stroke-linejoin:round}
+.g-conf{fill:var(--bad-soft);stroke:var(--bad);stroke-width:2}
+.g-agent{transition:transform .28s ease}
+.g-agent circle{stroke:var(--surface);stroke-width:2}
+.g-agent text{fill:var(--on-agent);font-family:var(--body);font-size:14px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+.g-agent.ghost{opacity:.4}
+.tctl{display:flex;gap:6px;align-items:center;margin-top:8px}
+.tctl input[type=range]{flex:1;min-width:60px}
+.tctl output{font-family:var(--mono);font-size:13px;min-width:4.2em;text-align:right;font-variant-numeric:tabular-nums}
+.tctl button.pre{padding:4px 9px}
+.film{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px}
+.film button{flex:none;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 5px 2px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5}
+.film button:hover{border-color:var(--accent)}
+.film button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.film svg{display:block}
+.film button span{display:block}
+.f-cell{fill:var(--surface);stroke:var(--line);stroke-width:.6}
+.f-wall{fill:var(--wall);stroke:var(--wall);stroke-width:.6}
+.f-conf{fill:var(--bad);stroke:var(--bad);stroke-width:.6}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:0 0 10px}
+.live .mono{font-family:var(--mono);font-size:13px}
+.ag{font-weight:600}
+.ag.c0{color:var(--a1)}.ag.c1{color:var(--a2)}.ag.c2{color:var(--a3)}.ag.c3{color:var(--a4)}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body)}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}.pill.mid{color:var(--warn)}.pill.dim{color:var(--muted)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+.ct{max-height:290px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
+.ct table{font-size:13px}
+.ct th{position:sticky;top:0;background:var(--surface);z-index:1}
+.ct td{padding:5px 10px}
+.ct tbody tr{cursor:pointer}
+.ct tbody tr:hover{background:var(--bg)}
+.ct tbody tr.sel{background:var(--accent-soft)}
+.ct .nid{font-family:var(--mono);white-space:nowrap}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+.qa-tools{display:flex;gap:8px;margin:0 0 12px}
+ul.check{list-style:none;padding-left:0}
+ul.check li{display:flex;gap:10px;align-items:baseline}
+ul.check input{flex:none;transform:translateY(2px)}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .stage-main{min-width:0}
+}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+
+/* 这一页新增：搜索 grid、matrix、tour 和 tree */
+.c-free{fill:var(--surface);stroke:var(--line);stroke-width:1}
+.c-mud{fill:var(--warn-soft);stroke:var(--warn);stroke-width:1}
+.c-ov{fill:var(--accent);opacity:0;pointer-events:none}
+.c-ov.open{opacity:.15}.c-ov.closed{opacity:.38}.c-ov.cur{opacity:.85}
+.c-g{font-family:var(--mono);font-size:10px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.c-g.cur{fill:var(--surface);font-weight:600}
+.c-path{fill:none;stroke:var(--ink);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.c-mk{fill:var(--on-agent);font-family:var(--body);font-size:13px;font-weight:600;text-anchor:middle;pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.lg{display:inline-block;width:13px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1px solid var(--line-strong);background:var(--accent)}
+.lg-open{opacity:.25;border-color:var(--accent)}.lg-closed{opacity:.5;border-color:var(--accent)}.lg-cur{opacity:.9;border-color:var(--accent)}
+.lg-mud{background:var(--warn-soft);border-color:var(--warn)}.lg-wall{background:var(--wall);border-color:var(--wall)}
+.lg-op{background:var(--ok);border-color:var(--ok)}.lg-gp{background:var(--surface);border:2px solid var(--warn)}
+svg.cv{display:block;max-width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.r-edge{stroke:var(--accent);stroke-width:1.3;opacity:.7}
+.r-path{fill:none;stroke:var(--a2);stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.r-short{fill:none;stroke:var(--ok);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.t-edge{stroke:var(--accent);stroke-width:2.5;stroke-linecap:round}
+.t-new{stroke:var(--ok);stroke-width:4.5;stroke-linecap:round}
+.t-old{stroke:var(--bad);stroke-width:2;stroke-dasharray:6 5}
+.t-opt{fill:none;stroke:var(--ok);stroke-width:2;stroke-dasharray:2 6;stroke-linecap:round}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start}
+table.mat{width:auto;border-collapse:separate;border-spacing:4px;font-family:var(--mono);margin:0 0 4px}
+table.mat td{width:46px;height:38px;text-align:center;vertical-align:middle;border:1px solid var(--line-strong);border-radius:5px;padding:0;background:var(--surface);font-size:14.5px;font-variant-numeric:tabular-nums}
+table.mat th{padding:2px 6px;border:0;font-size:12px;font-weight:500;text-align:center;color:var(--muted)}
+table.mat td.zero{font-weight:600;color:var(--accent)}
+table.mat td.cov{background:var(--accent-soft);border-color:var(--accent)}
+table.mat td.cov2{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+table.mat td.pick,table.mat td.op{background:var(--ok);border-color:var(--ok);color:var(--surface);font-weight:600}
+table.mat td.gp{box-shadow:inset 0 0 0 3px var(--warn)}
+.stage-main .tctl{max-width:600px}
+/* 默写框 */
+.recall{border:1px dashed var(--line-strong);border-radius:8px;padding:14px 16px;margin:-4px 0 18px;background:var(--bg)}
+.recall-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:10px}
+.recall-top .q{font-weight:600}
+.recall-top .hint{font-size:13px;color:var(--muted)}
+.recall textarea{display:block;box-sizing:border-box;width:100%;min-height:300px;resize:vertical;font-family:var(--mono);font-size:13.5px;line-height:1.6;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:0 0 10px;tab-size:4}
+.recall textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.recall .btns{margin-bottom:0}
+.recall-res{list-style:none;padding:0;margin:12px 0 0;font-size:14px}
+.recall-res li{padding:1px 0 1px 24px;margin:0;position:relative}
+.recall-res li::before{content:"○";position:absolute;left:2px;color:var(--muted)}
+.recall-res li.ok::before{content:"✓";color:var(--ok);font-weight:600}
+.recall-res li.miss{color:var(--muted)}
+.recall-res .sum{padding-left:0;margin-bottom:4px;color:var(--ink)}
+.recall-res .sum::before{content:none}
+.recall-cmp{margin-top:14px}
+.recall-cmp pre{margin:4px 0 0;font-size:12.5px}
+pre.veiled{filter:blur(6px);user-select:none;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){pre{transition:filter .2s}}
+/* 实验台：右侧说明栏放不下 220px 时自动换到下面，避免中等宽度下被挤成 0 */
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 auto;max-width:100%}
+.stage-side{flex:1 1 220px}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+</defs></svg>
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#map"><span class="k">01</span>学习地图</a></li>
+  </ol>
+  <p class="toc-part">PART A · HEURISTIC SEARCH</p>
+  <ol>
+    <li><a href="#skeleton"><span class="k">02</span>搜索的骨架</a></li>
+    <li><a href="#bfsdfs"><span class="k">03</span>BFS 与 DFS</a></li>
+    <li><a href="#dijkstra"><span class="k">04</span>Dijkstra</a></li>
+    <li><a href="#astar"><span class="k">05</span>A*</a></li>
+    <li><a href="#searchlab"><span class="k">06</span>实验台：六种搜索</a></li>
+  </ol>
+  <p class="toc-part">PART B · MULTI-AGENT</p>
+  <ol>
+    <li><a href="#mapf"><span class="k">07</span>搜索在 MAPF 里怎么用</a></li>
+  </ol>
+  <p class="toc-part">PART C · MOTION PLANNING</p>
+  <ol>
+    <li><a href="#cspace"><span class="k">08</span>Configuration space</a></li>
+    <li><a href="#sampling"><span class="k">09</span>PRM 与 RRT</a></li>
+    <li><a href="#rrtlab"><span class="k">10</span>实验台：RRT</a></li>
+    <li><a href="#traj"><span class="k">11</span>从 path 到 trajectory</a></li>
+  </ol>
+  <p class="toc-part">PART D · TASK ALLOCATION 与 OR</p>
+  <ol>
+    <li><a href="#assign"><span class="k">12</span>Hungarian algorithm</a></li>
+    <li><a href="#tsp"><span class="k">13</span>TSP</a></li>
+    <li><a href="#lp"><span class="k">14</span>LP、ILP 与 VRP</a></li>
+    <li><a href="#inventory"><span class="k">15</span>Inventory management</a></li>
+  </ol>
+  <p class="toc-part">REVIEW</p>
+  <ol>
+    <li><a href="#qa"><span class="k">16</span>面试题与答案</a></li>
+    <li><a href="#cheatsheet"><span class="k">17</span>速查表与自测</a></li>
+    <li><a href="#refs"><span class="k">18</span>References</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Planning 与 Task Allocation 基础算法</h1>
+  <p>这一页从零讲起，不假设你记得任何算法。内容对应岗位描述里的三行：multi-agent pathfinding and heuristic search，robotics motion planning，task allocation、inventory management systems 和 operations research。每一块只讲最基础、最常被问到的算法。</p>
+  <p>四个实验台里跑的都是真实算法，换地图、换数据，结果是当场算出来的。多 agent 的算法（space-time A*、Prioritized Planning、CBS）在另一页 <a href="mapf-fundamentals.html">MAPF 基础</a>里细讲，这一页先把它们依赖的单 agent 搜索打牢。</p>
+  <p>坐标一律写成 <span class="m">(row, col)</span>，左上角是 <span class="m">(0,0)</span>。</p>
+</header>
+
+<section id="map">
+<h2><span class="n">01</span>学习地图</h2>
+<div class="tw"><table>
+<tr><th>岗位描述里的说法</th><th>这一页讲什么</th><th>章节</th><th>要到的程度</th></tr>
+<tr><td>Heuristic search</td><td>BFS、DFS、Dijkstra、A*。它们是同一个骨架，区别只在一行</td><td><a href="#skeleton">02</a> 到 <a href="#searchlab">06</a></td><td>能默写 A* 的 pseudo-code，能说出四种算法各自保证什么</td></tr>
+<tr><td>Multi-agent pathfinding</td><td>上面这些搜索在 MAPF 里分别用在哪，三种基础 MAPF 算法各是什么</td><td><a href="#mapf">07</a></td><td>细节看 <a href="mapf-fundamentals.html">MAPF 基础</a>那一页</td></tr>
+<tr><td>Robotics motion planning</td><td>configuration space，PRM，RRT，RRT*，path 和 trajectory 的区别</td><td><a href="#cspace">08</a> 到 <a href="#traj">11</a></td><td>能讲清 RRT 的五步，知道它不 optimal</td></tr>
+<tr><td>Task allocation</td><td>assignment problem，greedy 为什么不行，Hungarian algorithm</td><td><a href="#assign">12</a></td><td>会建 cost matrix，能讲 Hungarian algorithm 的思路和复杂度</td></tr>
+<tr><td>Operations research</td><td>TSP、nearest neighbor、2-opt，LP、ILP、VRP 是什么</td><td><a href="#tsp">13</a>、<a href="#lp">14</a></td><td>知道哪些问题是 NP-hard，知道精确解和 heuristic 各在什么时候用</td></tr>
+<tr><td>Inventory management</td><td>EOQ、reorder point、safety stock、ABC analysis、slotting</td><td><a href="#inventory">15</a></td><td>知道每个词是什么，能算一个 EOQ</td></tr>
+</table></div>
+<div class="note"><p>建议的顺序：先把 02 到 06 学扎实，这是后面所有内容的地基，也最容易被追问。然后看 07 和另一页的 MAPF。08 到 15 每节读一遍、把实验台点一遍就够。</p></div>
+</section>
+
+<!-- ============ PART A ============ -->
+<div class="part"><div class="tag">PART A</div><h2>Heuristic search</h2><p>在一张 graph 上找从 start 到 goal 的 path。BFS、DFS、Dijkstra、A* 四个算法共用一个骨架，学会骨架再看区别，比一个一个背要容易得多。</p></div>
+
+<section id="skeleton">
+<h2><span class="n">02</span>搜索的骨架</h2>
+<h3>问题</h3>
+<ul>
+<li>一张 <strong>graph</strong>：一堆 node，node 之间有 edge。仓库的地面切成 grid 之后，每个 cell 是一个 node，上下左右相邻的两个 cell 之间有一条 edge。</li>
+<li>每条 edge 有一个 <strong>cost</strong>：走这一步的代价，可以是距离、时间或者能耗。</li>
+<li>给一个 <strong>start</strong> 和一个 <strong>goal</strong>，找一条从 start 到 goal 的 path。通常要求总 cost 最小，这样的 path 叫 optimal。</li>
+</ul>
+<h3>四个算法都在做同一件事</h3>
+<p>从 start 开始，一点一点往外探索。过程中每个 node 记两样东西：</p>
+<ul>
+<li><span class="m">g(n)</span>：目前已知的、从 start 走到 n 的最小 cost。</li>
+<li><span class="m">parent(n)</span>：是从哪个 node 走到 n 的。找到 goal 之后，沿着 parent 一路往回走，就得到整条 path。</li>
+</ul>
+<p>另外维护两个集合：</p>
+<ul>
+<li><strong>OPEN</strong>：已经发现、但还没处理的 node。也叫 frontier。</li>
+<li><strong>CLOSED</strong>：已经处理完的 node。</li>
+</ul>
+<p>“处理”一个 node 有个专门的词，叫 <strong>expand</strong>：把它从 OPEN 里取出来，查看它的每一个邻居。</p>
+<pre>function Search(start, goal):
+    g[start] ← 0
+    OPEN ← {start};  CLOSED ← {}
+    while OPEN 非空:
+        n ← 从 OPEN 里取出一个 node              # 四个算法只有这一行不同
+        if n == goal: return 沿 parent 回溯出的 path
+        if n in CLOSED: continue                 # 同一个 node 可能被放进 OPEN 好几次，只处理第一次
+        CLOSED.add(n)
+        for m in neighbors(n):                   # 这几行就是 expand
+            new_g ← g[n] + cost(n, m)
+            if m 没被发现过，或者 new_g &lt; g[m]:   # 找到了一条更便宜的走法
+                g[m] ← new_g;  parent[m] ← n
+                把 m 放进 OPEN
+    return FAIL</pre>
+<div class="recall" data-id="search" data-ph="function Search(start, goal):"></div>
+<h3>为什么需要 CLOSED：一个 node 可能进 OPEN 两次</h3>
+<p><span class="m">CLOSED.add(n)</span> 是在 node <strong>被取出来</strong>时做的，不是放进去时。一个 node 在 OPEN 里排队的这段时间不在 CLOSED 里，如果这期间找到一条去它的更便宜的路，入口的 <span class="m">new_g &lt; g[m]</span> 会让它再进一次 OPEN。等旧的那份被取出来时，它已经处理过了，<span class="m">if n in CLOSED: continue</span> 就是把这份过期的跳过。</p>
+<p><strong>4 个 cell 看不出来。</strong></p>
+<pre>S A
+B G</pre>
+<p>S 到 G 的两条路 S→A→G 和 S→B→G 都是 2 步。G 第一次被发现时 g = 2，从另一边再发现时 new_g 还是 2，不满足 <span class="m">&lt;</span>，不会再放进 OPEN。每个 node 只进 OPEN 一次，这一行永远不会触发。</p>
+<p><strong>换成 2×3 grid 就能看出来。</strong>neighbors 按右、下、左、上的顺序，start 是 S，不设 goal，把所有 cell 都走一遍。</p>
+<pre>S A B
+C D E</pre>
+<div class="two">
+<div><p><strong>BFS</strong>：不触发</p>
+<div class="tw"><table>
+<tr><th>取出</th><th>放进去</th><th>OPEN</th></tr>
+<tr><td>S(0)</td><td>A(1) C(1)</td><td>A1 C1</td></tr>
+<tr><td>A(1)</td><td>B(2) D(2)</td><td>C1 B2 D2</td></tr>
+<tr><td>C(1)</td><td>–</td><td>B2 D2</td></tr>
+<tr><td>B(2)</td><td>E(3)</td><td>D2 E3</td></tr>
+<tr><td>D(2)</td><td>–</td><td>E3</td></tr>
+<tr><td>E(3)</td><td>–</td><td>空</td></tr>
+</table></div></div>
+<div><p><strong>DFS</strong>：触发一次</p>
+<div class="tw"><table>
+<tr><th>取出</th><th>放进去</th><th>OPEN</th></tr>
+<tr><td>S(0)</td><td>A(1) C(1)</td><td>A1 C1</td></tr>
+<tr><td>C(1)</td><td>D(2)</td><td>A1 D2</td></tr>
+<tr><td>D(2)</td><td>E(3)</td><td>A1 E3</td></tr>
+<tr><td>E(3)</td><td><strong>B(4)</strong></td><td>A1 B4</td></tr>
+<tr><td>B(4)</td><td>–</td><td>A1</td></tr>
+<tr><td>A(1)</td><td><strong>B(2)</strong>，因为 2 &lt; 4</td><td>B2</td></tr>
+<tr><td>B(2)</td><td><strong>SKIP</strong>，B 已经在 CLOSED 里</td><td>空</td></tr>
+</table></div></div>
+</div>
+<ul>
+<li><strong>BFS</strong> 一圈一圈往外扩，离 start 近的 node 总是先被处理，所以一个 node 第一次被发现时走的就已经是最短的路。之后从别的方向再发现它，new_g 不可能更小，不会再放进去。</li>
+<li><strong>DFS</strong> 先绕远路，经过 C、D、E 到了 B，这时 g = 4。之后从 A 走过来，发现到 B 只要 2 步，于是 B 又进了 OPEN。B 第二次被取出来时已经 expand 过了，被跳过。去掉这一行，B 会被 expand 两次，一共 7 次而不是 6 次。这也说明了 DFS 为什么不保证最短：它先钻到底，第一次碰到一个 node 时往往绕了远路。</li>
+<li>S 不会再被放进去：g[S] = 0，任何走回 S 的 new_g 都至少是 1，入口的 if 永远挡住它。</li>
+</ul>
+<div class="note"><p><span class="q">去掉哪个 if 会怎样</span>只去掉出口的 <span class="m">if n in CLOSED</span>：结果仍然对，只是重复 expand。去掉入口的 <span class="m">new_g &lt; g[m]</span>：parent 会被更差的路覆盖，比如 parent[S] 被改成 A，回溯 path 时会死循环。BFS 和 DFS 也可以只用一个 if：放进 OPEN 时就标记 visited，一个 node 只会进一次 OPEN。Dijkstra 和 A* 不行，必须等 node 被取出来，才能确定它的 g 已经最小。</p></div>
+<h3>区别只在“取哪一个”</h3>
+<div class="tw"><table>
+<tr><th>算法</th><th>从 OPEN 里取哪一个</th><th>OPEN 的数据结构</th><th>保证什么</th></tr>
+<tr><td><strong>BFS</strong></td><td>最早放进去的</td><td>queue，先进先出</td><td>步数最少的 path</td></tr>
+<tr><td><strong>DFS</strong></td><td>最晚放进去的</td><td>stack，后进先出</td><td>只保证找到一条 path，不保证短</td></tr>
+<tr><td><strong>Dijkstra</strong></td><td>g 最小的</td><td>priority queue，通常是 min-heap</td><td>cost 最小的 path，要求 edge cost 不是负数</td></tr>
+<tr><td><strong>A*</strong></td><td>g + h 最小的</td><td>priority queue</td><td>cost 最小的 path，要求 h 不高估</td></tr>
+</table></div>
+<p>Dijkstra 和 A* 这种“每次取某个评分最好的 node”的做法，统称 <strong>best-first search</strong>。后面 CBS 的 high level 用的也是它，只是搜索的对象从 cell 换成了别的东西。</p>
+</section>
+
+<section id="bfsdfs">
+<h2><span class="n">03</span>BFS 与 DFS</h2>
+<h3>BFS：breadth-first search，广度优先</h3>
+<p>OPEN 是一个 queue，谁先进来谁先被 expand。效果是：先处理离 start 1 步的所有 node，再处理 2 步的，再处理 3 步的，像水波一样一圈一圈往外扩。</p>
+<ul>
+<li><strong>保证</strong>：第一次碰到 goal 时，用的步数一定是最少的。因为所有步数更少的 node 都已经被处理过了。</li>
+<li><strong>前提</strong>：每一步的 cost 都相同。如果有的 cell 走起来更贵，步数最少就不等于 cost 最小，这时要用 Dijkstra。</li>
+<li><strong>复杂度</strong>：时间 O(V + E)，V 是 node 数，E 是 edge 数。每个 node 进一次 queue，每条 edge 看一次。空间也是 O(V)，因为要存整个 frontier。</li>
+<li><strong>简化</strong>：BFS 里一个 node 第一次被发现时的步数就是最终答案，所以骨架里“new_g &lt; g[m]”那个判断用不上，只要判断 m 有没有被发现过。</li>
+</ul>
+<h3>DFS：depth-first search，深度优先</h3>
+<p>OPEN 是一个 stack，谁最后进来谁先被 expand。效果是：沿着一条路一直往深处走，走到死胡同再退回最近的岔路口，换一条路继续。也可以直接用递归来写。</p>
+<ul>
+<li><strong>保证</strong>：graph 有限时，只要 goal 能到达就一定能找到。但找到的 path 通常很绕，不是最短的。</li>
+<li><strong>优点</strong>：省内存。只需要记住当前这条路，空间是 O(深度)，而 BFS 要记住整个 frontier。</li>
+<li><strong>复杂度</strong>：时间 O(V + E)。</li>
+</ul>
+<h3>什么时候用哪个</h3>
+<div class="tw"><table>
+<tr><th></th><th>BFS</th><th>DFS</th></tr>
+<tr><td>数据结构</td><td>queue</td><td>stack 或者递归</td></tr>
+<tr><td>找到的 path</td><td>步数最少</td><td>不保证</td></tr>
+<tr><td>内存</td><td>大，要存整个 frontier</td><td>小，只存当前这条路</td></tr>
+<tr><td>适合</td><td>unit-cost 的最短路；算每个 cell 到某一点的距离</td><td>判断能不能到达；找环；把所有可能性穷举一遍</td></tr>
+</table></div>
+<h3>用 DFS 找环</h3>
+<p>DFS 最常见的用途之一是判断一张有向图里有没有环。给每个 node 涂三种颜色：白色是还没访问，灰色是正在访问（它还在当前这条路上），黑色是已经访问完。DFS 过程中如果碰到一个灰色的 node，说明绕回了当前这条路上，也就是有环。</p>
+<pre>function HasCycle(n):
+    color[n] ← GRAY                      # 正在这条路上
+    for m in neighbors(n):
+        if color[m] == GRAY: return true  # 绕回来了，有环
+        if color[m] == WHITE and HasCycle(m): return true
+    color[n] ← BLACK                     # 这个 node 往下的路都查完了
+    return false</pre>
+<div class="recall" data-id="cycle" data-ph="function HasCycle(n):"></div>
+<div class="note"><p><span class="q">和 multi-agent 的关系</span>BFS：从每个 goal 出发做一次反向 BFS，就得到每个 cell 到这个 goal 的真实距离，这是 MAPF 里最常用的 heuristic。DFS：多个 robot 互相等待时，把“谁在等谁”画成一张图，用上面的办法找环，有环就是 deadlock。</p></div>
+</section>
+
+<section id="dijkstra">
+<h2><span class="n">04</span>Dijkstra</h2>
+<p>BFS 只数步数。当每条 edge 的 cost 不一样时，要找的是 cost 最小的 path，这就是 Dijkstra 解决的问题。</p>
+<h3>思路</h3>
+<p>OPEN 换成 priority queue，<strong>每次 expand g 最小的 node</strong>，也就是目前离 start 最近的那个。其他和骨架完全一样。</p>
+<h3>Pseudo-code</h3>
+<pre>function Dijkstra(start, goal):
+    g[start] ← 0
+    OPEN ← min-heap，按 g 排序；放入 start   # 和骨架唯一的区别
+    CLOSED ← {}
+    while OPEN 非空:
+        n ← pop g 最小的                     # 离 start 最近的
+        if n == goal: return 沿 parent 回溯出的 path
+        if n in CLOSED: continue              # 过期的旧记录
+        CLOSED.add(n)                         # g[n] 已经是最终答案
+        for m in neighbors(n):
+            new_g ← g[n] + cost(n, m)
+            if m 没被发现过，或者 new_g &lt; g[m]:   # relax
+                g[m] ← new_g;  parent[m] ← n
+                push m，key = new_g
+    return FAIL</pre>
+<div class="recall" data-id="dijkstra" data-ph="function Dijkstra(start, goal):"></div>
+<p>和 05 节的 A* 对照：两段代码只有 push 时的 key 不一样。Dijkstra 用 <span class="m">new_g</span>，A* 用 <span class="m">new_g + h(m)</span>。下面手推的例子就是按这段代码一行一行走的。</p>
+<h3>手推一个例子</h3>
+<figure class="fig">
+<svg viewBox="0 0 560 210" role="img" aria-label="四个 node 的 graph：S 到 A 的 cost 是 1，S 到 B 是 4，A 到 B 是 2，A 到 G 是 6，B 到 G 是 1。最短路是 S、A、B、G，总 cost 4" style="max-width:560px;margin:0 auto">
+  <path class="d-ln" d="M88 96 L242 48" style="stroke:var(--accent);stroke-width:3"/>
+  <path class="d-ln" d="M88 114 L242 162"/>
+  <path class="d-ln" d="M260 60 L260 150" style="stroke:var(--accent);stroke-width:3"/>
+  <path class="d-ln" d="M278 48 L452 96"/>
+  <path class="d-ln" d="M278 162 L452 114" style="stroke:var(--accent);stroke-width:3"/>
+  <g class="d-t" text-anchor="middle">
+    <text x="160" y="60">1</text><text x="160" y="156">4</text><text x="274" y="110">2</text><text x="372" y="60">6</text><text x="372" y="156">1</text>
+  </g>
+  <g text-anchor="middle">
+    <circle class="d-box" cx="70" cy="105" r="20"/><text class="d-t" x="70" y="110">S</text>
+    <circle class="d-box" cx="260" cy="40" r="20"/><text class="d-t" x="260" y="45">A</text>
+    <circle class="d-box" cx="260" cy="170" r="20"/><text class="d-t" x="260" y="175">B</text>
+    <circle class="d-box" cx="470" cy="105" r="20"/><text class="d-t" x="470" y="110">G</text>
+  </g>
+</svg>
+<figcaption>edge 上的数字是 cost。紫色是 cost 最小的 path：S、A、B、G，总 cost 是 4，走了 3 步。</figcaption>
+</figure>
+<div class="tw"><table>
+<tr><th>步</th><th>expand 谁</th><th>发生了什么</th><th>OPEN 里的 node 和 g</th></tr>
+<tr><td>0</td><td></td><td>开始</td><td class="m">S:0</td></tr>
+<tr><td>1</td><td>S，g = 0</td><td>发现 A，g = 1。发现 B，g = 4</td><td class="m">A:1　B:4</td></tr>
+<tr><td>2</td><td>A，g = 1</td><td>经过 A 到 B 只要 1 + 2 = 3，比 4 小，<strong>更新 B</strong>。发现 G，g = 1 + 6 = 7</td><td class="m">B:3　G:7</td></tr>
+<tr><td>3</td><td>B，g = 3</td><td>经过 B 到 G 只要 3 + 1 = 4，比 7 小，<strong>更新 G</strong></td><td class="m">G:4</td></tr>
+<tr><td>4</td><td>G，g = 4</td><td>到达 goal。沿 parent 回溯：G、B、A、S</td><td></td></tr>
+</table></div>
+<p>同一张图上，BFS 会返回 S、A、G：只走 2 步，但 cost 是 7。步数最少不等于 cost 最小。</p>
+<p>第 2、3 步里“发现更便宜的走法就更新 g 和 parent”这个动作，教科书上叫 <strong>relax</strong> 一条 edge。它就是骨架里的那个 if。</p>
+<h3>为什么是对的</h3>
+<p>关键的一点：<strong>一个 node 被 expand 的那一刻，它的 g 就已经是最终答案了。</strong>理由是，假设 n 是 OPEN 里 g 最小的。任何其他通往 n 的路，都要先经过 OPEN 里的另一个 node，而那个 node 的 g 已经不比 n 小，再往后走 cost 只会增加。所以不可能有更便宜的路到 n。</p>
+<p>这个理由用到了“再往后走 cost 只会增加”，所以 Dijkstra 要求 <strong>edge cost 不能是负数</strong>。</p>
+<h3>要记住的</h3>
+<ul>
+<li><strong>复杂度</strong>：用 binary heap 时是 O((V + E) log V)。</li>
+<li><strong>和 BFS 的关系</strong>：所有 edge 的 cost 都是 1 时，Dijkstra 的行为和 BFS 一样。BFS 是 Dijkstra 的特例。</li>
+<li><strong>缺点</strong>：它不知道 goal 在哪，朝四面八方均匀地扩。goal 明明在右边，它也会把左边同样距离的 node 全部 expand 一遍。A* 解决的就是这个问题。</li>
+<li><strong>副产品</strong>：如果不在碰到 goal 时停下，而是一直跑到 OPEN 为空，就得到 start 到所有 node 的最短距离。这叫 single-source shortest path。</li>
+</ul>
+</section>
+
+<section id="astar">
+<h2><span class="n">05</span>A*</h2>
+<h3>思路</h3>
+<p>Dijkstra 只看“已经走了多远”，也就是 g。A* 再加一项“估计还要走多远”，记作 <span class="m">h(n)</span>，然后按两者之和排序：</p>
+<div class="eq">f(n) = g(n) + h(n)
+g(n)：从 start 到 n 已经花掉的 cost
+h(n)：从 n 到 goal 还要花多少的估计，叫 heuristic
+每次从 OPEN 里取 f 最小的 node</div>
+<p>f(n) 的含义是“经过 n 的 path，总 cost 大概是多少”。按 f 排序之后，朝着 goal 方向的 node 会排在前面，背离 goal 的 node 会排在后面，于是少 expand 很多没用的 node。</p>
+<p>在 4-connected grid 上，最常用的 heuristic 是 <strong>Manhattan distance</strong>：<span class="m">|r − r<sub>goal</sub>| + |c − c<sub>goal</sub>|</span>，也就是不考虑障碍物时要走的步数。</p>
+<h3>Pseudo-code</h3>
+<pre>function AStar(start, goal):
+    g[start] ← 0
+    OPEN ← priority queue，按 f = g + h 排序；放入 start
+    CLOSED ← {}
+    while OPEN 非空:
+        n ← pop f 最小的
+        if n == goal: return 沿 parent 回溯出的 path
+        if n in CLOSED: continue
+        CLOSED.add(n)
+        for m in neighbors(n):
+            new_g ← g[n] + cost(n, m)
+            if m 没被发现过，或者 new_g &lt; g[m]:
+                g[m] ← new_g;  parent[m] ← n
+                push m，f = new_g + h(m)        # 和 Dijkstra 只差这一处：多加了 h(m)
+    return FAIL</pre>
+<div class="recall" data-id="astar" data-ph="function AStar(start, goal):"></div>
+<p>把 h 换成 0，A* 就退化成 Dijkstra。</p>
+<h3>为什么还是 optimal</h3>
+<p>只要 h 从不高估真实的剩余 cost，f(n) 就是“经过 n 的任何 path 至少要花多少”的一个 lower bound。A* 按 lower bound 从小到大处理 node。goal 被 pop 出来的那一刻，OPEN 里其他所有 node 的 lower bound 都不比它小，所以不可能再有更便宜的 path。</p>
+<h3>Admissible 和 consistent</h3>
+<ul>
+<li><strong>admissible</strong>：h(n) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的。</li>
+<li><strong>consistent</strong>：对每条 edge (n, n′) 都有 h(n) ≤ cost(n, n′) + h(n′)，并且 h(goal) = 0。直观上是 heuristic 满足三角不等式。满足它，每个 node 只需要 expand 一次。</li>
+<li>consistent 的 heuristic 一定 admissible，反过来不一定。只 admissible 不 consistent 时，已经进了 CLOSED 的 node 可能要重新拿出来处理，这叫 reopen。</li>
+</ul>
+<h3>Heuristic 越准，expand 越少</h3>
+<div class="tw"><table>
+<tr><th>heuristic</th><th>性质</th><th>效果</th></tr>
+<tr><td>h = 0</td><td>admissible，但没有任何信息</td><td>就是 Dijkstra，朝四面八方扩</td></tr>
+<tr><td>Manhattan distance</td><td>在 4-connected grid 上 consistent</td><td>没有障碍物时非常准。障碍物多的时候估得太低，A* 会钻进死胡同</td></tr>
+<tr><td>true distance</td><td>consistent，而且就是真实值</td><td>几乎只 expand 最短路上的 node。做法是从 goal 反向跑一次 BFS 或 Dijkstra，把结果存成表</td></tr>
+<tr><td>高估的 h</td><td>不 admissible</td><td>更快，但不保证 optimal</td></tr>
+</table></div>
+<p>true distance 要先花一次完整搜索的时间来算。它在 MAPF 里很划算，因为地图是固定的，每个 goal 算一次，之后成百上千次搜索都能复用。</p>
+<h3>常见追问</h3>
+<div class="tw"><table>
+<tr><th>问题</th><th>答案</th></tr>
+<tr><td>f 相同的 node 先 pop 哪个？</td><td>先 pop g 大的。g 大说明离 goal 更近，能少 expand 很多 node。这叫 tie-breaking。</td></tr>
+<tr><td>weighted A* 是什么？</td><td>f = g + w·h，其中 w &gt; 1。更相信 heuristic，搜索更贪心、更快。返回的 path cost 不超过 optimal 的 w 倍，这种有上界的次优叫 bounded-suboptimal。</td></tr>
+<tr><td>A* 的复杂度？</td><td>最坏情况和 Dijkstra 一样。实际 expand 多少 node，取决于 heuristic 有多准。</td></tr>
+<tr><td>A*、Dijkstra、BFS 的关系？</td><td>h = 0 的 A* 是 Dijkstra。edge cost 全是 1 的 Dijkstra 是 BFS。</td></tr>
+<tr><td>地图变了怎么办？</td><td>最简单是重新搜一次。有专门的增量算法，比如 D* Lite，只修补受影响的部分。知道名字就够。</td></tr>
+</table></div>
+<div class="note say"><p><span class="q">面试怎么说</span>“A* is Dijkstra plus a heuristic. It expands nodes in order of f = g + h, where g is the cost so far and h estimates the remaining cost. If h never overestimates, the first time the goal is popped the path is optimal. On a grid I’d use Manhattan distance, or precompute true distances with a backward BFS from the goal when there are many obstacles.”</p></div>
+</section>
+
+<section id="searchlab">
+<h2><span class="n">06</span>实验台：六种搜索</h2>
+<p>S 是 start，G 是 goal。拖动滑块，看每种算法先 expand 谁、后 expand 谁。下面的表格是同一张地图上六种算法的结果。</p>
+<div class="lab" id="lab-search"></div>
+<p class="try">建议按这个顺序看。<b>空地</b>：依次点 BFS、Dijkstra、A*，比较 expand 的 node 数，再点 DFS 看它找到的 path 有多绕。<b>U 形墙</b>：比较两种 heuristic 的 A*。<b>泥地</b>：看 BFS 为什么不是 optimal，再看 weighted A* 用什么换来了速度。</p>
+<h3>从实验台能读出的结论</h3>
+<ul>
+<li>BFS 和 Dijkstra 在 cost 全是 1 的地图上，expand 的 node 数和 path 的 cost 完全一样。</li>
+<li>A* 找到的 path 和 Dijkstra 的 cost 相同，但 expand 的 node 少得多。空地上是 13 对 111。</li>
+<li>heuristic 越准越省。U 形墙上，Manhattan distance 的 A* expand 49 个 node，true distance 的 A* 只要 19 个。</li>
+<li>BFS 不看 cost。泥地上它找到的 path 只有 12 步，cost 却是 24，而 optimal 是 20。</li>
+<li>DFS 很快就能找到一条 path，但很绕。空地上它的 path 有 38 步，是最短的三倍多。</li>
+<li>weighted A* 在泥地上比 A* 少 expand 一半的 node，代价是 path 的 cost 从 20 变成了 24。</li>
+</ul>
+<details class="qa code"><summary>可以直接运行的 Python：BFS、DFS、Dijkstra、A*</summary><div class="a">
+<pre>import heapq
+from collections import deque
+
+def neighbors(grid, cell):
+    r, c = cell
+    for nr, nc in ((r - 1, c), (r, c + 1), (r + 1, c), (r, c - 1)):
+        if 0 &lt;= nr &lt; len(grid) and 0 &lt;= nc &lt; len(grid[0]) and grid[nr][nc] != '#':
+            yield (nr, nc)
+
+def step_cost(grid, cell):                      # 走进这个 cell 的 cost：'~' 是泥地，cost 5；其他是 1
+    return 5 if grid[cell[0]][cell[1]] == '~' else 1
+
+def backtrack(parent, goal):                    # 沿 parent 从 goal 走回 start，再反过来
+    path, node = [], goal
+    while node is not None:
+        path.append(node)
+        node = parent[node]
+    return path[::-1]
+
+def bfs(grid, start, goal):
+    parent = {start: None}                      # 被发现过的 node 都在 parent 里
+    queue = deque([start])                      # OPEN 是 queue：先进先出
+    while queue:
+        n = queue.popleft()
+        if n == goal:
+            return backtrack(parent, goal)
+        for m in neighbors(grid, n):
+            if m not in parent:                 # 只看有没有被发现过，不比较 cost
+                parent[m] = n
+                queue.append(m)
+    return None
+
+def dfs(grid, start, goal):
+    parent = {}
+    stack = [(start, None)]                     # OPEN 是 stack：后进先出
+    while stack:
+        n, p = stack.pop()
+        if n in parent:                         # 已经处理过
+            continue
+        parent[n] = p
+        if n == goal:
+            return backtrack(parent, goal)
+        for m in neighbors(grid, n):
+            if m not in parent:
+                stack.append((m, n))
+    return None
+
+def dijkstra(grid, start, goal):
+    g = {start: 0}
+    parent = {start: None}
+    open_list = [(0, start)]                    # OPEN 是 min-heap，按 g 排序
+    closed = set()
+    while open_list:
+        _, n = heapq.heappop(open_list)
+        if n == goal:
+            return backtrack(parent, goal)
+        if n in closed:                         # 同一个 node 可能被 push 多次，只处理第一次
+            continue
+        closed.add(n)
+        for m in neighbors(grid, n):
+            new_g = g[n] + step_cost(grid, m)
+            if m not in g or new_g &lt; g[m]:      # 第一次发现，或者找到了更便宜的走法
+                g[m] = new_g
+                parent[m] = n
+                heapq.heappush(open_list, (new_g, m))
+    return None
+
+def astar(grid, start, goal):
+    h = lambda cell: abs(cell[0] - goal[0]) + abs(cell[1] - goal[1])    # Manhattan distance
+    g = {start: 0}
+    parent = {start: None}
+    open_list = [(h(start), start)]             # 按 f = g + h 排序
+    closed = set()
+    while open_list:
+        _, n = heapq.heappop(open_list)
+        if n == goal:
+            return backtrack(parent, goal)
+        if n in closed:
+            continue
+        closed.add(n)
+        for m in neighbors(grid, n):
+            new_g = g[n] + step_cost(grid, m)
+            if m not in g or new_g &lt; g[m]:
+                g[m] = new_g
+                parent[m] = n
+                heapq.heappush(open_list, (new_g + h(m), m))   # 和 Dijkstra 只差这一行：多加了 h(m)
+    return None
+
+def path_cost(grid, path):
+    return sum(step_cost(grid, cell) for cell in path[1:])
+
+
+if __name__ == '__main__':
+    grid = ['.....',
+            '..~..',                            # 中间有一块泥地
+            '.....']
+    start, goal = (1, 0), (1, 4)
+    for name, search in (('BFS', bfs), ('DFS', dfs), ('Dijkstra', dijkstra), ('A*', astar)):
+        path = search(grid, start, goal)
+        print(name, 'steps =', len(path) - 1, 'cost =', path_cost(grid, path))</pre>
+<p>注意 Dijkstra 和 A* 两个函数几乎一字不差，只有 push 的那一行不同。</p>
+</div></details>
+</section>
+
+<!-- ============ PART B ============ -->
+<div class="part"><div class="tag">PART B</div><h2>Multi-agent pathfinding</h2><p>多个 robot 同时规划，简称 MAPF。它不是一套全新的算法，而是把上面的单 agent 搜索反复调用、再加上处理冲突的办法。</p></div>
+
+<section id="mapf">
+<h2><span class="n">07</span>搜索在 MAPF 里怎么用</h2>
+<h3>每个基础算法的位置</h3>
+<div class="tw"><table>
+<tr><th>算法</th><th>在 multi-agent 系统里做什么</th></tr>
+<tr><td>BFS</td><td>从每个 goal 反向 BFS，预计算 true-distance heuristic。task assignment 里算 robot 到 task 的真实距离，也是它</td></tr>
+<tr><td>DFS</td><td>在“谁在等谁”的 wait-for graph 上找环，检测 deadlock。检查地图是否连通</td></tr>
+<tr><td>Dijkstra</td><td>edge cost 不一样时的距离表，比如转弯更贵、拥堵的区域更贵</td></tr>
+<tr><td>A*</td><td>给单个 agent 规划 path。MAPF 里用的是它加上时间维的版本，叫 space-time A*</td></tr>
+<tr><td>best-first search</td><td>CBS 的 high level。搜索的对象不是 cell，而是“一组约束”，但骨架和 Dijkstra 一样：每次取 cost 最小的</td></tr>
+<tr><td>weighted A* 的思想</td><td>牺牲一点 optimality 换速度。ECBS 这类 bounded-suboptimal 的 MAPF 算法用的就是这个思想</td></tr>
+</table></div>
+<h3>MAPF 一页纸</h3>
+<ul>
+<li><strong>问题</strong>：k 个 agent，各有 start 和 goal。时间是离散的，每一步每个 agent 要么 move 到相邻的 cell，要么 wait。要给每个 agent 一条带时间的 path，互相不能撞。</li>
+<li><strong>什么叫撞</strong>：同一时刻两个 agent 在同一个 cell，叫 vertex conflict。两个 agent 在同一步里互换位置，叫 edge conflict。</li>
+<li><strong>为什么难</strong>：如果把所有 agent 的位置合成一个大 state 来跑 A*，state 的数量是 cell 数的 k 次方。400 个 cell、10 个 agent 就是 10<sup>26</sup>。所以实用算法都是先各自规划，再处理 conflict。</li>
+</ul>
+<div class="tw"><table>
+<tr><th>算法</th><th>一句话</th><th>complete</th><th>optimal</th><th>规模</th></tr>
+<tr><td>space-time A*</td><td>state 从 cell 变成 (cell, 时刻)，多一个 wait。别的 agent 已经定好的 path 当成会动的障碍</td><td colspan="2">这是给单个 agent 用的底层模块</td><td></td></tr>
+<tr><td>Prioritized Planning</td><td>排一个 priority 顺序，一个一个跑 space-time A*，后面的让前面的</td><td>否</td><td>否</td><td>上百到上千</td></tr>
+<tr><td>CBS</td><td>先各走各的最短路。发现 conflict 就分成两支，每支给其中一个 agent 加一条约束，重新规划</td><td>是</td><td>是</td><td>几十</td></tr>
+</table></div>
+<p>这三个算法的 pseudo-code、手推例子和实验台都在 <a href="mapf-fundamentals.html">MAPF 基础</a>那一页，那一页还讲了怎么把它们拼成一个仓库调度系统。</p>
+</section>
+
+<!-- ============ PART C ============ -->
+<div class="part"><div class="tag">PART C</div><h2>Robotics motion planning</h2><p>前面的搜索都在 grid 上。当 robot 是机械臂，或者空间是连续的、维度很高时，grid 就不够用了。这一部分讲最基础的一套思路。</p></div>
+
+<section id="cspace">
+<h2><span class="n">08</span>Configuration space</h2>
+<p><strong>configuration</strong> 是能完整描述 robot 姿态的一组数。所有可能的 configuration 组成的空间叫 <strong>configuration space</strong>，简称 C-space。</p>
+<div class="tw"><table>
+<tr><th>robot</th><th>configuration</th><th>C-space 的维度</th></tr>
+<tr><td>grid 上的点 robot</td><td class="m">(row, col)</td><td>2</td></tr>
+<tr><td>有朝向的移动 robot</td><td class="m">(x, y, θ)</td><td>3</td></tr>
+<tr><td>6 个关节的机械臂</td><td>6 个关节角</td><td>6</td></tr>
+</table></div>
+<p>这样定义的好处是：不管 robot 的形状多复杂，它在 C-space 里都只是<strong>一个点</strong>。障碍物也要搬进 C-space：所有会让 robot 撞上东西的 configuration 构成 C-obstacle，剩下的叫 free space。于是 motion planning 变成同一个问题：在 free space 里找一条从 start 到 goal 的曲线。</p>
+<h3>为什么不能直接用 A*</h3>
+<p>把 C-space 切成 grid 再跑 A* 是可以的，这叫 search-based planning，低维时很好用。但 cell 的数量随维度指数增长：6 个关节、每个关节按 10° 切成 36 份，就有 36<sup>6</sup> ≈ 22 亿个 cell。这叫 curse of dimensionality。</p>
+<div class="tw"><table>
+<tr><th></th><th>search-based</th><th>sampling-based</th></tr>
+<tr><td>做法</td><td>把空间切成 grid 或 lattice，跑 A*</td><td>在空间里随机采样，把采到的点连起来</td></tr>
+<tr><td>代表</td><td>A*、D* Lite</td><td>PRM、RRT、RRT*</td></tr>
+<tr><td>适合</td><td>2 到 3 维，比如移动 robot</td><td>高维，比如机械臂</td></tr>
+<tr><td>保证</td><td>在给定的分辨率下 complete，而且 optimal</td><td>probabilistically complete</td></tr>
+</table></div>
+<p>C-space 的图解和机械臂的例子在 <a href="transforms-and-manipulation.html#cspace">Rigid Body Transforms 与 Manipulation</a> 那一页里有。</p>
+</section>
+
+<section id="sampling">
+<h2><span class="n">09</span>Sampling-based planning：PRM 与 RRT</h2>
+<p>核心想法：不去枚举整个空间，而是随机采一些点，只对这些点和它们之间的连线做 collision check。</p>
+<h3>PRM：probabilistic roadmap</h3>
+<ol>
+<li>在 C-space 里随机采 N 个点，丢掉落在障碍物里的。</li>
+<li>每个点和它附近的几个点连线。连线不撞障碍物，就留下来当一条 edge。这样得到一张 graph，叫 roadmap。</li>
+<li>查询时，把 start 和 goal 各连到 roadmap 上最近的点，然后在 roadmap 上跑 A* 或 Dijkstra。</li>
+</ol>
+<p>roadmap 建一次可以反复用，这叫 multi-query。环境固定、要规划很多次的时候很合适。</p>
+<h3>RRT：rapidly-exploring random tree</h3>
+<p>只回答一次查询时，不必把整个空间都铺上 roadmap。RRT 从 start 长出一棵 tree，一直长到碰到 goal。</p>
+<pre>function RRT(start, goal):
+    tree ← {start}
+    repeat:
+        q_rand ← 随机采一个点                    # 以一个小概率直接取 goal，叫 goal bias
+        q_near ← tree 上离 q_rand 最近的 node
+        q_new  ← 从 q_near 朝 q_rand 走一小步
+        if q_near 到 q_new 这一段不撞:           # collision check
+            把 q_new 加进 tree，parent 是 q_near
+            if q_new 离 goal 足够近: return 沿 parent 回溯出的 path</pre>
+<div class="recall" data-id="rrt" data-ph="function RRT(start, goal):"></div>
+<p>“朝随机点走一小步”这个动作有一个好性质：tree 会自动往还没探索过的大片空白里长，所以叫 rapidly-exploring。</p>
+<h3>性质</h3>
+<ul>
+<li><strong>probabilistically complete</strong>：只要有解，采样足够多就一定能找到。但它没法告诉你“无解”。</li>
+<li><strong>不 optimal</strong>：找到的 path 弯弯曲曲，通常要做后处理。</li>
+<li><strong>结果是随机的</strong>：同一个问题跑两次，path 不一样，花的时间也不一样。</li>
+<li><strong>怕窄通道</strong>：随机采样很难恰好采进一条窄缝里，这叫 narrow passage problem。</li>
+<li><strong>时间花在哪</strong>：大部分花在 collision check 上，而不是搜索本身。</li>
+</ul>
+<h3>RRT*</h3>
+<p>RRT* 在 RRT 上加了两步，让 path 随着采样增多越来越接近 optimal，这叫 asymptotically optimal。</p>
+<ul>
+<li><strong>选最好的 parent</strong>：q_new 不一定接在最近的 node 上，而是在附近的一圈 node 里，选让 q_new 的 cost 最小的那个。</li>
+<li><strong>rewire</strong>：q_new 加进来之后，看附近的 node 改成经过 q_new 会不会更便宜，会就把它们的 parent 改成 q_new。</li>
+</ul>
+<div class="note say"><p><span class="q">面试怎么说</span>“For a high-dimensional robot like an arm I’d use a sampling-based planner. RRT grows a tree from the start: sample a random configuration, find the nearest tree node, step toward the sample, and keep the new node if the motion is collision-free. It’s probabilistically complete but not optimal, so I’d either post-process the path with shortcutting or use RRT*, which rewires the tree and converges to the optimal path.”</p></div>
+</section>
+
+<section id="rrtlab">
+<h2><span class="n">10</span>实验台：RRT</h2>
+<p>这里的 C-space 就是二维平面，robot 是一个点，灰色的矩形是障碍物。紫色的细线是 tree。</p>
+<div class="lab" id="lab-rrt"></div>
+<p class="try">先把滑块拖回最左边再点<b>播放</b>，看 tree 怎么往空白的地方长。然后在<b>窄通道</b>里多换几个 seed，看采样次数的差别有多大。再把 <b>goal bias</b> 调成 0%，看没有偏向时要多采多少次。</p>
+</section>
+
+<section id="traj">
+<h2><span class="n">11</span>从 path 到 trajectory</h2>
+<p><strong>path</strong> 只是几何上的一条线：经过哪些点。<strong>trajectory</strong> 还带时间：每个时刻在哪、速度多少。planner 给出 path 之后，通常还要经过这几步才能交给 robot 执行：</p>
+<ol>
+<li><strong>shortcut 或 smoothing。</strong>去掉多余的拐弯。实验台里用的是最简单的一种：从当前点直接连到能看见的最远的点。</li>
+<li><strong>time parameterization。</strong>给 path 配上速度。要满足最大速度和最大加速度的限制。最常见的是梯形速度曲线：先加速，再匀速，最后减速。</li>
+<li><strong>kinematic constraints。</strong>差速底盘和汽车都不能横着走。这时规划的 state 要包含朝向，变成 (x, y, θ)，每一步只能走几种固定的动作。对应的算法有 state lattice 和 Hybrid A*，知道名字就够。</li>
+<li><strong>执行时的修正。</strong>传感器发现了新的障碍物，就要局部 replan。</li>
+</ol>
+<div class="note"><p><span class="q">和 MAPF 的关系</span>MAPF 假设每一步刚好花一个单位时间。真实的 robot 加速、减速、转弯都要时间，所以实际系统要么在规划时用更细的模型，要么在执行层处理这些偏差。</p></div>
+</section>
+
+<!-- ============ PART D ============ -->
+<div class="part"><div class="tag">PART D</div><h2>Task allocation 与 operations research</h2><p>前面回答的是“怎么走”。这一部分回答“谁去做哪件事”“按什么顺序做”“货放多少、放在哪”。这些问题属于 operations research，简称 OR。</p></div>
+
+<section id="assign">
+<h2><span class="n">12</span>Assignment problem 与 Hungarian algorithm</h2>
+<h3>问题</h3>
+<p>n 个 robot，n 个 task。robot i 做 task j 的代价是 <span class="m">c<sub>ij</sub></span>，所有代价排成一个 <strong>cost matrix</strong>。每个 robot 做一个 task，每个 task 给一个 robot，要让总 cost 最小。这叫 assignment problem。</p>
+<p>cost 通常是 robot 到 task 的行驶时间，可以再加上 deadline 和拥堵的修正。</p>
+<h3>为什么不能枚举，也不能 greedy</h3>
+<ul>
+<li><strong>枚举</strong>：一共有 n! 种分配。4 个 robot 只有 24 种，20 个就是 2.4 × 10<sup>18</sup> 种。</li>
+<li><strong>greedy</strong>：每次挑剩下的里面 cost 最小的一对。很快，但不是 optimal。最便宜的格子被先抢走之后，后面的 robot 可能只剩下很贵的选择。</li>
+</ul>
+<h3>Hungarian algorithm 的思路</h3>
+<p>它基于一个观察：<strong>把某一行的每个数都减去同一个值，哪种分配最好不会变。</strong>因为不管怎么分配，这个 robot 总要做一个 task，总 cost 都少了同样的数。对列也一样。</p>
+<p>于是可以不断地减，让 matrix 里出现尽量多的 0，同时保证没有负数。如果最后能选出 n 个互不同行、互不同列的 0，那么这组分配在新 matrix 里的总 cost 是 0，不可能更小，所以它就是 optimal。</p>
+<ol>
+<li><strong>行约减。</strong>每一行减去这一行的最小值。</li>
+<li><strong>列约减。</strong>每一列减去这一列的最小值。</li>
+<li><strong>用最少的线盖住所有的 0。</strong>线可以是整行或整列。如果需要 n 条线，说明已经能选出一组完整的分配，结束。</li>
+<li><strong>调整。</strong>如果不到 n 条：找出没被盖住的数里最小的那个，记作 δ。没被盖住的数都减 δ，被两条线同时盖住的数加 δ。然后回到第 3 步。</li>
+</ol>
+<div class="lab" id="lab-hung"></div>
+<p class="try">先看右边：橙色框是 greedy 选的，绿色是 optimal。然后在左边一步一步点，看 matrix 怎么变。点<b>随机</b>可以换一个 matrix 再看一遍。</p>
+<h3>要记住的</h3>
+<ul>
+<li><strong>结果是 optimal 的</strong>，复杂度 O(n³)。几百个 robot 也只要毫秒到秒级。</li>
+<li><strong>robot 和 task 数量不一样</strong>：补上虚拟的行或列，cost 填 0，变成方阵。</li>
+<li><strong>要最大化而不是最小化</strong>：把所有 cost 取负号。</li>
+<li><strong>实际写代码不用自己实现</strong>：</li>
+</ul>
+<pre>import numpy as np
+from scipy.optimize import linear_sum_assignment
+
+C = np.array([[5, 7, 9, 1],
+              [5, 3, 1, 9],
+              [1, 7, 2, 6],
+              [1, 9, 4, 2]])
+rows, cols = linear_sum_assignment(C)     # cols[i] 是分给 robot i 的 task
+print(cols, C[rows, cols].sum())          # [3 1 2 0] 7</pre>
+<ul>
+<li><strong>它的局限</strong>：一个 robot 只能拿一个 task。如果一个 robot 要连着做好几个 task，顺序也要优化，问题就变成了下一节的 TSP 和 VRP。</li>
+</ul>
+<div class="note say"><p><span class="q">面试怎么说</span>“I’d model task allocation as an assignment problem: build a cost matrix where entry (i, j) is the travel time for robot i to reach task j, then solve it with the Hungarian algorithm, which gives the optimal one-to-one matching in O(n³). Greedy nearest-robot is faster but can be arbitrarily worse, because taking the cheapest pair first may leave another robot with a very expensive task.”</p></div>
+</section>
+
+<section id="tsp">
+<h2><span class="n">13</span>TSP：traveling salesman problem</h2>
+<h3>问题</h3>
+<p>给 n 个点和两两之间的距离。从一个点出发，每个点恰好去一次，最后回到出发点，要让总路程最短。这样的一圈叫 <strong>tour</strong>。</p>
+<p>在仓库里它对应：一个 robot 这一趟要去 n 个货位取货，按什么顺序走最省。</p>
+<h3>为什么难</h3>
+<p>不同的 tour 有 (n − 1)! / 2 种。10 个点是 18 万种，20 个点是 6 × 10<sup>16</sup> 种。TSP 是 NP-hard 的，目前没有已知的多项式时间算法能保证找到 optimal。</p>
+<p>和上一节对比很有意思：assignment problem 有 n! 种可能，却能在 O(n³) 内精确解出来。TSP 看上去差不多，却是 NP-hard。可能性的多少并不决定问题的难度。</p>
+<h3>两类办法</h3>
+<div class="tw"><table>
+<tr><th>办法</th><th>做法</th><th>保证</th><th>代价</th></tr>
+<tr><td>精确：Held-Karp</td><td>dynamic programming。记住“已经去过哪些点、现在在哪个点”时的最短路程</td><td>optimal</td><td>O(n² · 2ⁿ)，只能做到 20 个点左右</td></tr>
+<tr><td>精确：ILP solver</td><td>写成整数规划交给 solver，见下一节</td><td>optimal</td><td>能做到上百个点，但时间不稳定</td></tr>
+<tr><td>heuristic：nearest neighbor</td><td>每次去最近的、还没去过的点</td><td>没有保证，通常比 optimal 长两成左右</td><td>O(n²)</td></tr>
+<tr><td>heuristic：2-opt</td><td>从一个现成的 tour 出发，反复做小改动，能变短就接受</td><td>只保证 local optimum</td><td>每一轮 O(n²)</td></tr>
+</table></div>
+<h3>2-opt</h3>
+<p>拆掉 tour 里的两条 edge，把中间那一段倒过来再接上。如果总长度变短了，就保留这次改动。一直做到没有任何改动能让 tour 变短为止。</p>
+<p>直观上，它在做的事情是<strong>解开交叉</strong>：平面上两条 edge 如果交叉，把它们换成不交叉的接法一定更短。</p>
+<p>这种“从一个解出发，不断做小改动”的办法叫 <strong>local search</strong>。它停下来时的解叫 local optimum：附近没有更好的了，但不一定是全局最好的。</p>
+<div class="lab" id="lab-tsp"></div>
+<p class="try">滑块在 0 的位置是 nearest neighbor 的结果，往右每一格是一次 2-opt 交换。<b>点集 1</b> 上 2-opt 正好到达 optimal，<b>点集 2</b> 上它停在了一个 local optimum。勾上“叠加显示 optimal tour”可以对比。</p>
+<div class="note say"><p><span class="q">面试怎么说</span>“If one robot has to visit several locations in a trip, ordering them is a TSP, which is NP-hard. For a handful of stops I can solve it exactly with dynamic programming. At larger sizes I’d build a tour with nearest neighbor and improve it with 2-opt local search, which is fast and usually within a few percent of optimal.”</p></div>
+</section>
+
+<section id="lp">
+<h2><span class="n">14</span>LP、ILP 与 VRP</h2>
+<p>OR 里处理问题的标准流程是：先把问题<strong>写成数学模型</strong>，再交给通用的 solver。模型有三个部分：</p>
+<ul>
+<li><strong>decision variable</strong>：要决定的量。</li>
+<li><strong>objective</strong>：要最小化或最大化的式子。</li>
+<li><strong>constraint</strong>：必须满足的条件。</li>
+</ul>
+<h3>LP：linear programming</h3>
+<p>objective 和 constraint 都是变量的线性式子，变量可以取小数。</p>
+<div class="eq">maximize   3x + 2y
+subject to x + y  ≤ 4
+           x + 3y ≤ 6
+           x ≥ 0,  y ≥ 0</div>
+<p>满足所有 constraint 的点构成一个多边形，这里的四个顶点是 (0,0)、(4,0)、(3,1)、(0,2)，对应的 objective 是 0、12、11、4。最优解是 (4,0)，objective 等于 12。LP 的最优解总能在顶点上取到，这是 simplex method 的出发点。LP 可以高效地求解，几十万个变量也没问题。</p>
+<h3>ILP：integer linear programming</h3>
+<p>在 LP 的基础上，要求一部分变量必须是整数，最常见的是只能取 0 或 1。“选不选”“分不分给它”这类决定都要用 0-1 变量。加上整数要求之后，问题一般就变成 NP-hard 了。</p>
+<p>solver 的基本办法叫 <strong>branch and bound</strong>：先去掉整数要求解一次 LP，得到一个 bound。如果某个变量解出来是小数，比如 0.4，就分成“它等于 0”和“它等于 1”两支，分别再解。某一支的 bound 已经比手上最好的整数解还差，这一支就整个剪掉。</p>
+<h3>把 assignment problem 写成 ILP</h3>
+<div class="eq">变量      x_ij ∈ {0, 1}          # robot i 是否做 task j
+minimize  Σ c_ij · x_ij
+subject to 对每个 robot i： Σ_j x_ij = 1   # 每个 robot 恰好一个 task
+           对每个 task j：  Σ_i x_ij = 1   # 每个 task 恰好一个 robot</div>
+<p>assignment problem 是个幸运的例外：即使去掉整数要求，解出来的 x 也自动是 0 或 1。所以它其实是一个 LP，这也是它能被高效解出来的原因。</p>
+<h3>VRP：vehicle routing problem</h3>
+<p>TSP 是一辆车跑一圈。VRP 是<strong>多辆车</strong>从仓库出发，每个客户恰好被一辆车服务一次，同时要决定哪辆车去哪些客户、各自按什么顺序。常见的附加条件有车的容量和客户的时间窗。它包含了 TSP，所以也是 NP-hard 的。</p>
+<p>一个 robot 一趟能带好几个 case、每个 case 有 deadline 的时候，问题就是一个 VRP。实际做法是用 heuristic 加 local search，或者直接用现成的 solver，比如 Google 的 OR-Tools。</p>
+<h3>遇到一个新问题时怎么选</h3>
+<div class="tw"><table>
+<tr><th>问题</th><th>模型</th><th>常用做法</th></tr>
+<tr><td>一个 robot 一个 task，一对一</td><td>assignment problem</td><td>Hungarian algorithm，精确，O(n³)</td></tr>
+<tr><td>一个 robot 要去多个点，定顺序</td><td>TSP</td><td>点少时精确解；点多时 nearest neighbor 加 2-opt</td></tr>
+<tr><td>多个 robot，各自要去多个点</td><td>VRP</td><td>heuristic 加 local search，或者 OR-Tools</td></tr>
+<tr><td>有各种奇怪的约束，规模不大，不要求实时</td><td>ILP</td><td>交给 solver，离线求解</td></tr>
+<tr><td>要求实时，规模很大</td><td></td><td>greedy 或者专门的 heuristic，用精确解在小规模上做对照</td></tr>
+</table></div>
+</section>
+
+<section id="inventory">
+<h2><span class="n">15</span>Inventory management 基础</h2>
+<p>inventory management 回答三个问题：每种货备多少，什么时候补，放在哪。</p>
+<h3>备多少：EOQ</h3>
+<p>EOQ 是 economic order quantity 的缩写：每次订多少最划算。两种成本在互相拉扯：</p>
+<ul>
+<li><strong>ordering cost</strong>：每下一次订单的固定成本，记作 S。一次订得多，订的次数就少，这项成本低。</li>
+<li><strong>holding cost</strong>：一件货存一年的成本，记作 H。一次订得多，平均库存就高，这项成本高。</li>
+</ul>
+<div class="eq">年需求量 D，每次订 Q 件：
+ordering cost = (D / Q) · S          # 一年订 D/Q 次
+holding cost  = (Q / 2) · H          # 平均库存是 Q/2
+两项之和最小时：  Q* = √(2·D·S / H)</div>
+<p>例子：一年卖 5000 件，每次下单的成本是 100，一件货存一年的成本是 4。那么 Q* = √(2 × 5000 × 100 / 4) = 500 件。一年订 10 次，ordering cost 是 1000，holding cost 也是 1000。在最优点上这两项正好相等。</p>
+<h3>什么时候补：reorder point 和 safety stock</h3>
+<p>从下单到货送来需要一段时间，叫 lead time。库存降到某个水平就要下单，这个水平叫 <strong>reorder point</strong>。因为需求有波动，还要多备一点防止断货，多备的部分叫 <strong>safety stock</strong>。</p>
+<div class="eq">reorder point = 平均日需求 × lead time + safety stock
+safety stock  = z · σ · √(lead time)    # σ 是日需求的标准差，z 由 service level 决定</div>
+<p>例子：平均每天卖 20 件，标准差是 5，lead time 是 5 天，要求 95% 的 service level，对应 z = 1.645。safety stock = 1.645 × 5 × √5 ≈ 18 件。reorder point = 20 × 5 + 18 = 118 件。</p>
+<h3>哪些货更重要：ABC analysis</h3>
+<p>按出货量把货分成三类。A 类大约占品种数的 20%，却贡献 80% 左右的出货量。B 类居中。C 类品种很多，出货很少。管理的精力和最好的位置优先给 A 类。</p>
+<h3>放在哪：slotting</h3>
+<p>slotting 是决定每种货放在哪个货位。基本原则是出货快的放在离出口近的地方，让总的搬运距离最短。把货分配到货位，本身就是一个 assignment problem。</p>
+<div class="note"><p><span class="q">和 robot 调度的关系</span>货放在哪，直接决定了 robot 要跑多远、哪些通道会堵。如果把所有出货快的货都放在同一条通道里，距离上最优，但 robot 会在那里排队。所以存储位置、task allocation 和 path planning 是连在一起的。Symbotic 的公开 blog 里也提到，他们的软件要同时决定每个 case 存在哪、由哪个 robot 去取、走哪条路。</p></div>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<div class="part"><div class="tag">REVIEW</div><h2>复习</h2><p>先自己答，再展开看答案。</p></div>
+
+<section id="qa">
+<h2><span class="n">16</span>面试题与答案</h2>
+<div class="qa-tools"><button class="pre" type="button" id="qa-open">全部展开</button><button class="pre" type="button" id="qa-close">全部收起</button></div>
+
+<h3>Heuristic search</h3>
+<details class="qa"><summary>BFS、DFS、Dijkstra、A* 的区别是什么？</summary><div class="a"><p>它们是同一个骨架，区别只在每次从 OPEN 里取哪个 node。BFS 取最早放进去的，用 queue。DFS 取最晚放进去的，用 stack。Dijkstra 取 g 最小的。A* 取 g + h 最小的。后两个都用 priority queue。</p></div></details>
+<details class="qa"><summary>BFS 什么时候找到的不是最短路？</summary><div class="a"><p>edge 的 cost 不全相同的时候。BFS 保证的是步数最少，不是 cost 最小。cost 不一样时要用 Dijkstra 或 A*。</p></div></details>
+<details class="qa"><summary>DFS 和 BFS 各适合做什么？</summary><div class="a"><p>BFS 适合 unit-cost 的最短路，以及算每个 node 到某一点的距离。DFS 省内存，适合判断能不能到达、找环、把所有可能性穷举一遍。DFS 找到的 path 不保证短。</p></div></details>
+<details class="qa"><summary>Dijkstra 为什么要求 edge cost 不是负数？</summary><div class="a"><p>它的正确性依赖一个事实：一个 node 被 expand 时，g 已经是最终值，因为其他的路都要经过 g 更大的 node，再往后只会更贵。有负的 edge 时，“再往后只会更贵”不成立，已经 expand 的 node 的 g 之后可能还会变小。</p></div></details>
+<details class="qa"><summary>A* 和 Dijkstra 差在哪？A* 什么时候退化成 Dijkstra？</summary><div class="a"><p>只差排序的依据：Dijkstra 按 g，A* 按 f = g + h。h 是到 goal 剩余 cost 的估计。h 恒等于 0 时，A* 就是 Dijkstra。</p></div></details>
+<details class="qa"><summary>A* 为什么是 optimal 的？需要什么条件？</summary><div class="a"><p>需要 h 是 admissible 的，也就是从不高估。这样 f 是经过这个 node 的 path 的 cost 的 lower bound。A* 按 f 从小到大处理，goal 被 pop 出来时，其他 node 的 lower bound 都不比它小，所以不会有更便宜的 path。</p></div></details>
+<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 h 从不高估，保证 optimal。consistent 是 h(n) ≤ cost(n, n′) + h(n′)，保证每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。</p></div></details>
+<details class="qa"><summary>grid 上有很多障碍物时，怎么得到比 Manhattan distance 更好的 heuristic？</summary><div class="a"><p>从 goal 反向跑一次 BFS，cost 不同时跑 Dijkstra，得到每个 cell 到 goal 的真实最短距离，存成表。它考虑了障碍物，仍然 admissible 而且 consistent。地图固定时每个 goal 只算一次。</p></div></details>
+<details class="qa"><summary>weighted A* 是什么？什么时候用？</summary><div class="a"><p>f = g + w·h，w 大于 1。它更相信 heuristic，expand 的 node 更少，但 path 的 cost 最多可能是 optimal 的 w 倍。时间预算很紧、能接受一点次优的时候用。</p></div></details>
+
+<h3>Multi-agent 与 motion planning</h3>
+<details class="qa"><summary>单 agent 的搜索算法在 MAPF 里分别用在哪？</summary><div class="a"><p>BFS 用来预计算每个 goal 的 true-distance heuristic。A* 加上时间维变成 space-time A*，给单个 agent 规划。best-first search 用在 CBS 的 high level。DFS 用来在 wait-for graph 上找环，检测 deadlock。</p></div></details>
+<details class="qa"><summary>为什么不能把所有 agent 合成一个大 state 来跑 A*？</summary><div class="a"><p>state 的数量是 cell 数的 k 次方，每个 state 的后继有 5 的 k 次方个，都随 agent 数指数增长。所以要先各自规划，再处理 conflict。</p></div></details>
+<details class="qa"><summary>什么是 configuration space？</summary><div class="a"><p>能完整描述 robot 姿态的一组数叫 configuration，所有 configuration 组成的空间就是 C-space。robot 在里面是一个点，障碍物变成 C-obstacle，motion planning 就是在 free space 里找一条曲线。</p></div></details>
+<details class="qa"><summary>什么时候用 A*，什么时候用 RRT？</summary><div class="a"><p>维度低、能切成 grid 的时候用 A*，比如平面上的移动 robot。它在给定分辨率下 optimal。维度高的时候 grid 的 cell 数指数爆炸，用 sampling-based 的方法，比如机械臂用 RRT。</p></div></details>
+<details class="qa"><summary>讲一下 RRT 的步骤和它的性质。</summary><div class="a"><p>随机采一个点；找 tree 上最近的 node；从它朝采样点走一小步；这一段不撞就把新点加进 tree；新点离 goal 够近就结束。它是 probabilistically complete 的，不 optimal，结果是随机的，在窄通道里很慢。</p></div></details>
+<details class="qa"><summary>RRT* 比 RRT 多了什么？</summary><div class="a"><p>两步。新点在附近的 node 里选 cost 最小的当 parent，而不是直接接最近的。新点加进来之后做 rewire：附近的 node 如果改成经过新点更便宜，就改它们的 parent。这样 path 会随采样增多趋向 optimal。</p></div></details>
+<details class="qa"><summary>PRM 和 RRT 的区别？</summary><div class="a"><p>PRM 先在整个空间里建一张 roadmap，之后每次查询都在这张图上跑 A*，适合环境固定、要查询很多次的情况。RRT 每次从 start 长一棵 tree，只回答这一次查询。</p></div></details>
+<details class="qa"><summary>path 和 trajectory 有什么区别？</summary><div class="a"><p>path 只有几何：经过哪些点。trajectory 还有时间：每个时刻在哪、速度多少。从 path 到 trajectory 要做 smoothing 和 time parameterization，并且满足速度、加速度的限制。</p></div></details>
+
+<h3>Task allocation 与 OR</h3>
+<details class="qa"><summary>怎么给一群 robot 分配 task？</summary><div class="a"><p>建一个 cost matrix，每个格子是这个 robot 做这个 task 的代价，一般是行驶时间，可以加上 deadline 和拥堵的修正。一对一分配用 Hungarian algorithm，得到 optimal 解，复杂度 O(n³)。greedy 更快，但不保证 optimal。</p></div></details>
+<details class="qa"><summary>greedy 分配为什么不是 optimal？举个例子。</summary><div class="a"><p>两个 robot、两个 task，cost 是 R1 做 T1 为 1、做 T2 为 2，R2 做 T1 为 2、做 T2 为 10。greedy 先选 R1 做 T1，R2 只能做 T2，总共 11。optimal 是 R1 做 T2、R2 做 T1，总共 4。</p></div></details>
+<details class="qa"><summary>Hungarian algorithm 的核心思想是什么？</summary><div class="a"><p>一行或一列同时减去一个数，不改变哪种分配最好。所以不断地减，让 matrix 在保持非负的前提下出现足够多的 0。能选出 n 个互不同行同列的 0 时，这组分配的 cost 是 0，就是 optimal。</p></div></details>
+<details class="qa"><summary>TSP 是什么？怎么解？</summary><div class="a"><p>每个点去一次再回到起点，要总路程最短。它是 NP-hard 的。点很少时用 dynamic programming 精确解，复杂度 O(n² · 2ⁿ)。点多时用 heuristic：先用 nearest neighbor 造一个 tour，再用 2-opt 做 local search 改进。</p></div></details>
+<details class="qa"><summary>2-opt 是怎么工作的？它保证什么？</summary><div class="a"><p>拆掉 tour 里的两条 edge，把中间那段倒过来接上，变短就保留，一直做到没有能改进的交换为止。它只保证 local optimum，不保证全局 optimal。</p></div></details>
+<details class="qa"><summary>assignment problem 和 TSP 都有阶乘那么多种可能，为什么一个容易一个难？</summary><div class="a"><p>可能性的数量不决定难度。assignment problem 有很好的结构：写成 LP 之后解自动是整数，所以能在多项式时间内精确解出来。TSP 没有这样的结构，是 NP-hard 的。</p></div></details>
+<details class="qa"><summary>LP 和 ILP 的区别？</summary><div class="a"><p>LP 的变量可以取小数，能高效求解。ILP 要求一部分变量是整数，一般是 NP-hard 的，solver 用 branch and bound 来解。“选不选”这类决定要用 0-1 变量，所以调度问题大多是 ILP。</p></div></details>
+<details class="qa"><summary>EOQ 在权衡什么？</summary><div class="a"><p>ordering cost 和 holding cost。一次订得多，下单次数少，但平均库存高。EOQ 是让两项之和最小的订货量，公式是 √(2DS / H)。在这个点上两项成本正好相等。</p></div></details>
+<details class="qa"><summary>存储位置和 robot 调度有什么关系？</summary><div class="a"><p>货放在哪决定了 robot 要跑多远、哪些通道会堵。出货快的货放得近可以缩短距离，但全挤在一起会造成拥堵。所以 slotting、task allocation 和 path planning 要一起考虑。</p></div></details>
+</section>
+
+<section id="cheatsheet">
+<h2><span class="n">17</span>速查表与自测</h2>
+<div class="tw"><table>
+<tr><th>算法</th><th>解决什么</th><th>一句话</th><th>optimal</th><th>复杂度</th></tr>
+<tr><td>BFS</td><td>unit-cost 最短路</td><td>queue，一圈一圈往外</td><td>步数上是</td><td>O(V + E)</td></tr>
+<tr><td>DFS</td><td>可达性、找环</td><td>stack，一条路走到底</td><td>否</td><td>O(V + E)</td></tr>
+<tr><td>Dijkstra</td><td>带 cost 的最短路</td><td>每次 expand g 最小的</td><td>是，cost 非负</td><td>O((V + E) log V)</td></tr>
+<tr><td>A*</td><td>带 cost 的最短路，更快</td><td>每次 expand g + h 最小的</td><td>是，h admissible</td><td>取决于 h</td></tr>
+<tr><td>weighted A*</td><td>要更快，能接受次优</td><td>f = g + w·h</td><td>不超过 w 倍</td><td>比 A* 少</td></tr>
+<tr><td>PRM</td><td>高维、多次查询</td><td>随机采样建 roadmap，再跑 A*</td><td>否</td><td></td></tr>
+<tr><td>RRT</td><td>高维、单次查询</td><td>从 start 长一棵随机的 tree</td><td>否</td><td></td></tr>
+<tr><td>RRT*</td><td>同上，要质量</td><td>RRT 加上选 parent 和 rewire</td><td>渐近是</td><td></td></tr>
+<tr><td>Hungarian algorithm</td><td>一对一分配</td><td>行列约减，在 0 上找完整的分配</td><td>是</td><td>O(n³)</td></tr>
+<tr><td>Held-Karp</td><td>TSP 精确解</td><td>dynamic programming</td><td>是</td><td>O(n² · 2ⁿ)</td></tr>
+<tr><td>nearest neighbor</td><td>TSP 快速解</td><td>每次去最近的</td><td>否</td><td>O(n²)</td></tr>
+<tr><td>2-opt</td><td>改进一个 tour</td><td>解开交叉的 edge</td><td>local optimum</td><td>每轮 O(n²)</td></tr>
+</table></div>
+<h3>自测清单</h3>
+<ul class="check" id="selfcheck">
+<li><input type="checkbox" id="k1"><label for="k1">在 02 节的默写框里默写搜索的骨架，说出四个算法分别从 OPEN 里取哪个 node。</label></li>
+<li><input type="checkbox" id="k2"><label for="k2">在纸上手推 04 节那张四个 node 的图，写出每一步的 OPEN。</label></li>
+<li><input type="checkbox" id="k3"><label for="k3">默写 A* 的 pseudo-code，指出它和 Dijkstra 只差哪一行。</label></li>
+<li><input type="checkbox" id="k4"><label for="k4">说清 admissible 和 consistent 各保证什么。</label></li>
+<li><input type="checkbox" id="k5"><label for="k5">举一个 BFS 不是 optimal 的例子，再举一个 Manhattan distance 让 A* 走冤枉路的例子。</label></li>
+<li><input type="checkbox" id="k6"><label for="k6">说出 BFS、DFS、A*、best-first search 各自在 MAPF 里的用途。</label></li>
+<li><input type="checkbox" id="k7"><label for="k7">讲出 RRT 的五步，以及它的四个性质。</label></li>
+<li><input type="checkbox" id="k8"><label for="k8">对一个 3×3 的 cost matrix 手做一次行约减和列约减。</label></li>
+<li><input type="checkbox" id="k9"><label for="k9">解释 2-opt 的一次交换做了什么，为什么它可能停在 local optimum。</label></li>
+<li><input type="checkbox" id="k10"><label for="k10">用 D = 5000、S = 100、H = 4 算出 EOQ。</label></li>
+</ul>
+</section>
+
+<section id="refs">
+<h2><span class="n">18</span>References</h2>
+<ul>
+<li>Cormen, Leiserson, Rivest, Stein, <em>Introduction to Algorithms</em>。BFS、DFS、Dijkstra 的标准教材。</li>
+<li>Hart, Nilsson, Raphael, <em>A Formal Basis for the Heuristic Determination of Minimum Cost Paths</em>, 1968。A* 的原始论文。</li>
+<li>LaValle, <em>Planning Algorithms</em>, 2006，可在 <a href="https://lavalle.pl/planning/">lavalle.pl/planning</a> 免费阅读。configuration space、PRM、RRT。</li>
+<li>Karaman, Frazzoli, <em>Sampling-based Algorithms for Optimal Motion Planning</em>, IJRR 2011。RRT*。</li>
+<li>Kuhn, <em>The Hungarian Method for the Assignment Problem</em>, 1955。</li>
+<li>Applegate, Bixby, Chvátal, Cook, <em>The Traveling Salesman Problem: A Computational Study</em>, 2006。</li>
+<li>本仓库的另外两页：<a href="mapf-fundamentals.html">MAPF 基础</a>，<a href="transforms-and-manipulation.html">Rigid Body Transforms 与 Manipulation</a>。</li>
+</ul>
+</section>
+</main>
+</div>
+
+<script id="core">
+// 页面上所有实验台用的都是这里的真实算法，不是写死的动画。
+const ALG = (() => {
+  'use strict';
+
+  // ---------- 工具 ----------
+  function Heap(less){ this.a = []; this.less = less; }
+  Heap.prototype.push = function(x){
+    const a = this.a; a.push(x); let i = a.length-1;
+    while (i > 0){ const p = (i-1)>>1; if (!this.less(a[i], a[p])) break; [a[i],a[p]] = [a[p],a[i]]; i = p; }
+  };
+  Heap.prototype.pop = function(){
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length){
+      a[0] = last; let i = 0;
+      for (;;){
+        const l = 2*i+1, r = l+1; let m = i;
+        if (l < a.length && this.less(a[l], a[m])) m = l;
+        if (r < a.length && this.less(a[r], a[m])) m = r;
+        if (m === i) break; [a[i],a[m]] = [a[m],a[i]]; i = m;
+      }
+    }
+    return top;
+  };
+  function rng(seed){                               // mulberry32：固定 seed，结果可以重现
+    return function(){
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------- grid ----------
+  function parseGrid(rows){
+    const H = rows.length, W = rows[0].length, N = H*W, free = [], nbrs = [], cost = [];
+    for (let v=0; v<N; v++){
+      const ch = rows[Math.floor(v/W)][v%W];
+      free.push(ch !== '#'); cost.push(ch === '~' ? 5 : 1);     // '~' 是泥地：走进去的 cost 是 5
+    }
+    for (let v=0; v<N; v++){
+      nbrs.push([]);
+      if (!free[v]) continue;
+      const r = Math.floor(v/W), c = v%W;
+      for (const [dr,dc] of [[-1,0],[0,1],[1,0],[0,-1]]){
+        const rr = r+dr, cc = c+dc;
+        if (rr>=0 && rr<H && cc>=0 && cc<W && free[rr*W+cc]) nbrs[v].push(rr*W+cc);
+      }
+    }
+    return {H, W, N, free, nbrs, cost, id: (r,c) => r*W+c, rc: v => [Math.floor(v/W), v%W]};
+  }
+
+  // ---------- BFS、DFS、Dijkstra、A*：同一个骨架 ----------
+  // 区别只在“从 OPEN 里取哪一个”：
+  //   bfs      最早放进去的（queue）          dfs    最晚放进去的（stack）
+  //   dijkstra g 最小的                       astar  g + w·h 最小的（w > 1 是 weighted A*）
+  function gridSearch(G, start, goal, mode, opt){
+    opt = opt || {};
+    const h = opt.h || new Array(G.N).fill(0), w = opt.w || 1, unit = mode === 'bfs' || mode === 'dfs';
+    const g = new Array(G.N).fill(Infinity), parent = new Array(G.N).fill(-1), closed = new Array(G.N).fill(false);
+    const fOf = (v, gv) => mode === 'astar' ? gv + w*h[v] : gv;
+    const less = mode === 'bfs' ? (a,b) => a.seq < b.seq
+               : mode === 'dfs' ? (a,b) => a.seq > b.seq
+               : (a,b) => a.f !== b.f ? a.f < b.f : a.g !== b.g ? a.g > b.g : a.seq < b.seq;
+    const open = new Heap(less), steps = [];        // steps[i]：第 i 次 expand 了谁，往 OPEN 里放了谁
+    let seq = 0, found = false;
+    g[start] = 0;
+    open.push({v: start, p: -1, g: 0, f: fOf(start, 0), seq: seq++});
+    while (open.a.length){
+      const n = open.pop();
+      if (closed[n.v]) continue;                    // 同一个 node 可能被放进 OPEN 好几次，只处理第一次
+      closed[n.v] = true; parent[n.v] = n.p; g[n.v] = n.g;
+      const st = {v: n.v, g: n.g, pushed: []};
+      steps.push(st);
+      if (n.v === goal){ found = true; break; }
+      const nb = mode === 'dfs' ? G.nbrs[n.v].slice().reverse() : G.nbrs[n.v];
+      for (const m of nb){
+        if (closed[m]) continue;
+        const ng = n.g + (unit ? 1 : G.cost[m]);    // BFS 和 DFS 不看 cost，每一步都算 1
+        const ok = mode === 'dfs' ? true : mode === 'bfs' ? g[m] === Infinity : ng < g[m];
+        if (!ok) continue;                          // 只有第一次发现，或者找到更便宜的走法，才放进 OPEN
+        if (mode !== 'dfs') g[m] = ng;
+        open.push({v: m, p: n.v, g: ng, f: fOf(m, ng), seq: seq++});
+        st.pushed.push([m, ng]);
+      }
+    }
+    const res = {steps, found, expanded: steps.length, path: null, cost: Infinity, len: Infinity};
+    if (found){
+      const path = [];
+      for (let v = goal; v !== -1; v = parent[v]) path.push(v);
+      res.path = path.reverse();
+      res.len = path.length - 1;
+      res.cost = path.slice(1).reduce((s, v) => s + G.cost[v], 0);   // 一律按真实 cost 计
+    }
+    return res;
+  }
+  function manhattan(G, goal){
+    const [gr, gc] = G.rc(goal);
+    return G.free.map((f, v) => { const [r, c] = G.rc(v); return Math.abs(r-gr) + Math.abs(c-gc); });
+  }
+  function trueDist(G, goal){                       // true-distance heuristic：从 goal 反向跑一次 Dijkstra
+    const d = new Array(G.N).fill(Infinity), done = new Array(G.N).fill(false);
+    const open = new Heap((a,b) => a.d < b.d);
+    d[goal] = 0; open.push({v: goal, d: 0});
+    while (open.a.length){
+      const n = open.pop();
+      if (done[n.v]) continue;
+      done[n.v] = true;
+      for (const u of G.nbrs[n.v]){                 // 从 u 走进 n.v 要花 cost[n.v]
+        const nd = n.d + G.cost[n.v];
+        if (nd < d[u]){ d[u] = nd; open.push({v: u, d: nd}); }
+      }
+    }
+    return d;
+  }
+
+  // ---------- assignment problem ----------
+  function greedyAssign(C){                         // 每次挑剩下的里面 cost 最小的一对
+    const n = C.length, usedR = new Array(n).fill(false), usedC = new Array(n).fill(false), assign = new Array(n).fill(-1), order = [];
+    for (let k=0; k<n; k++){
+      let br = -1, bc = -1;
+      for (let r=0; r<n; r++) if (!usedR[r]) for (let c=0; c<n; c++) if (!usedC[c] && (br < 0 || C[r][c] < C[br][bc])){ br = r; bc = c; }
+      usedR[br] = usedC[bc] = true; assign[br] = bc; order.push([br, bc]);
+    }
+    return {assign, order, cost: assign.reduce((s, c, r) => s + C[r][c], 0)};
+  }
+  function bruteAssign(C){                          // 枚举所有排列，只用来验证
+    const n = C.length; let best = Infinity, bestP = null;
+    (function rec(r, used, p, s){
+      if (s >= best) return;
+      if (r === n){ best = s; bestP = p.slice(); return; }
+      for (let c=0; c<n; c++) if (!used[c]){ used[c] = true; p.push(c); rec(r+1, used, p, s + C[r][c]); p.pop(); used[c] = false; }
+    })(0, new Array(n).fill(false), [], 0);
+    return {assign: bestP, cost: best};
+  }
+  function zeroMatching(M){                         // 只用值为 0 的格子，做 row 和 column 的最大匹配
+    const n = M.length, matchR = new Array(n).fill(-1), matchC = new Array(n).fill(-1);
+    function tryRow(r, seen){
+      for (let c=0; c<n; c++){
+        if (M[r][c] !== 0 || seen[c]) continue;
+        seen[c] = true;
+        if (matchC[c] === -1 || tryRow(matchC[c], seen)){ matchR[r] = c; matchC[c] = r; return true; }
+      }
+      return false;
+    }
+    let size = 0;
+    for (let r=0; r<n; r++) if (tryRow(r, new Array(n).fill(false))) size++;
+    return {matchR, matchC, size};
+  }
+  function minLineCover(M, m){                      // König 定理：用最少的线盖住所有 0，线数等于最大匹配数
+    const n = M.length, zr = new Array(n).fill(false), zc = new Array(n).fill(false), stack = [];
+    for (let r=0; r<n; r++) if (m.matchR[r] === -1){ zr[r] = true; stack.push(r); }
+    while (stack.length){
+      const r = stack.pop();
+      for (let c=0; c<n; c++){
+        if (M[r][c] !== 0 || c === m.matchR[r] || zc[c]) continue;
+        zc[c] = true;
+        const r2 = m.matchC[c];
+        if (r2 !== -1 && !zr[r2]){ zr[r2] = true; stack.push(r2); }
+      }
+    }
+    return {rows: zr.map(x => !x), cols: zc};
+  }
+  function hungarian(C){
+    const n = C.length, M = C.map(r => r.slice()), steps = [], snap = () => M.map(r => r.slice());
+    steps.push({kind: 'start', M: snap()});
+    const rowMin = M.map(r => Math.min(...r));
+    for (let r=0; r<n; r++) for (let c=0; c<n; c++) M[r][c] -= rowMin[r];
+    steps.push({kind: 'row', M: snap(), mins: rowMin});
+    const colMin = []; for (let c=0; c<n; c++) colMin.push(Math.min(...M.map(r => r[c])));
+    for (let r=0; r<n; r++) for (let c=0; c<n; c++) M[r][c] -= colMin[c];
+    steps.push({kind: 'col', M: snap(), mins: colMin});
+    for (;;){
+      const m = zeroMatching(M);
+      if (m.size === n){
+        const cost = m.matchR.reduce((s, c, r) => s + C[r][c], 0);
+        steps.push({kind: 'done', M: snap(), matchR: m.matchR, cost});
+        return {steps, assign: m.matchR, cost};
+      }
+      const cov = minLineCover(M, m);
+      let delta = Infinity;
+      for (let r=0; r<n; r++) for (let c=0; c<n; c++) if (!cov.rows[r] && !cov.cols[c]) delta = Math.min(delta, M[r][c]);
+      steps.push({kind: 'cover', M: snap(), rows: cov.rows, cols: cov.cols, lines: m.size, delta});
+      for (let r=0; r<n; r++) for (let c=0; c<n; c++){
+        if (!cov.rows[r] && !cov.cols[c]) M[r][c] -= delta;          // 没被盖住的：减 delta
+        else if (cov.rows[r] && cov.cols[c]) M[r][c] += delta;       // 被两条线同时盖住的：加 delta
+      }
+      steps.push({kind: 'adjust', M: snap(), rows: cov.rows, cols: cov.cols, delta});
+    }
+  }
+
+  // ---------- TSP ----------
+  const dist = (a, b) => Math.hypot(a[0]-b[0], a[1]-b[1]);
+  function tourLen(P, tour){ let s = 0; for (let i=0; i<tour.length; i++) s += dist(P[tour[i]], P[tour[(i+1) % tour.length]]); return s; }
+  function nearestNeighbor(P){                      // 从 0 出发，每次去最近的、还没去过的点
+    const n = P.length, used = new Array(n).fill(false), tour = [0]; used[0] = true;
+    for (let k=1; k<n; k++){
+      const cur = tour[tour.length-1]; let best = -1;
+      for (let j=0; j<n; j++) if (!used[j] && (best < 0 || dist(P[cur], P[j]) < dist(P[cur], P[best]))) best = j;
+      used[best] = true; tour.push(best);
+    }
+    return tour;
+  }
+  function twoOpt(P, tour0){                        // 反复找两条交叉的 edge，把中间那一段倒过来
+    let tour = tour0.slice(); const n = tour.length, swaps = [];
+    let improved = true;
+    while (improved){
+      improved = false;
+      for (let i=0; i<n-1 && !improved; i++) for (let j=i+2; j<n && !improved; j++){
+        if (i === 0 && j === n-1) continue;         // 这两条 edge 相邻，换了等于没换
+        const a = P[tour[i]], b = P[tour[i+1]], c = P[tour[j]], d = P[tour[(j+1) % n]];
+        const gain = dist(a,b) + dist(c,d) - dist(a,c) - dist(b,d);
+        if (gain > 1e-9){
+          const before = tour.slice();
+          tour = tour.slice(0, i+1).concat(tour.slice(i+1, j+1).reverse(), tour.slice(j+1));
+          swaps.push({i, j, before, after: tour.slice(), gain, len: tourLen(P, tour)});
+          improved = true;
+        }
+      }
+    }
+    return {tour, swaps};
+  }
+  function heldKarp(P){                             // 精确解的 dynamic programming，O(n² · 2ⁿ)，只能用在很小的 n 上
+    const n = P.length, FULL = 1 << (n-1), dp = [], par = [];
+    for (let s=0; s<FULL; s++){ dp.push(new Array(n-1).fill(Infinity)); par.push(new Array(n-1).fill(-1)); }
+    for (let k=0; k<n-1; k++) dp[1<<k][k] = dist(P[0], P[k+1]);
+    for (let s=1; s<FULL; s++) for (let k=0; k<n-1; k++){
+      if (!(s & (1<<k)) || dp[s][k] === Infinity) continue;
+      for (let m=0; m<n-1; m++){
+        if (s & (1<<m)) continue;
+        const ns = s | (1<<m), v = dp[s][k] + dist(P[k+1], P[m+1]);
+        if (v < dp[ns][m]){ dp[ns][m] = v; par[ns][m] = k; }
+      }
+    }
+    let best = Infinity, last = -1;
+    for (let k=0; k<n-1; k++){ const v = dp[FULL-1][k] + dist(P[k+1], P[0]); if (v < best){ best = v; last = k; } }
+    const tour = []; let s = FULL-1;
+    while (last !== -1){ tour.push(last+1); const p = par[s][last]; s ^= (1<<last); last = p; }
+    tour.push(0);
+    return {tour: tour.reverse(), len: best};
+  }
+
+  // ---------- RRT ----------
+  function pointFree(Wd, x, y){
+    if (x < 0 || y < 0 || x > Wd.W || y > Wd.H) return false;
+    for (const o of Wd.obs) if (x >= o.x-3 && x <= o.x+o.w+3 && y >= o.y-3 && y <= o.y+o.h+3) return false;
+    return true;
+  }
+  function segFree(Wd, a, b){                       // collision check：沿线段每隔几个像素采一个点
+    const d = dist(a, b), k = Math.max(1, Math.ceil(d / 3));
+    for (let i=0; i<=k; i++){ const t = i/k; if (!pointFree(Wd, a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t)) return false; }
+    return true;
+  }
+  function rrt(Wd, opt){
+    const rand = rng(opt.seed), step = opt.step || 24, bias = opt.bias == null ? 0.1 : opt.bias, maxIter = opt.maxIter || 3000;
+    const nodes = [{x: Wd.start[0], y: Wd.start[1], p: -1, it: 0}];
+    let iters = 0, rejected = 0, goalIdx = -1;
+    while (iters < maxIter && goalIdx < 0){
+      iters++;
+      const s = rand() < bias ? Wd.goal : [rand()*Wd.W, rand()*Wd.H];        // 1. 采样，一小部分概率直接采 goal
+      let ni = 0, nd = Infinity;                                             // 2. 找 tree 上离采样点最近的 node
+      for (let i=0; i<nodes.length; i++){ const d = dist([nodes[i].x, nodes[i].y], s); if (d < nd){ nd = d; ni = i; } }
+      if (nd < 1e-9){ rejected++; continue; }
+      const q = nodes[ni], t = Math.min(1, step/nd), nx = q.x + (s[0]-q.x)*t, ny = q.y + (s[1]-q.y)*t;   // 3. 朝采样点走一小步
+      if (!segFree(Wd, [q.x, q.y], [nx, ny])){ rejected++; continue; }       // 4. 这一步撞了就丢掉
+      nodes.push({x: nx, y: ny, p: ni, it: iters});
+      if (dist([nx, ny], Wd.goal) <= step && segFree(Wd, [nx, ny], Wd.goal)){ // 5. 离 goal 够近而且连得上，结束
+        nodes.push({x: Wd.goal[0], y: Wd.goal[1], p: nodes.length-1, it: iters});
+        goalIdx = nodes.length-1;
+      }
+    }
+    let path = null, len = Infinity;
+    if (goalIdx >= 0){
+      path = [];
+      for (let i = goalIdx; i !== -1; i = nodes[i].p) path.push([nodes[i].x, nodes[i].y]);
+      path.reverse(); len = pathLen(path);
+    }
+    return {nodes, iters, rejected, goalIdx, path, len};
+  }
+  function pathLen(p){ let s = 0; for (let i=1; i<p.length; i++) s += dist(p[i-1], p[i]); return s; }
+  function shortcut(Wd, path){                      // 后处理：从当前点直接连到能看见的最远的点
+    const out = [path[0]]; let i = 0;
+    while (i < path.length-1){
+      let j = path.length-1;
+      while (j > i+1 && !segFree(Wd, path[i], path[j])) j--;
+      out.push(path[j]); i = j;
+    }
+    return out;
+  }
+
+  return {Heap, rng, parseGrid, gridSearch, manhattan, trueDist, greedyAssign, bruteAssign, hungarian,
+          dist, tourLen, nearestNeighbor, twoOpt, heldKarp, rrt, segFree, pathLen, shortcut};
+})();
+</script>
+
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs, parent, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function ht(tag, attrs, parent, html){
+  const e = document.createElement(tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (html != null) e.innerHTML = html;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function presetRow(root, label, items, onPick){
+  const row = ht('div', {class: 'presets'}, root, '<span>' + label + '</span>');
+  const btns = items.map((it, k) => {
+    const b = ht('button', {class: 'pre', type: 'button'}, row, it);
+    b.addEventListener('click', () => pick(k));
+    return b;
+  });
+  function pick(k){ btns.forEach((b, j) => b.classList.toggle('on', j === k)); onPick(k); }
+  return {pick, row, btns};
+}
+// 时间轴：◀ 滑块 ▶ 播放 末尾
+function Stepper(parent, onChange, opt){
+  opt = opt || {};
+  const ctl = ht('div', {class: 'tctl'}, parent);
+  const bPrev = ht('button', {class: 'pre', type: 'button', 'aria-label': '上一步'}, ctl, '◀');
+  const range = ht('input', {type: 'range', min: 0, max: 0, step: 1, value: 0, 'aria-label': opt.aria || '步骤'}, ctl);
+  const bNext = ht('button', {class: 'pre', type: 'button', 'aria-label': '下一步'}, ctl, '▶');
+  const bPlay = ht('button', {class: 'pre', type: 'button'}, ctl, '播放');
+  const bEnd = ht('button', {class: 'pre', type: 'button'}, ctl, '末尾');
+  const out = ht('output', {}, ctl, '');
+  let max = 0, t = 0, timer = null;
+  function set(tt){
+    t = Math.max(0, Math.min(max, tt));
+    range.value = t; out.textContent = t + ' / ' + max;
+    bPrev.disabled = t === 0; bNext.disabled = bEnd.disabled = t === max;
+    onChange(t);
+  }
+  function stop(){ if (timer){ clearInterval(timer); timer = null; } bPlay.textContent = '播放'; }
+  function play(){
+    if (timer){ stop(); return; }
+    if (t >= max) set(0);
+    bPlay.textContent = '暂停';
+    const ms = Math.max(25, Math.min(650, (opt.total || 5000) / Math.max(1, max)));
+    timer = setInterval(() => { if (t >= max) stop(); else set(t + 1); }, ms);
+  }
+  bPrev.addEventListener('click', () => { stop(); set(t - 1); });
+  bNext.addEventListener('click', () => { stop(); set(t + 1); });
+  bEnd.addEventListener('click', () => { stop(); set(max); });
+  bPlay.addEventListener('click', play);
+  range.addEventListener('input', () => { stop(); set(+range.value); });
+  return {set, stop, setMax(m, at){ stop(); max = m; range.max = m; bPlay.disabled = m === 0; set(at || 0); }, get t(){ return t; }};
+}
+
+// ---------- 实验台 1：BFS、DFS、Dijkstra、A* ----------
+(function(){
+  const root = document.getElementById('lab-search'); if (!root) return;
+  const R = n => '.'.repeat(n);
+  const MAPS = [
+    {name: '空地', rows: Array(9).fill(R(17)),
+     note: '没有障碍物。BFS 和 Dijkstra 朝四面八方一圈一圈地扩，A* 几乎只沿着通往 goal 的那条线走。'},
+    {name: 'U 形墙', rows: [R(17), R(17), '......#####......', '..........#......', '..........#......', '..........#......', '......#####......', R(17), R(17)],
+     note: 'goal 在墙后面。Manhattan distance 看不见墙，会把 A* 引进 U 形的口袋，填满之后才绕出去。true distance 知道墙在哪，一开始就绕。'},
+    {name: '泥地', rows: [R(17)].concat(Array(8).fill('.......~~~.......')),
+     note: '中间三列是泥地，走进去一格的 cost 是 5，只有最上面一行能绕过去。BFS 只数步数，径直穿过泥地。Dijkstra 和 A* 看的是 cost，会绕路。'}
+  ];
+  const ALGOS = [
+    {name: 'BFS', mode: 'bfs', rule: '从 OPEN 里取<b>最早</b>放进去的 node。OPEN 是 queue。'},
+    {name: 'DFS', mode: 'dfs', rule: '从 OPEN 里取<b>最晚</b>放进去的 node。OPEN 是 stack。'},
+    {name: 'Dijkstra', mode: 'dijkstra', rule: '从 OPEN 里取 <b>g 最小</b>的 node。'},
+    {name: 'A*（Manhattan）', mode: 'astar', h: 'm', rule: '从 OPEN 里取 <b>f = g + h 最小</b>的 node，h 是 Manhattan distance。'},
+    {name: 'A*（true distance）', mode: 'astar', h: 't', rule: '从 OPEN 里取 <b>f = g + h 最小</b>的 node，h 是反向 Dijkstra 算出的真实距离。'},
+    {name: 'weighted A*（w = 2）', mode: 'astar', h: 'm', w: 2, rule: '从 OPEN 里取 <b>f = g + 2·h 最小</b>的 node，更相信 heuristic。'}
+  ];
+  const CS = 34, ML = 22, MT = 20, START = [4, 2], GOAL = [4, 14];
+  let mi = 0, ai = 0, G, s, g, hm, htrue, results = [], ov = [], tx = [], pathEl, stepper;
+
+  const prMap = presetRow(root, '地图', MAPS.map(m => m.name), k => { mi = k; buildMap(); });
+  const prAlg = presetRow(root, '算法', ALGOS.map(a => a.name), k => { ai = k; pickAlgo(); });
+  const wrap = ht('div', {class: 'stage'}, root);
+  const main = ht('div', {class: 'stage-main'}, wrap);
+  const svg = sv('svg', {class: 'grid', role: 'img', 'aria-label': '搜索过程：每个 cell 显示它是否在 OPEN 或 CLOSED 里，以及它的 g 值'}, main);
+  stepper = Stepper(main, update, {aria: '已经 expand 的 node 数', total: 6000});
+  ht('div', {class: 'legend'}, main,
+    '<span><i class="lg lg-open"></i>在 OPEN 里</span><span><i class="lg lg-closed"></i>已经 expand（CLOSED）</span><span><i class="lg lg-cur"></i>正在 expand</span>' +
+    '<span><i class="lg lg-mud"></i>泥地，cost 5</span><span><i class="lg lg-wall"></i>墙</span><span>cell 里的数字是 g</span>');
+  const side = ht('div', {class: 'stage-side'}, wrap);
+  ht('h4', {}, root, '同一张地图上六种算法的结果（点一行切换算法）');
+  const cmp = ht('div', {class: 'ct'}, root);
+  cmp.addEventListener('click', e => { const tr = e.target.closest('tr[data-k]'); if (tr) prAlg.pick(+tr.getAttribute('data-k')); });
+
+  const X = v => ML + G.rc(v)[1]*CS, Y = v => MT + G.rc(v)[0]*CS;
+  function buildMap(){
+    const m = MAPS[mi];
+    G = ALG.parseGrid(m.rows); s = G.id(START[0], START[1]); g = G.id(GOAL[0], GOAL[1]);
+    hm = ALG.manhattan(G, g); htrue = ALG.trueDist(G, g);
+    results = ALGOS.map(a => ALG.gridSearch(G, s, g, a.mode, {h: a.h === 'm' ? hm : a.h === 't' ? htrue : null, w: a.w}));
+    const w = ML + G.W*CS + 6, h = MT + G.H*CS + 6;
+    svg.innerHTML = ''; svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h); svg.setAttribute('width', w); svg.setAttribute('height', h);
+    for (let c = 0; c < G.W; c++) sv('text', {class: 'g-lab', x: ML + c*CS + CS/2, y: MT - 6}, svg, c);
+    for (let r = 0; r < G.H; r++) sv('text', {class: 'g-lab', x: ML/2, y: MT + r*CS + CS/2 + 4}, svg, r);
+    ov = []; tx = [];
+    for (let v = 0; v < G.N; v++){
+      sv('rect', {class: !G.free[v] ? 'g-wall' : G.cost[v] > 1 ? 'c-mud' : 'c-free', x: X(v), y: Y(v), width: CS, height: CS}, svg);
+      ov.push(sv('rect', {class: 'c-ov', x: X(v) + 1, y: Y(v) + 1, width: CS - 2, height: CS - 2}, svg));
+    }
+    pathEl = sv('polyline', {class: 'c-path', points: ''}, svg);
+    for (let v = 0; v < G.N; v++) tx.push(sv('text', {class: 'c-g', x: X(v) + CS/2, y: Y(v) + CS/2 + 4}, svg));
+    for (const [v, ch, col] of [[s, 'S', 'var(--a1)'], [g, 'G', 'var(--a3)']]){
+      sv('circle', {cx: X(v) + CS/2, cy: Y(v) + CS/2, r: 12, fill: col, stroke: 'var(--surface)', 'stroke-width': 2}, svg);
+      sv('text', {class: 'c-mk', x: X(v) + CS/2, y: Y(v) + CS/2 + 4.5}, svg, ch);
+    }
+    drawCmp(); pickAlgo();
+  }
+  function pickAlgo(){ drawCmp(); stepper.setMax(results[ai].steps.length, 0); }
+  function drawCmp(){
+    const opt = results[2].cost;
+    let html = '<table><thead><tr><th>算法</th><th class="num">expand 的 node</th><th class="num">path 的 cost</th><th class="num">path 的步数</th><th>结果</th></tr></thead><tbody>';
+    ALGOS.forEach((a, k) => {
+      const r = results[k];
+      html += '<tr data-k="' + k + '"' + (k === ai ? ' class="sel"' : '') + '><td>' + a.name + '</td><td class="num">' + r.expanded + '</td><td class="num">' + r.cost +
+        '</td><td class="num">' + r.len + '</td><td>' + (r.cost === opt ? '<span class="pill ok">optimal</span>' : '<span class="pill mid">比 optimal 多 ' + (r.cost - opt) + '</span>') + '</td></tr>';
+    });
+    cmp.innerHTML = html + '</tbody></table>';
+  }
+  function update(k){
+    const a = ALGOS[ai], r = results[ai], K = r.steps.length;
+    const closed = new Array(G.N).fill(false), gv = new Array(G.N).fill(null);
+    gv[s] = 0;
+    for (let i = 0; i < k; i++){ const st = r.steps[i]; closed[st.v] = true; gv[st.v] = st.g; for (const [m, ng] of st.pushed) if (!closed[m]) gv[m] = ng; }
+    const cur = k > 0 ? r.steps[k-1].v : -1;
+    let nOpen = 0;
+    for (let v = 0; v < G.N; v++){
+      const st = v === cur ? 'cur' : closed[v] ? 'closed' : gv[v] !== null ? 'open' : '';
+      if (st === 'open') nOpen++;
+      ov[v].setAttribute('class', 'c-ov ' + st);
+      tx[v].textContent = gv[v] === null || v === s || v === g ? '' : gv[v];
+      tx[v].setAttribute('class', 'c-g' + (v === cur ? ' cur' : ''));
+    }
+    const done = k === K && r.found;
+    pathEl.setAttribute('points', done ? r.path.map(v => (X(v) + CS/2) + ',' + (Y(v) + CS/2)).join(' ') : '');
+    let html = '<h4>' + a.name + '</h4><p class="live">' + a.rule + '</p><div class="kv">';
+    html += '<span>已经 expand</span><span>' + k + ' / ' + K + '</span><span>OPEN 里有</span><span>' + nOpen + ' 个 node</span>';
+    if (cur >= 0){
+      const st = r.steps[k-1], hv = a.h === 'm' ? hm[cur] : a.h === 't' ? htrue[cur] : null;
+      html += '<span>正在 expand</span><span>(' + G.rc(cur).join(',') + ')</span><span>g</span><span>' + st.g + '</span>';
+      if (hv !== null) html += '<span>h</span><span>' + hv + '</span><span>f</span><span>' + st.g + ' + ' + (a.w ? a.w + '·' : '') + hv + ' = ' + (st.g + (a.w || 1)*hv) + '</span>';
+    }
+    html += '</div>';
+    if (done){
+      const opt = results[2].cost;
+      html += '<p class="live" style="margin-top:10px">' + (r.cost === opt ? '<span class="pill ok">optimal</span>' : '<span class="pill mid">不是 optimal</span>') +
+        ' 到达 goal。path 的 cost 是 ' + r.cost + '，一共 ' + r.len + ' 步。' + (r.cost === opt ? '' : 'optimal 的 cost 是 ' + opt + '。') + '</p>';
+    } else if (k === 0) html += '<p class="live" style="margin-top:10px">点“播放”，或者拖动滑块一步一步看。</p>';
+    html += '<p class="live" style="margin-top:10px;color:var(--muted)">' + MAPS[mi].note + '</p>';
+    side.innerHTML = html;
+  }
+  prMap.btns[0].classList.add('on'); prAlg.btns[0].classList.add('on');
+  buildMap();
+})();
+
+// ---------- 实验台 2：RRT ----------
+(function(){
+  const root = document.getElementById('lab-rrt'); if (!root) return;
+  const WORLDS = [
+    {name: '空旷', W: 600, H: 340, start: [50, 170], goal: [550, 170], obs: [{x: 200, y: 60, w: 60, h: 90}, {x: 340, y: 190, w: 70, h: 100}]},
+    {name: '一堵墙', W: 600, H: 340, start: [50, 170], goal: [550, 170], obs: [{x: 280, y: 0, w: 36, h: 200}, {x: 280, y: 260, w: 36, h: 80}]},
+    {name: '窄通道', W: 600, H: 340, start: [50, 170], goal: [550, 170], obs: [{x: 200, y: 0, w: 200, h: 150}, {x: 200, y: 186, w: 200, h: 154}]}
+  ];
+  const BIAS = [0, 0.1, 0.3];
+  let wi = 0, bi = 1, seed = 1, res, edges = [], pathEl, shortEl, stepper, showShort = false;
+  presetRow(root, '环境', WORLDS.map(w => w.name), k => { wi = k; run(); }).btns[0].classList.add('on');
+  presetRow(root, 'goal bias', ['0%', '10%', '30%'], k => { bi = k; run(); }).btns[1].classList.add('on');
+  const opts = ht('div', {class: 'opts'}, root);
+  const bSeed = ht('button', {class: 'pre', type: 'button'}, opts, '换一个随机 seed');
+  const seedOut = ht('span', {}, opts, '');
+  const lab = ht('label', {}, opts);
+  const cb = ht('input', {type: 'checkbox'}, lab);
+  lab.appendChild(document.createTextNode('显示 shortcut 之后的 path'));
+  const wrap = ht('div', {class: 'stage'}, root);
+  const main = ht('div', {class: 'stage-main'}, wrap);
+  const svg = sv('svg', {class: 'cv', role: 'img', viewBox: '0 0 600 340', width: 600, height: 340, 'aria-label': 'RRT 的 tree 从 start 向外生长，直到连上 goal'}, main);
+  stepper = Stepper(main, update, {aria: 'tree 上的 node 数', total: 5000});
+  const side = ht('div', {class: 'stage-side'}, wrap);
+  bSeed.addEventListener('click', () => { seed++; run(); });
+  cb.addEventListener('change', () => { showShort = cb.checked; update(stepper.t); });
+
+  function run(){
+    const Wd = WORLDS[wi];
+    res = ALG.rrt(Wd, {seed, bias: BIAS[bi]});
+    res.short = res.path ? ALG.shortcut(Wd, res.path) : null;
+    seedOut.textContent = 'seed = ' + seed;
+    svg.innerHTML = '';
+    for (const o of Wd.obs) sv('rect', {class: 'g-wall', x: o.x, y: o.y, width: o.w, height: o.h, rx: 3}, svg);
+    edges = res.nodes.map((n, i) => i === 0 ? null : sv('line', {class: 'r-edge', x1: res.nodes[n.p].x, y1: res.nodes[n.p].y, x2: n.x, y2: n.y}, svg));
+    pathEl = sv('polyline', {class: 'r-path', points: ''}, svg);
+    shortEl = sv('polyline', {class: 'r-short', points: ''}, svg);
+    for (const [p, ch, col] of [[Wd.start, 'S', 'var(--a1)'], [Wd.goal, 'G', 'var(--a3)']]){
+      sv('circle', {cx: p[0], cy: p[1], r: 12, fill: col, stroke: 'var(--surface)', 'stroke-width': 2}, svg);
+      sv('text', {class: 'c-mk', x: p[0], y: p[1] + 4.5}, svg, ch);
+    }
+    stepper.setMax(res.nodes.length - 1, res.nodes.length - 1);
+  }
+  function update(k){
+    edges.forEach((e, i) => { if (e) e.style.display = i <= k ? '' : 'none'; });
+    const done = k === res.nodes.length - 1 && res.path;
+    pathEl.setAttribute('points', done ? res.path.map(p => p.join(',')).join(' ') : '');
+    shortEl.setAttribute('points', done && showShort ? res.short.map(p => p.join(',')).join(' ') : '');
+    let html = '<h4>结果</h4><p class="live">' + (res.path ? '<span class="pill ok">找到 path</span>' : '<span class="pill bad">没找到</span> 采样次数用完了') + '</p><div class="kv">';
+    html += '<span>tree 上的 node</span><span>' + (k + 1) + ' / ' + res.nodes.length + '</span>';
+    html += '<span>采样次数</span><span>' + res.iters + '</span>';
+    html += '<span>被丢掉的采样</span><span>' + res.rejected + '（这一步会撞）</span>';
+    if (res.path){
+      html += '<span>path 长度</span><span>' + res.len.toFixed(0) + '</span>';
+      html += '<span>shortcut 之后</span><span>' + ALG.pathLen(res.short).toFixed(0) + '</span>';
+      html += '<span>直线距离</span><span>' + ALG.dist(WORLDS[wi].start, WORLDS[wi].goal).toFixed(0) + '</span>';
+    }
+    html += '</div><p class="live" style="margin-top:10px;color:var(--muted)">橙色是 RRT 直接给出的 path，弯弯曲曲。绿色是 shortcut 之后的 path。同一个环境换几个 seed，结果每次都不一样。</p>';
+    side.innerHTML = html;
+  }
+  run();
+})();
+
+// ---------- 实验台 3：assignment，greedy 和 Hungarian algorithm ----------
+(function(){
+  const root = document.getElementById('lab-hung'); if (!root) return;
+  const PRE = [
+    {name: '例 1', C: [[9,2,7,8],[6,4,3,7],[5,8,1,8],[7,6,9,4]]},
+    {name: '例 2：greedy 吃亏', C: [[5,7,9,1],[5,3,1,9],[1,7,2,6],[1,9,4,2]]},
+    {name: '随机'}
+  ];
+  let C, H, Gr, rs = 100, stepper;
+  presetRow(root, 'cost matrix', PRE.map(p => p.name), k => {
+    if (PRE[k].C) C = PRE[k].C;
+    else { const rand = ALG.rng(rs++); C = [0,1,2,3].map(() => [0,1,2,3].map(() => 1 + Math.floor(rand()*9))); }
+    H = ALG.hungarian(C); Gr = ALG.greedyAssign(C);
+    drawRight(); stepper.setMax(H.steps.length - 1, 0);
+  }).btns[1].classList.add('on');
+  const cols = ht('div', {class: 'two'}, root);
+  const left = ht('div', {}, cols), right = ht('div', {}, cols);
+  ht('h4', {}, left, 'Hungarian algorithm，一步一步');
+  const matL = ht('div', {}, left);
+  stepper = Stepper(left, update, {aria: 'Hungarian algorithm 的步骤', total: 6000});
+  const txt = ht('p', {class: 'live', 'aria-live': 'polite', style: 'margin-top:10px'}, left);
+  ht('h4', {}, right, '原始 cost matrix 上的两种分配');
+  const matR = ht('div', {}, right);
+  const sum = ht('div', {}, right);
+
+  function table(M, cls){
+    let h = '<table class="mat"><tr><th></th>' + M[0].map((_, c) => '<th>T' + (c+1) + '</th>').join('') + '</tr>';
+    M.forEach((row, r) => { h += '<tr><th>R' + (r+1) + '</th>' + row.map((x, c) => '<td class="' + cls(r, c, x) + '">' + x + '</td>').join('') + '</tr>'; });
+    return h + '</table>';
+  }
+  function drawRight(){
+    matR.innerHTML = table(C, (r, c) => (H.assign[r] === c ? 'op ' : '') + (Gr.assign[r] === c ? 'gp' : ''));
+    sum.innerHTML = '<div class="legend"><span><i class="lg lg-op"></i>optimal 的分配</span><span><i class="lg lg-gp"></i>greedy 的分配</span></div><div class="kv" style="margin-top:10px">' +
+      '<span>greedy</span><span>' + Gr.order.map(([r, c]) => 'R' + (r+1) + '→T' + (c+1) + '（' + C[r][c] + '）').join('，') + '　总 cost ' + Gr.cost + '</span>' +
+      '<span>optimal</span><span>' + H.assign.map((c, r) => 'R' + (r+1) + '→T' + (c+1) + '（' + C[r][c] + '）').join('，') + '　总 cost ' + H.cost + '</span></div>' +
+      '<p class="live" style="margin-top:10px">' + (Gr.cost === H.cost ? '<span class="pill ok">一样</span> 这个 matrix 上 greedy 碰巧也是 optimal。' :
+        '<span class="pill mid">greedy 多花 ' + (Gr.cost - H.cost) + '</span> greedy 先抢走了最便宜的格子，后面的 robot 只剩下很贵的选择。') + '</p>';
+  }
+  function update(k){
+    const st = H.steps[k];
+    matL.innerHTML = table(st.M, (r, c, x) => {
+      let cl = x === 0 ? 'zero ' : '';
+      if (st.rows && (st.rows[r] || st.cols[c])) cl += st.rows[r] && st.cols[c] ? 'cov2 ' : 'cov ';
+      if (st.matchR && st.matchR[r] === c) cl += 'pick';
+      return cl;
+    });
+    const n = C.length;
+    txt.innerHTML = '<b>第 ' + k + ' 步。</b>' + ({
+      start: '原始 cost matrix。行是 robot，列是 task，格子里是这个 robot 做这个 task 的 cost。',
+      row: '每一行减去这一行的最小值（分别是 ' + (st.mins || []).join('、') + '）。一个 robot 不管做哪个 task 都少了同样的数，所以哪种分配最好不会变。现在每行至少有一个 0。',
+      col: '每一列减去这一列的最小值（分别是 ' + (st.mins || []).join('、') + '）。现在每列也至少有一个 0。',
+      cover: '用最少的横线和竖线盖住所有的 0，需要 ' + st.lines + ' 条（浅紫色）。' + st.lines + ' 小于 ' + n + '，说明只靠现有的 0 还凑不出一个完整的分配。没被盖住的数里最小的是 ' + st.delta + '。',
+      adjust: '没被盖住的数都减 ' + st.delta + '，被两条线同时盖住的数加 ' + st.delta + '。这样没被盖住的地方出现了新的 0。',
+      done: '现在能在 0 上选出 ' + n + ' 个互不同行、互不同列的格子（绿色）。这就是 optimal 的分配。回到原始 matrix 把对应的 cost 加起来，总 cost 是 ' + st.cost + '。'
+    })[st.kind];
+  }
+  // 默认显示例 2
+  C = PRE[1].C; H = ALG.hungarian(C); Gr = ALG.greedyAssign(C); drawRight(); stepper.setMax(H.steps.length - 1, 0);
+})();
+
+// ---------- 实验台 4：TSP，nearest neighbor 和 2-opt ----------
+(function(){
+  const root = document.getElementById('lab-tsp'); if (!root) return;
+  const SEEDS = [2, 1, 15];
+  let P, nn, two, hk, next = 20, showOpt = false, stepper, gEdges, gOpt;
+  const pr = presetRow(root, '点集', ['点集 1', '点集 2', '点集 3', '换一组'], k => { gen(k < 3 ? SEEDS[k] : next++); });
+  const opts = ht('div', {class: 'opts'}, root);
+  const lab = ht('label', {}, opts);
+  const cb = ht('input', {type: 'checkbox'}, lab);
+  lab.appendChild(document.createTextNode('叠加显示 optimal tour（虚线）'));
+  cb.addEventListener('change', () => { showOpt = cb.checked; update(stepper.t); });
+  const wrap = ht('div', {class: 'stage'}, root);
+  const main = ht('div', {class: 'stage-main'}, wrap);
+  const svg = sv('svg', {class: 'cv', role: 'img', viewBox: '0 0 560 320', width: 560, height: 320, 'aria-label': 'TSP 的 tour：经过所有点一次并回到起点'}, main);
+  stepper = Stepper(main, update, {aria: '2-opt 的交换次数', total: 4000});
+  const side = ht('div', {class: 'stage-side'}, wrap);
+
+  function gen(seed){
+    const rr = ALG.rng(seed); P = [];
+    for (let i = 0; i < 10; i++) P.push([Math.round(30 + rr()*500), Math.round(30 + rr()*260)]);
+    nn = ALG.nearestNeighbor(P); two = ALG.twoOpt(P, nn); hk = ALG.heldKarp(P);
+    svg.innerHTML = '';
+    gOpt = sv('polygon', {class: 't-opt', points: ''}, svg);
+    gEdges = sv('g', {}, svg);
+    P.forEach((p, i) => {
+      if (i === 0) sv('rect', {x: p[0] - 8, y: p[1] - 8, width: 16, height: 16, rx: 3, fill: 'var(--a1)', stroke: 'var(--surface)', 'stroke-width': 2}, svg);
+      else sv('circle', {cx: p[0], cy: p[1], r: 6.5, fill: 'var(--ink)', stroke: 'var(--surface)', 'stroke-width': 2}, svg);
+      sv('text', {class: 'g-lab', x: p[0], y: p[1] - 12}, svg, i === 0 ? '出发点' : i);
+    });
+    stepper.setMax(two.swaps.length, 0);
+  }
+  const line = (a, b, cls) => sv('line', {class: cls, x1: P[a][0], y1: P[a][1], x2: P[b][0], y2: P[b][1]}, gEdges);
+  function update(k){
+    const tour = k === 0 ? nn : two.swaps[k-1].after, n = tour.length;
+    gEdges.innerHTML = '';
+    const fresh = new Set();
+    if (k > 0){
+      const sw = two.swaps[k-1], b = sw.before;
+      line(b[sw.i], b[sw.i+1], 't-old'); line(b[sw.j], b[(sw.j+1) % n], 't-old');       // 被拆掉的两条 edge
+      fresh.add(b[sw.i] + '-' + b[sw.j]); fresh.add(b[sw.j] + '-' + b[sw.i]);
+      fresh.add(b[sw.i+1] + '-' + b[(sw.j+1) % n]); fresh.add(b[(sw.j+1) % n] + '-' + b[sw.i+1]);
+    }
+    for (let i = 0; i < n; i++){ const a = tour[i], c = tour[(i+1) % n]; line(a, c, fresh.has(a + '-' + c) ? 't-new' : 't-edge'); }
+    gOpt.setAttribute('points', showOpt ? hk.tour.map(i => P[i].join(',')).join(' ') : '');
+    const cur = ALG.tourLen(P, tour), a = ALG.tourLen(P, nn), b = ALG.tourLen(P, two.tour);
+    const pct = x => '比 optimal 长 ' + ((x / hk.len - 1) * 100).toFixed(1) + '%';
+    let html = '<h4>' + (k === 0 ? 'nearest neighbor 的 tour' : '2-opt 第 ' + k + ' 次交换之后') + '</h4><div class="kv">';
+    html += '<span>当前 tour 长度</span><span>' + cur.toFixed(0) + '</span>';
+    html += '<span>nearest neighbor</span><span>' + a.toFixed(0) + '　' + pct(a) + '</span>';
+    html += '<span>2-opt 结束时</span><span>' + b.toFixed(0) + '　' + (b - hk.len < 1e-6 ? '等于 optimal' : pct(b)) + '</span>';
+    html += '<span>optimal</span><span>' + hk.len.toFixed(0) + '（Held-Karp 精确解）</span></div>';
+    html += '<p class="live" style="margin-top:10px">' + (k === 0
+      ? '从出发点开始，每次去最近的、还没去过的点。前面走得很顺，最后几步往往要跨过整张图回来，还会出现交叉的 edge。'
+      : '红色虚线是拆掉的两条 edge，绿色粗线是新接上的两条。把交叉解开之后，tour 短了 ' + two.swaps[k-1].gain.toFixed(0) + '。') + '</p>';
+    if (k === two.swaps.length && k > 0) html += '<p class="live">' + (b - hk.len < 1e-6 ? '<span class="pill ok">到达 optimal</span> 这组点上 2-opt 正好找到了 optimal tour。' :
+      '<span class="pill mid">local optimum</span> 已经没有能让 tour 变短的交换了，但它还不是 optimal。2-opt 只保证局部最好。') + '</p>';
+    side.innerHTML = html;
+  }
+  pr.pick(0);
+})();
+
+// ---------- 自测清单 + 面试题展开收起 ----------
+(function(){
+  const boxes = document.querySelectorAll('#selfcheck input[type=checkbox]');
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('planning-basics-selfcheck') || '{}') || {}; } catch (e) { saved = {}; }
+  boxes.forEach(b => {
+    b.checked = !!saved[b.id];
+    b.addEventListener('change', () => { saved[b.id] = b.checked; try { localStorage.setItem('planning-basics-selfcheck', JSON.stringify(saved)); } catch (e) {} });
+  });
+  const all = () => document.querySelectorAll('#qa details.qa');
+  const o = document.getElementById('qa-open'), c = document.getElementById('qa-close');
+  if (o) o.addEventListener('click', () => all().forEach(d => d.open = true));
+  if (c) c.addEventListener('click', () => all().forEach(d => d.open = false));
+})();
+// ---------- 默写框 ----------
+// 自动检查只认关键词：每一条是一个关键步骤，用几种常见写法去匹配。
+(function(){
+  const has = (...res) => s => res.some(r => r.test(s));
+  const all = (...fs) => s => fs.every(f => f(s));
+  const firstIdx = (s, re) => { const m = s.match(re); return m ? m.index : -1; };
+  const goalRe = /(==|＝＝)\s*goal|goal\s*==|是\s*goal|is_?goal|到达\s*goal/;
+  const nbRe = /neighbo|邻居|successor/;
+  const goalBeforeExpand = s => { const a = firstIdx(s, goalRe), b = firstIdx(s, nbRe); return a >= 0 && (b < 0 || a < b); };
+  const common = {
+    goal: ['取出 n 之后、expand 之前检查 n 是不是 goal', goalBeforeExpand],
+    skip: ['n 已经在 CLOSED 里就跳过', all(has(/(in|∈)\s*(closed|visited)/), has(/continue|跳过/))],
+    add:  ['把 n 加进 CLOSED', has(/(closed|visited)\s*\.\s*(add|append|insert)/, /(加入|放进|加进|放入)\s*(closed|visited)/, /(closed|visited)\s*(∪|\|=|\+=)/)],
+    nb:   ['遍历 n 的每个 neighbor', has(nbRe)],
+    newg: ['new_g = g[n] + cost(n, m)', has(/g\s*[\[(]\s*\w+\s*[\])]\s*\+\s*(cost|c\b|w\b|1\b|d\b)/)],
+    less: ['只有 new_g < g[m] 时才更新（找到更便宜的走法）', has(/<\s*g\s*[\[(]/, /g\s*[\[(]\s*\w+\s*[\])]\s*>/)],
+    par:  ['更新 parent[m] = n', has(/parent|came_?from|prev/)],
+    push: ['把 m 放进 OPEN', has(/push|heappush|open\s*\.\s*(add|append|put|insert)|(放进|加入|加进|放入)\s*open/)],
+    fail: ['OPEN 空了还没找到，返回 FAIL', has(/fail|none|null|无解|失败|return\s*\[\s*\]/)],
+  };
+  const SPECS = {
+    search: [
+      ['g[start] 初始化为 0', has(/g\s*[\[(]\s*start\s*[\])]\s*(←|<-|:?=)\s*0/, /g\s*(←|<-|:?=)\s*\{\s*start\s*:\s*0/)],
+      ['OPEN 一开始只放 start', has(/open[^\n]*start/, /(push|heappush|append)\s*\(?[^\n]*start/)],
+      ['CLOSED 一开始是空的', has(/(closed|visited)\s*(←|<-|:?=)/)],
+      ['while OPEN 非空 的主循环', has(/while/)],
+      ['从 OPEN 里取出一个 node', has(/pop|取出|extract|get\s*\(/)],
+      common.goal, common.skip, common.add, common.nb, common.newg, common.less, common.par, common.push, common.fail,
+    ],
+    dijkstra: [
+      ['g[start] 初始化为 0', has(/g\s*[\[(]\s*start\s*[\])]\s*(←|<-|:?=)\s*0/, /g\s*(←|<-|:?=)\s*\{\s*start\s*:\s*0/)],
+      ['OPEN 是 priority queue（min-heap）', has(/priority|heap|优先/)],
+      ['每次 pop g 最小的', has(/(pop|取)[^\n]*(min|最小|smallest|lowest)/, /heappop|extract_?min|pop_?min/)],
+      common.goal, common.skip, common.add, common.nb, common.newg, common.less, common.par,
+      ['push m 时 key 用 new_g（不加 h）', all(has(/push|heappush|放进|加入/), s => !/\+\s*h\b|\+\s*h\s*\(/.test(s))],
+      common.fail,
+    ],
+    astar: [
+      ['g[start] 初始化为 0', has(/g\s*[\[(]\s*start\s*[\])]\s*(←|<-|:?=)\s*0/, /g\s*(←|<-|:?=)\s*\{\s*start\s*:\s*0/)],
+      ['OPEN 是 priority queue（min-heap）', has(/priority|heap|优先/)],
+      ['按 f = g + h 排序', has(/g\s*\+\s*h/)],
+      ['每次 pop f 最小的', has(/(pop|取)[^\n]*(min|最小|smallest|lowest)/, /heappop|extract_?min|pop_?min/)],
+      common.goal, common.skip, common.add, common.nb, common.newg, common.less, common.par,
+      ['push m 时用 f = new_g + h(m)', has(/new_?g\s*\+\s*h/, /g\s*[\[(]\s*m\s*[\])]\s*\+\s*h/)],
+      common.fail,
+    ],
+    cycle: [
+      ['一进来就把 n 涂成 GRAY', has(/(color|colour|state)\s*[\[(]\s*n\s*[\])]\s*(←|<-|:?=)\s*(gray|grey|灰)/, /n[^\n]*(涂|标)[^\n]*(gray|grey|灰)/)],
+      ['遍历 n 的每个 neighbor', has(nbRe)],
+      ['碰到 GRAY 的 neighbor：有环，return true', has(/(gray|grey|灰)[^\n]*(true|有环)/)],
+      ['碰到 WHITE 的 neighbor：递归下去', has(/(white|白)[^\n]*(hascycle|dfs|递归|\w+\s*\(\s*m\s*\))/)],
+      ['递归返回 true 时把 true 继续往上传', has(/(and|&&)\s*\w+\s*\(\s*m\s*\)/, /if\s+\w+\s*\(\s*m\s*\)[^\n]*true/, /(hascycle|dfs)\s*\(\s*m\s*\)[\s\S]{0,30}return\s+true/)],
+      ['邻居都查完后把 n 涂成 BLACK', has(/black|黑/)],
+      ['最后 return false', has(/return\s+false/)],
+    ],
+    rrt: [
+      ['tree 一开始只有 start', has(/tree[^\n]*start/, /start[^\n]*tree/)],
+      ['反复循环', has(/repeat|while|for\b|loop/)],
+      ['随机采一个点 q_rand', has(/rand|随机|sample|采样/)],
+      ['goal bias：小概率直接取 goal', has(/bias|概率[^\n]*goal|goal[^\n]*(概率|prob)/)],
+      ['在 tree 上找离 q_rand 最近的 q_near', has(/near|最近/)],
+      ['从 q_near 朝 q_rand 走一小步得到 q_new', has(/steer|一小步|step|走一/)],
+      ['检查 q_near 到 q_new 这一段不撞', has(/collision|撞|碰|free|obstacle/)],
+      ['把 q_new 加进 tree，parent 是 q_near', has(/parent/)],
+      ['q_new 离 goal 足够近就结束并回溯 path', has(/goal[^\n]*(近|<|≤|dist|close|reach)/, /(近|dist|close|reach)[^\n]*goal/)],
+    ],
+  };
+  const KEY = 'planning-basics-recall';
+  let drafts = {};
+  try { drafts = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { drafts = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(drafts)); } catch (e) {} };
+
+  document.querySelectorAll('.recall').forEach(box => {
+    const id = box.dataset.id, spec = SPECS[id];
+    const ref = box.previousElementSibling;
+    if (!spec || !ref || ref.tagName !== 'PRE') return;
+    box.innerHTML =
+      '<div class="recall-top"><span class="q">默写</span><span class="hint">先遮住上面的代码，凭记忆写一遍，写完再检查。草稿只存在这个浏览器里。</span></div>' +
+      '<textarea spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="在这里默写 pseudo-code"></textarea>' +
+      '<div class="btns"><button class="pre" data-a="hide">遮住上面的代码</button>' +
+      '<button class="pre" data-a="check">检查关键步骤</button>' +
+      '<button class="pre" data-a="cmp">并排对照答案</button>' +
+      '<button class="pre" data-a="clear">清空</button></div>' +
+      '<ul class="recall-res" hidden></ul>' +
+      '<div class="recall-cmp two" hidden><div><div class="cap">你写的</div><pre class="mine"></pre></div><div><div class="cap">参考答案</div><pre class="ans"></pre></div></div>';
+    const ta = box.querySelector('textarea'), res = box.querySelector('.recall-res'), cmp = box.querySelector('.recall-cmp');
+    const bHide = box.querySelector('[data-a=hide]'), bCmp = box.querySelector('[data-a=cmp]');
+    ta.placeholder = box.dataset.ph + '\n    ...';
+    ta.value = drafts[id] || '';
+
+    const setVeil = on => { ref.classList.toggle('veiled', on); bHide.textContent = on ? '显示上面的代码' : '遮住上面的代码'; bHide.classList.toggle('on', on); };
+    bHide.addEventListener('click', () => setVeil(!ref.classList.contains('veiled')));
+    ref.addEventListener('click', () => { if (ref.classList.contains('veiled')) setVeil(false); });
+
+    const check = () => {
+      const s = ta.value.toLowerCase();
+      const hits = spec.map(([label, f]) => [label, !!f(s)]);
+      const n = hits.filter(h => h[1]).length;
+      res.innerHTML = '<li class="sum">找到 ' + n + ' / ' + hits.length + ' 个关键步骤。自动检查只认关键词，打 ○ 的那几条对照答案再自己判断。</li>' +
+        hits.map(([label, ok]) => '<li class="' + (ok ? 'ok' : 'miss') + '">' + label.replace(/</g, '&lt;') + '</li>').join('');
+      res.hidden = false;
+    };
+    const fillCmp = () => { box.querySelector('.mine').textContent = ta.value || '（还没写）'; box.querySelector('.ans').textContent = ref.textContent; };
+
+    box.querySelector('[data-a=check]').addEventListener('click', check);
+    bCmp.addEventListener('click', () => {
+      const show = cmp.hidden;
+      if (show) fillCmp();
+      cmp.hidden = !show; bCmp.classList.toggle('on', show);
+      bCmp.textContent = show ? '收起对照' : '并排对照答案';
+    });
+    box.querySelector('[data-a=clear]').addEventListener('click', () => {
+      if (ta.value && !confirm('清空这一框的草稿？')) return;
+      ta.value = ''; delete drafts[id]; save();
+      res.hidden = true; cmp.hidden = true; bCmp.classList.remove('on'); bCmp.textContent = '并排对照答案';
+    });
+    ta.addEventListener('input', () => {
+      drafts[id] = ta.value; save();
+      if (!res.hidden) check();
+      if (!cmp.hidden) fillCmp();
+    });
+    // Tab 键缩进 4 个空格，Shift+Tab 减少缩进
+    ta.addEventListener('keydown', e => {
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd;
+      const ls = v.lastIndexOf('\n', a - 1) + 1;
+      if (!e.shiftKey && a === b) {
+        ta.setRangeText('    ', a, b, 'end');
+      } else {
+        const block = v.slice(ls, b);
+        const out = e.shiftKey ? block.replace(/^ {1,4}/gm, '') : block.replace(/^/gm, '    ');
+        ta.setRangeText(out, ls, b, 'preserve');
+        ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+      }
+      ta.dispatchEvent(new Event('input'));
+    });
+  });
+})();
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>

@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-17">
+<meta name="tags" content="minimum-snap, trajectory-generation, polynomial-trajectory, quadratic-programming, time-allocation, differential-flatness, mapf, cbs">
+<title>Minimum Snap 轨迹生成</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 planning-and-task-allocation-basics.html 同一套样式：左侧固定目录 + 右侧单栏笔记 */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:620px}
+.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+.opts output{font-family:var(--mono);font-size:13px;min-width:3em}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 560px;max-width:100%;min-width:0}
+.stage-side{flex:1 1 220px;min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.cv{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;touch-action:none}
+.w-grid{stroke:var(--line);stroke-width:1}
+.w-poly{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.w-traj{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.w-dot{fill:var(--accent)}
+.w-wp circle{fill:var(--a2);stroke:var(--surface);stroke-width:2;cursor:grab}
+.w-wp.stop circle{fill:var(--bad)}
+.w-wp text{fill:var(--on-agent);font-family:var(--mono);font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.w-wp .w-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.s-ax{stroke:var(--line-strong);stroke-width:1}
+.s-lim{stroke:var(--bad);stroke-width:1.2;stroke-dasharray:5 4}
+.s-tick{stroke:var(--a2);stroke-width:1;stroke-dasharray:2 3}
+.s-v{fill:none;stroke:var(--accent);stroke-width:2.2}
+.s-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:10px 0 0}
+.live p{margin:0 0 8px}
+.pill{display:inline-block;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body);margin-left:6px}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){.page{padding-left:16px;padding-right:16px}}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+</defs></svg>
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#pipeline"><span class="k">01</span>全局：它在哪一步</a></li>
+  </ol>
+  <p class="toc-part">PART A · MINIMUM SNAP</p>
+  <ol>
+    <li><a href="#problem"><span class="k">02</span>要解决什么问题</a></li>
+    <li><a href="#why"><span class="k">03</span>为什么是 snap、7 次</a></li>
+    <li><a href="#time"><span class="k">04</span>Time allocation</a></li>
+    <li><a href="#qp"><span class="k">05</span>写成 QP</a></li>
+    <li><a href="#solve"><span class="k">06</span>求解</a></li>
+    <li><a href="#lab"><span class="k">07</span>实验台</a></li>
+    <li><a href="#fix"><span class="k">08</span>检查与修正</a></li>
+  </ol>
+  <p class="toc-part">PART B · 前后的 PIPELINE</p>
+  <ol>
+    <li><a href="#before"><span class="k">09</span>之前：front end</a></li>
+    <li><a href="#after"><span class="k">10</span>之后：flatness 与控制</a></li>
+    <li><a href="#cbs"><span class="k">11</span>用在 CBS / MAPF</a></li>
+  </ol>
+  <p class="toc-part">REVIEW</p>
+  <ol>
+    <li><a href="#code"><span class="k">12</span>Python 实现</a></li>
+    <li><a href="#qa"><span class="k">13</span>面试题</a></li>
+    <li><a href="#refs"><span class="k">14</span>速查与 References</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Minimum Snap 轨迹生成</h1>
+  <p>Path planner 给出一串 waypoints，minimum snap 把它变成一条光滑、带时间的 trajectory：任意时刻在哪、速度多少、加速度多少。这一页从零讲清这个算法，并交代它前后的 pipeline。</p>
+  <p>前置知识只需要：多项式求导、矩阵乘法、"带等式约束的二次优化可以解一个线性方程组"。相关页面：<a href="planning-and-task-allocation-basics.html#traj">从 path 到 trajectory</a>，<a href="mapf-fundamentals.html">MAPF 基础</a>。</p>
+</header>
+
+<section id="pipeline">
+<h2><span class="n">01</span>全局：minimum snap 在哪一步</h2>
+<figure class="fig">
+<svg viewBox="0 0 880 196" role="img" aria-label="轨迹生成 pipeline：front end、后处理、time allocation、建 QP、求解、检查修正、flatness、controller。中间四步是 minimum snap 本体，检查失败时回到 time allocation。">
+  <path class="d-acc" d="M224,30 V22 H658 V30"/>
+  <text class="d-a" x="441" y="15" text-anchor="middle">minimum snap 本体</text>
+  <g>
+    <rect class="d-box" x="0" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="49" y="66" text-anchor="middle">Front end</text>
+    <text class="d-s" x="49" y="88" text-anchor="middle">A* / RRT / CBS</text>
+    <rect class="d-box" x="112" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="161" y="66" text-anchor="middle">后处理</text>
+    <text class="d-s" x="161" y="88" text-anchor="middle">剪枝 / corridor</text>
+    <rect class="d-hbox" x="224" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="273" y="66" text-anchor="middle">Time alloc.</text>
+    <text class="d-s" x="273" y="88" text-anchor="middle">给每段 Tᵢ</text>
+    <rect class="d-hbox" x="336" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="385" y="66" text-anchor="middle">建 QP</text>
+    <text class="d-s" x="385" y="88" text-anchor="middle">cost + 约束</text>
+    <rect class="d-hbox" x="448" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="497" y="66" text-anchor="middle">求解</text>
+    <text class="d-s" x="497" y="88" text-anchor="middle">KKT / 闭式解</text>
+    <rect class="d-hbox" x="560" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="609" y="66" text-anchor="middle">检查修正</text>
+    <text class="d-s" x="609" y="88" text-anchor="middle">超速 / 碰撞</text>
+    <rect class="d-box" x="672" y="40" width="98" height="64" rx="7"/>
+    <text class="d-t" x="721" y="66" text-anchor="middle">Flatness</text>
+    <text class="d-s" x="721" y="88" text-anchor="middle">姿态 / 推力</text>
+    <rect class="d-box" x="784" y="40" width="96" height="64" rx="7"/>
+    <text class="d-t" x="832" y="66" text-anchor="middle">Controller</text>
+    <text class="d-s" x="832" y="88" text-anchor="middle">PID / MPC</text>
+  </g>
+  <g class="d-ln" marker-end="url(#arr)">
+    <path d="M98,72 H110"/><path d="M210,72 H222"/><path d="M322,72 H334"/><path d="M434,72 H446"/>
+    <path d="M546,72 H558"/><path d="M658,72 H670"/><path d="M770,72 H782"/>
+  </g>
+  <path class="d-acc" d="M609,104 V140 H273 V106" marker-end="url(#arrA)"/>
+  <text class="d-a" x="441" y="160" text-anchor="middle">不通过：拉长时间 / 插中间点 / 加 corridor 约束，再解一次</text>
+  <text class="d-s" x="49" y="128" text-anchor="middle">走哪条路</text>
+  <text class="d-s" x="441" y="186" text-anchor="middle">怎么平滑地走（每个时刻在哪、多快）</text>
+  <text class="d-s" x="776" y="128" text-anchor="middle">真的走出来</text>
+</svg>
+</figure>
+<div class="tw"><table>
+<tr><th></th><th>内容</th></tr>
+<tr><td><strong>输入</strong></td><td>waypoints <span class="m">w₀ … wₘ</span>；每段的时长 <span class="m">T₁ … Tₘ</span>；起点、终点的状态（通常静止）</td></tr>
+<tr><td><strong>输出</strong></td><td>每段、每个维度一个 7 次多项式。代入任意 t，就得到 p(t)、v(t)、a(t)、j(t)</td></tr>
+<tr><td><strong>目标</strong></td><td>经过所有 waypoints，并且尽量"平滑"：snap（位置的 4 阶导数）的平方积分最小</td></tr>
+</table></div>
+</section>
+
+<!-- ============ PART A ============ -->
+<div class="part"><div class="tag">PART A</div><h2>Minimum snap 算法本身</h2><p>02–06 是算法主体，07 的实验台可以边读边拖。</p></div>
+
+<section id="problem">
+<h2><span class="n">02</span>要解决什么问题</h2>
+<h3>为什么不能直接用折线</h3>
+<p>Front end 给出的 waypoints 连起来是一条折线。在拐角处，速度方向瞬间改变，加速度是无穷大，真实的机器人做不到。所以需要一条<strong>光滑曲线</strong>穿过这些点。</p>
+<h3>曲线用什么表示</h3>
+<p>用<strong>分段多项式</strong>：每两个相邻 waypoint 之间一段，每段是一个关于时间的多项式。x、y、z 三个维度<strong>互相独立</strong>，各自单独求解，下面只讲 1D。</p>
+<div class="eq">第 j 段，局部时间 t ∈ [0, Tⱼ]：
+pⱼ(t) = c₀ + c₁t + c₂t² + … + c₇t⁷</div>
+<p>多项式的好处：求导、积分都有解析式，所以"平滑程度"能写成系数的二次函数，整个问题变成一个 QP。</p>
+<h3>"平滑"怎么量化</h3>
+<p>取位置的某一阶导数，平方后对时间积分。这一阶导数越小、越平缓，轨迹越平滑。Minimum snap 选的是第 4 阶。</p>
+</section>
+
+<section id="why">
+<h2><span class="n">03</span>为什么是 snap，为什么是 7 次多项式</h2>
+<div class="tw"><table>
+<tr><th>阶</th><th>名称</th><th>对 quadrotor 意味着什么</th></tr>
+<tr><td>0</td><td>position</td><td>在哪</td></tr>
+<tr><td>1</td><td>velocity</td><td>多快</td></tr>
+<tr><td>2</td><td>acceleration</td><td>推力的大小和方向（决定姿态）</td></tr>
+<tr><td>3</td><td>jerk</td><td>角速度</td></tr>
+<tr><td>4</td><td><strong>snap</strong></td><td><strong>角加速度，也就是电机力矩</strong></td></tr>
+</table></div>
+<p>Quadrotor 的推力 ∝ acceleration，往上每求一次导，就离电机更近一层。<strong>最小化 snap 就是让电机指令最平滑。</strong>这个对应关系来自 differential flatness，见 <a href="#after">10</a>。</p>
+<p>多项式次数由优化目标决定：最小化第 k 阶导数时，最优解是 <strong>2k−1 次</strong>多项式（变分法的 Euler–Lagrange 方程给出 x⁽²ᵏ⁾ = 0）。</p>
+<div class="tw"><table>
+<tr><th>目标</th><th>k</th><th>多项式次数</th><th>每段系数</th><th>常用于</th></tr>
+<tr><td>minimum acceleration</td><td>2</td><td>3（cubic spline）</td><td>4</td><td>简单平滑</td></tr>
+<tr><td>minimum jerk</td><td>3</td><td>5</td><td>6</td><td>地面机器人、机械臂</td></tr>
+<tr><td><strong>minimum snap</strong></td><td><strong>4</strong></td><td><strong>7</strong></td><td><strong>8</strong></td><td>quadrotor</td></tr>
+</table></div>
+<p>框架完全一样，换 k 就换了算法。下面都用 k = 4。</p>
+</section>
+
+<section id="time">
+<h2><span class="n">04</span>Time allocation：时间必须事先给定</h2>
+<p>Minimum snap 有一个前提：<strong>每段用多长时间 Tᵢ 必须先给出来。</strong>优化器只求多项式的系数，也就是曲线的形状，不求时间。给每段分配时长这一步叫 <strong>time allocation</strong>。</p>
+<p>为什么不一起优化？时间进入多项式的方式是 t⁷ 这类高次项，cost 对 T 不是二次的。固定 T 之后问题才是 QP，可以一步解出。</p>
+<div class="tw"><table>
+<tr><th>方法</th><th>做法</th></tr>
+<tr><td>距离 / 平均速度</td><td>Tᵢ = Lᵢ / v_avg，最简单</td></tr>
+<tr><td>Trapezoidal 估计</td><td>按 v_max、a_max 算每段加速、匀速、减速的时间，更准</td></tr>
+<tr><td>上游直接给定</td><td>CBS 已经规定每个 timestep 在哪，Tᵢ = tᵢ₊₁ − tᵢ（见 <a href="#cbs">11</a>）</td></tr>
+<tr><td>时间也优化</td><td>外层对 T 做 gradient descent，cost 取 J + k_T·ΣTᵢ（Mellinger &amp; Kumar 2011）；新方法如 MINCO 同时优化空间和时间</td></tr>
+</table></div>
+<div class="note"><p><span class="q">直觉</span>T 整体变大，轨迹变慢、更保守；整体变小，会超速。T 之间的<strong>比例</strong>还会改变形状：某段时间给得太少，轨迹会在相邻段绕远路"补时间"。实验台里切换"均匀 1s"和"按距离"就能看到。</p></div>
+</section>
+
+<section id="qp">
+<h2><span class="n">05</span>写成 QP：变量、cost、约束</h2>
+<h3>变量</h3>
+<p>m 段，每段 8 个系数，所以每个维度有 <strong>8m 个未知数</strong>，排成向量 c。</p>
+<h3>Cost：J = cᵀQc</h3>
+<p>p⁽⁴⁾(t) 是系数 c 的线性函数，平方再积分就是 c 的二次函数。对单独一段：</p>
+<div class="eq">J = ∫₀ᵀ (p⁽⁴⁾(t))² dt = cᵀ Q c
+
+Q[i][j] = i!/(i−4)! · j!/(j−4)! · T^(i+j−7) / (i+j−7)     （i, j ≥ 4）
+Q[i][j] = 0                                               （i 或 j &lt; 4）</div>
+<p>c₀…c₃ 不影响 snap，所以 Q 的前 4 行 4 列都是 0。整体的 Q 是各段的 Q 沿对角线拼起来的 block diagonal。</p>
+<h3>约束：Ac = b</h3>
+<div class="tw"><table>
+<tr><th>位置</th><th>约束</th><th>条数</th></tr>
+<tr><td>起点</td><td>p = w₀，v = a = j = 0（或给定初始状态）</td><td>4</td></tr>
+<tr><td>终点</td><td>p = wₘ，v = a = j = 0</td><td>4</td></tr>
+<tr><td>普通中间点</td><td>前一段终点 = 后一段起点 = wᵢ；v、a、j <strong>前后相等</strong>，但取多少不规定</td><td>2 + 3</td></tr>
+<tr><td>停止点（如 CBS wait）</td><td>p = wᵢ；两侧 v = a = j = <strong>0</strong></td><td>2 + 6</td></tr>
+</table></div>
+<p>每个约束都是"某段在某时刻的某阶导数"，等于 <span class="m">basis(t, r) · c</span>，其中 <span class="m">basis(t, r)[k] = k!/(k−r)! · t^(k−r)</span>。所以都是关于 c 的线性方程。</p>
+<div class="note"><p><span class="q">数一数自由度，看清优化器到底在选什么</span>两段（3 个 waypoint）：未知数 16，约束 4 + 4 + 5 = 13，剩 <strong>3 个自由度</strong>，正好是中间点的 v、a、j。一般地，自由度 = 3(m−1)。<strong>优化器做的事，就是替每个中间点挑一组最平滑的 v、a、j。</strong>如果中间点设成停止点，v、a、j 被固定为 0，自由度变成 0，轨迹完全由约束决定。</p></div>
+<h3>完整形式</h3>
+<div class="eq">min  cᵀ Q c
+s.t. A c = b                （必有）
+     G c ≤ h                （可选：corridor、速度上限，见 08）</div>
+</section>
+
+<section id="solve">
+<h2><span class="n">06</span>求解</h2>
+<h3>方法 A：KKT 线性方程（只有等式约束）</h3>
+<p>带等式约束的二次优化，用 Lagrange 乘子 λ，最优条件是一个线性方程组：</p>
+<div class="eq">⎡ 2Q   Aᵀ ⎤ ⎡ c ⎤   ⎡ 0 ⎤
+⎣ A    0  ⎦ ⎣ λ ⎦ = ⎣ b ⎦</div>
+<p>解一次线性方程就得到 c，不需要 QP solver。<a href="#lab">实验台</a>和 <a href="#code">Python 实现</a>都用这个方法。</p>
+<h3>方法 B：闭式解（Richter, Bry, Roy）</h3>
+<p>把变量从"系数 c"换成"每个端点的 p、v、a、j"，记为 d。两者是线性映射 <span class="m">d = Mc</span>。</p>
+<ol>
+<li>把 d 分成<strong>固定的</strong> d_F（waypoint 位置、起终点状态）和<strong>自由的</strong> d_P（中间点的 v、a、j）。相邻段共享端点，连续性自动满足。</li>
+<li>cost 写成 <span class="m">J = [d_F; d_P]ᵀ R [d_F; d_P]</span>。</li>
+<li>对 d_P 求导并令其为 0：<strong><span class="m">d_P* = −R_PP⁻¹ R_FPᵀ d_F</span></strong>。</li>
+</ol>
+<p>未知数更少，数值上更稳定，是工程上的常用写法。</p>
+<h3>方法 C：QP solver（有不等式约束）</h3>
+<p>加了 corridor 或速度上限之后，没有闭式解，用 OSQP 这类 QP solver。</p>
+<div class="note warn"><p><span class="q">数值技巧</span>T 较大时 T⁷ 很大，矩阵会 ill-conditioned。常见做法是每段用归一化时间 τ = t/T ∈ [0, 1] 表示多项式，求导时再乘上 1/Tʳ。实验台就是这样实现的。</p></div>
+</section>
+
+<section id="lab">
+<h2><span class="n">07</span>实验台：拖动 waypoint，看轨迹怎么变</h2>
+<div class="lab" id="snapLab">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="L">L 形拐弯</button>
+    <button type="button" class="pre" data-p="zig">Zigzag</button>
+    <button type="button" class="pre" data-p="wait">CBS wait：重复 waypoint</button>
+  </div>
+  <div class="opts">
+    <span>Time allocation：</span>
+    <label><input type="radio" name="talloc" value="dist" checked> 按距离（Lᵢ / 1.5 m/s）</label>
+    <label><input type="radio" name="talloc" value="unit"> 均匀，每段 1s</label>
+  </div>
+  <div class="opts">
+    <label><input type="checkbox" id="optStop"> 中间点都停住（v = a = j = 0）</label>
+    <label>时间缩放 α <input type="range" id="optAlpha" min="0.4" max="2.5" step="0.05" value="1"> <output id="outAlpha">1.00</output></label>
+  </div>
+  <div class="stage">
+    <div class="stage-main">
+      <svg class="cv" id="world" viewBox="0 0 560 336" role="img" aria-label="平面上的 waypoints 和求出的轨迹"></svg>
+      <h4>速度 |v(t)|，红色虚线是 v_max = 3 m/s，橙色竖线是经过 waypoint 的时刻</h4>
+      <svg class="cv" id="speed" viewBox="0 0 560 150" role="img" aria-label="速度随时间变化的曲线"></svg>
+    </div>
+    <div class="stage-side">
+      <h4>这次求解</h4>
+      <div class="kv" id="kv"></div>
+      <div class="live" id="live" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试：</b>① L 形里把拐角的点拖远拖近，看曲线怎么切弯。② 切到"均匀 1s"，短段和长段用一样的时间，速度忽快忽慢。③ 选"CBS wait"，看重复点那里轨迹冲出去又绕回来，再勾上"停住"。④ 超速时把 α 调大。</p>
+</div>
+<p>图里的实线是轨迹，上面的小点每隔 0.25s 一个：点越稀，速度越快。橙色圆点是 waypoint，可以拖；红色表示这个点被设成停止点。</p>
+</section>
+
+<section id="fix">
+<h2><span class="n">08</span>检查与修正</h2>
+<p>解出来以后，按 dt 采样检查两件事。</p>
+<h3>问题 1：超速、加速度超限</h3>
+<p><strong>Time scaling</strong>：所有 Tᵢ 乘以同一个 α &gt; 1。路径形状不变，速度变为 1/α 倍，加速度变为 1/α² 倍。</p>
+<div class="eq">α = max( v_peak / v_max ,  √(a_peak / a_max) )</div>
+<h3>问题 2：碰撞</h3>
+<p>多项式不会沿直线走，拐角会切弯、会 overshoot，可能碰到障碍物。</p>
+<div class="tw"><table>
+<tr><th>方法</th><th>做法</th><th>保证</th></tr>
+<tr><td>插入中间点</td><td>在碰撞那段的中点加一个 waypoint，重新求解，迭代到无碰撞（Richter et al.）</td><td>实用，无严格保证</td></tr>
+<tr><td>采样点约束</td><td>在若干时刻约束位置落在 safe corridor 内（不等式约束）</td><td>采样点之间可能漏</td></tr>
+<tr><td>Bernstein / Bézier</td><td>改用 Bézier 曲线表示。曲线一定在 control points 的 convex hull 内，只要约束 control points 在 corridor 里，<strong>整条曲线都在里面</strong></td><td>严格保证，仍然是 QP</td></tr>
+</table></div>
+</section>
+
+<!-- ============ PART B ============ -->
+<div class="part"><div class="tag">PART B</div><h2>前后的 pipeline</h2><p>Minimum snap 的输入从哪来，输出交给谁。</p></div>
+
+<section id="before">
+<h2><span class="n">09</span>之前：front end 和 waypoint 后处理</h2>
+<ul>
+<li><strong>Front end</strong>：A*、JPS、RRT*、CBS 等，只保证几何上无碰撞，不考虑动力学。见 <a href="planning-and-task-allocation-basics.html">Planning 基础</a>。</li>
+<li><strong>剪枝</strong>：合并共线点，用 line-of-sight 去掉多余拐点。grid 上的 A* 每格一个点，直接喂进去会得到一条抖动的曲线。点少，轨迹才平滑。</li>
+<li><strong>Safe corridor（可选）</strong>：沿路径生成一串凸多边形或 box，表示允许的空间，给 08 的不等式约束用。</li>
+<li><strong>MAPF 例外</strong>：wait 点和 timestep 有意义，不能随便删，见 <a href="#cbs">11</a>。</li>
+</ul>
+</section>
+
+<section id="after">
+<h2><span class="n">10</span>之后：differential flatness、feedforward 和 controller</h2>
+<p>无人机的 12 维状态、4 个输入、角速度和完整动力学，单独整理在 <a href="quadrotor-dynamics.html">无人机动力学</a>，有三个可视化实验台。</p>
+<h3>Differential flatness</h3>
+<p>如果能找到一组 <strong>flat outputs</strong> y，使系统的<strong>全部状态和输入</strong>都能写成 y 及其有限阶导数的代数函数，系统就是 differentially flat。它带来两个结论：</p>
+<ol>
+<li><strong>只规划 flat outputs 就够了。</strong>只要 y(t) 足够光滑，就一定能被实现（不考虑输入上限）。所以 minimum snap 只需规划几条多项式，不用处理完整动力学。</li>
+<li><strong>Feedforward 直接代公式算</strong>，不需要积分或解微分方程。</li>
+</ol>
+<p>完整定义、数学本质（参数化掉 ODE 约束、积分器链）和更多例子见 <a href="quadrotor-dynamics.html#flatdef">无人机动力学 08</a>。</p>
+<p>采样 p、v、a、j 对任何系统都能做；"用它们直接算出状态和输入"这一步才需要 flatness。</p>
+<h3>Quadrotor：flat outputs = (x, y, z, ψ)</h3>
+<div class="eq">推力方向  z_B = (a + g·e₃) / ‖a + g·e₃‖          ← acceleration
+推力大小  f   = m·‖a + g·e₃‖
+姿态      x_C = [cos ψ, sin ψ, 0]
+          y_B = (z_B × x_C) / ‖z_B × x_C‖,   x_B = y_B × z_B
+角速度    h_ω = (m/f)·( ȷ − (z_B·ȷ)·z_B )             ← jerk
+          p = −h_ω·y_B,   q = h_ω·x_B,   r = ψ̇·(e₃·z_B)
+角加速度 / 力矩                                         ← snap</div>
+<p>奇异点：a = −g（自由落体）时推力为 0，姿态无定义。</p>
+<h3>差速底盘：flat outputs = (x, y)</h3>
+<div class="eq">θ = atan2(ẏ, ẋ)
+v = √(ẋ² + ẏ²)
+ω = (ẋ·ÿ − ẏ·ẍ) / (ẋ² + ẏ²)</div>
+<p>奇异点：v = 0 时 θ、ω 无定义，正好是停止点和 CBS 的 wait。做法是保持上一时刻的 θ，原地转向单独规划一段 θ(t)。</p>
+<h3>系统不 flat 怎么办</h3>
+<div class="tw"><table>
+<tr><th>系统</th><th>Flat?</th></tr>
+<tr><td>Quadrotor、差速底盘、kinematic bicycle（后轴中心）、全驱动机械臂</td><td>✅</td></tr>
+<tr><td>带轮胎侧滑的 dynamic bicycle、很多欠驱动系统</td><td>一般 ❌</td></tr>
+</table></div>
+<p>不 flat 时：只把 p(t) 当 reference 交给 feedback 去追（不保证跟得上），或者改用带完整动力学的 trajectory optimization（direct collocation、iLQR），或者用 MPC。</p>
+<p>这些方法各自在做什么映射、为什么并存、最后怎样落到电机上，见 <a href="quadrotor-dynamics.html#roadmap">无人机动力学 12</a>。</p>
+<h3>Controller</h3>
+<p>按控制频率采样轨迹，PID + feedforward、geometric SE(3) controller 或 MPC 去跟踪。环境变化时 receding horizon 重规划：以当前的 p、v、a 作为新起点约束。</p>
+<p>为什么 flatness 已经算出了输入，还需要 tracking controller，并有实验台对比开环和 feedback，见 <a href="quadrotor-dynamics.html#ffb">无人机动力学 10</a>。</p>
+<p>SE(3) geometric controller 的原理、和 Euler angle PID 的区别，见 <a href="quadrotor-dynamics.html#se3">无人机动力学 11</a>。</p>
+</section>
+
+<section id="cbs">
+<h2><span class="n">11</span>用在 CBS / MAPF</h2>
+<p>CBS 给出 time-indexed waypoints，每个 timestep dt 走一格或原地 wait。接到 minimum snap 上：</p>
+<ol>
+<li><strong>Time allocation 直接照抄 CBS</strong>：Tᵢ = tᵢ₊₁ − tᵢ。共线的几步可以合成一段，时长相加。</li>
+<li><strong>Wait 点设成停止点</strong>：到达和离开时刻加 v = a = j = 0，期间 p(t) 保持不变，时长 k·dt（格子出现 k+1 次，就停 k 步）。停止点两侧互不影响，轨迹自然被切成几块。</li>
+<li><strong>到达、离开 wait 点的时刻和 CBS 完全一致</strong>，collision-free 的保证保留。</li>
+</ol>
+<div class="note warn"><p><span class="q">坑：把 wait 写成重复 waypoint</span>例如 <span class="m">[0, 2, 2, 4]</span> 直接丢进 minimum snap。中间点只要求连续，机器人带着速度进入 wait 点，多项式会冲出去再绕回来。实测这段的位置在 1.75 到 2.25 之间来回，偏离 ±0.25 格，可能撞上正在经过的另一个机器人。实验台的 "CBS wait" 预设就是这个例子。</p></div>
+<ul>
+<li><strong>超速时所有机器人用同一个 α。</strong>整体慢放，相对时空关系不变，仍然无碰撞；只放慢一台会破坏这一点。</li>
+<li><strong>执行时 wait 是同步点</strong>：等对方离开冲突格子再出发，而不是等时钟到点（Action Dependency Graph 的思路）。</li>
+<li><strong>想更平滑</strong>：把 wait 时间并进相邻段的 Tᵢ，让机器人减速而不是停住。但中间时刻的位置会变，必须重新做多机碰撞检查，冲突处退回停止点。</li>
+</ul>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<div class="part"><div class="tag">REVIEW</div><h2>复习</h2></div>
+
+<section id="code">
+<h2><span class="n">12</span>Python 实现（KKT 解法，已跑通）</h2>
+<details class="qa code" open><summary>min_snap_1d：约 50 行</summary><div class="a">
+<pre>import numpy as np
+from math import factorial
+
+N = 8   # 7 次多项式，8 个系数
+R = 4   # 最小化 4 阶导数 (snap)
+
+def basis(t, r):
+    """p^(r)(t) = basis(t, r) @ c"""
+    b = np.zeros(N)
+    for k in range(r, N):
+        b[k] = factorial(k) / factorial(k - r) * t ** (k - r)
+    return b
+
+def q_matrix(T):
+    Q = np.zeros((N, N))
+    for i in range(R, N):
+        for j in range(R, N):
+            ci, cj = factorial(i) / factorial(i - R), factorial(j) / factorial(j - R)
+            Q[i, j] = ci * cj * T ** (i + j - 2*R + 1) / (i + j - 2*R + 1)
+    return Q
+
+def min_snap_1d(wps, Ts, stops=()):
+    """wps: m+1 个 waypoint；Ts: m 段时长；stops: 停止点的索引（如 CBS wait）"""
+    m, n = len(Ts), N * len(Ts)
+    Q = np.zeros((n, n))
+    for s, T in enumerate(Ts):
+        Q[s*N:(s+1)*N, s*N:(s+1)*N] = q_matrix(T)
+
+    A, b = [], []
+    def add(terms, rhs):
+        row = np.zeros(n)
+        for s, v in terms:
+            row[s*N:(s+1)*N] += v
+        A.append(row); b.append(rhs)
+
+    # 起点、终点：位置固定，v = a = j = 0
+    add([(0, basis(0, 0))], wps[0])
+    add([(m-1, basis(Ts[-1], 0))], wps[-1])
+    for r in range(1, R):
+        add([(0, basis(0, r))], 0.0)
+        add([(m-1, basis(Ts[-1], r))], 0.0)
+
+    # 中间点
+    for i in range(1, m):
+        T = Ts[i-1]
+        add([(i-1, basis(T, 0))], wps[i])          # 前一段终点 = w_i
+        add([(i,   basis(0, 0))], wps[i])          # 后一段起点 = w_i
+        for r in range(1, R):
+            if i in stops:                         # 停止点：两侧 v = a = j = 0
+                add([(i-1, basis(T, r))], 0.0)
+                add([(i,   basis(0, r))], 0.0)
+            else:                                  # 普通点：导数连续
+                add([(i-1, basis(T, r)), (i, -basis(0, r))], 0.0)
+
+    A, b = np.array(A), np.array(b)
+    K = np.block([[2*Q, A.T], [A, np.zeros((len(b), len(b)))]])   # KKT
+    sol = np.linalg.solve(K, np.concatenate([np.zeros(n), b]))
+    return sol[:n].reshape(m, N)
+
+# 2D：x、y 各调用一次，Ts 相同
+coefs = min_snap_1d(wps=[0, 2, 4], Ts=[2, 2], stops={1})</pre>
+</div></details>
+<div class="tw"><table>
+<tr><th>输入</th><th>结果</th></tr>
+<tr><td><span class="m">[0, 2, 4]</span>，不停</td><td>经过 x = 2 时速度 ≈ 2.19，直接穿过</td></tr>
+<tr><td><span class="m">[0, 2, 4]</span>，<span class="m">stops={1}</span></td><td>在 x = 2 速度 = 0，准时停住</td></tr>
+<tr><td><span class="m">[0, 2, 2, 4]</span>，重复 waypoint</td><td>"等待"段位置在 1.75 ~ 2.25 之间晃，overshoot</td></tr>
+</table></div>
+</section>
+
+<section id="qa">
+<h2><span class="n">13</span>面试题</h2>
+<details class="qa"><summary>为什么最小化 snap，而不是 jerk 或 acceleration？</summary><div class="a">
+<p>Quadrotor 是 differentially flat 的：推力对应 acceleration，角速度对应 jerk，角加速度也就是电机力矩对应 snap。最小化 snap 让电机指令最平滑。地面机器人一般用 minimum jerk 或 minimum acceleration，框架相同。</p>
+</div></details>
+<details class="qa"><summary>为什么用 7 次多项式？</summary><div class="a">
+<p>最小化第 k 阶导数平方积分，Euler–Lagrange 方程给出 x⁽²ᵏ⁾ = 0，最优解是 2k−1 次多项式。k = 4 时是 7 次，每段 8 个系数。</p>
+</div></details>
+<details class="qa"><summary>Time allocation 怎么定？对结果有什么影响？</summary><div class="a">
+<p>必须事先给定，固定 T 之后问题才是 QP。常用距离除以平均速度，或者按梯形速度估计；CBS 场景直接用 timestep。T 整体决定快慢，T 之间的比例决定形状，分配不当会让轨迹绕远路。进阶做法是外层对 T 做梯度下降。</p>
+</div></details>
+<details class="qa"><summary>怎么求解？需要 QP solver 吗？</summary><div class="a">
+<p>只有等式约束时不需要：解 KKT 线性方程，或者用 Richter 的闭式解 d_P* = −R_PP⁻¹ R_FPᵀ d_F，优化的其实只是中间点的 v、a、j。加了 corridor 或速度上限这类不等式约束才需要 QP solver。</p>
+</div></details>
+<details class="qa"><summary>轨迹超速或者撞到障碍物怎么办？</summary><div class="a">
+<p>超速：所有 T 乘以同一个 α，速度变 1/α，加速度变 1/α²。碰撞：在出问题的段中点插一个 waypoint 重新解；或者加 safe corridor 约束，用 Bézier 表示时，约束 control points 就能保证整条曲线在 corridor 内。</p>
+</div></details>
+<details class="qa"><summary>CBS 给的 waypoints 里有 wait，minimum snap 怎么处理？</summary><div class="a">
+<p>把 wait 点设成停止点：到达和离开时加 v = a = j = 0，期间位置不变，时长是 k·dt；移动段的 time allocation 直接用 CBS 的 timestep。这样时间和 CBS 完全一致，collision-free 保留。不能把重复 waypoint 直接丢进去，否则会 overshoot。</p>
+</div></details>
+<details class="qa"><summary>Minimum snap 只能用在 differentially flat 的系统上吗？</summary><div class="a">
+<p>多项式规划和采样对任何系统都能做。但"只规划位置就保证可实现"和"直接代数算出姿态和推力"依赖 flatness。系统不 flat 时，只能把轨迹当 reference 用 feedback 去追，或者改用带完整动力学的 trajectory optimization 或 MPC。</p>
+</div></details>
+</section>
+
+<section id="refs">
+<h2><span class="n">14</span>速查与 References</h2>
+<div class="eq">front end → 剪枝 → time allocation → min cᵀQc s.t. Ac=b → KKT / 闭式解
+        → 检查（超速 → α 缩放；碰撞 → 插点 / corridor）→ flatness feedforward → controller
+
+snap = 4 阶导；7 次多项式；8 系数/段；自由度 = 中间点的 v、a、j
+停止点（CBS wait）= p 固定 + 两侧 v = a = j = 0</div>
+<ul>
+<li>D. Mellinger, V. Kumar. <em>Minimum snap trajectory generation and control for quadrotors.</em> ICRA 2011.</li>
+<li>C. Richter, A. Bry, N. Roy. <em>Polynomial trajectory planning for aggressive quadrotor flight in dense indoor environments.</em> ISRR 2013.</li>
+<li>F. Gao et al. <em>Online safe trajectory generation for quadrotors using fast marching method and Bernstein basis polynomial.</em> ICRA 2018.</li>
+<li>Z. Wang et al. <em>Geometrically constrained trajectory optimization for multicopters</em>（MINCO）. IEEE T-RO 2022.</li>
+</ul>
+</section>
+</main>
+</div>
+
+<script>
+// ---------- 实验台：2D minimum snap，KKT 解法，每段用归一化时间 τ = t/T ----------
+(function(){
+  const N = 8, R = 4, FACT = [1,1,2,6,24,120,720,5040];
+  const V_MAX = 3, A_MAX = 6, V_AVG = 1.5, WAIT_T = 2;
+  const SC = 56, W = 560, H = 336;           // 世界坐标 x∈[0,10], y∈[0,6]
+  const PRESETS = {
+    L:    [[1,1],[5,1],[5,5],[9,5]],
+    zig:  [[1,1],[3,5],[5,1],[7,5],[9,1]],
+    wait: [[1,1],[5,1],[5,1],[5,5]],
+  };
+  const lab = document.getElementById('snapLab');
+  const world = document.getElementById('world'), speed = document.getElementById('speed');
+  const kv = document.getElementById('kv'), live = document.getElementById('live');
+  const optStop = document.getElementById('optStop'), optAlpha = document.getElementById('optAlpha'), outAlpha = document.getElementById('outAlpha');
+  let wps = PRESETS.L.map(p => p.slice()), preset = 'L';
+
+  // 第 r 阶导数在归一化时间 τ 处的基向量（已除以 T^r）
+  function basis(tau, r, T){
+    const b = new Array(N).fill(0);
+    for (let k = r; k < N; k++) b[k] = FACT[k] / FACT[k-r] * Math.pow(tau, k-r) / Math.pow(T, r);
+    return b;
+  }
+  // ∫0^T (p⁽⁴⁾)² dt = (1/T⁷) · Σ ... ∫0^1 τ^(i+j-8) dτ
+  function qmat(T){
+    const Q = [...Array(N)].map(() => new Array(N).fill(0));
+    for (let i = R; i < N; i++) for (let j = R; j < N; j++){
+      const e = i + j - 2*R + 1;
+      Q[i][j] = FACT[i]/FACT[i-R] * FACT[j]/FACT[j-R] / e / Math.pow(T, 2*R - 1);
+    }
+    return Q;
+  }
+  function gauss(M, b){
+    const n = b.length, A = M.map((r, i) => r.concat([b[i]]));
+    for (let c = 0; c < n; c++){
+      let p = c;
+      for (let r = c+1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]];
+      const d = A[c][c]; if (Math.abs(d) < 1e-12) return null;
+      for (let r = c+1; r < n; r++){ const f = A[r][c] / d; if (f) for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k]; }
+    }
+    const x = new Array(n).fill(0);
+    for (let r = n-1; r >= 0; r--){ let s = A[r][n]; for (let k = r+1; k < n; k++) s -= A[r][k] * x[k]; x[r] = s / A[r][r]; }
+    return x;
+  }
+  function minSnap1D(w, Ts, stop){
+    const m = Ts.length, n = N * m, rows = [], rhs = [];
+    const add = (terms, v) => { const row = new Array(n).fill(0); terms.forEach(([s, b]) => b.forEach((x, k) => row[s*N+k] += x)); rows.push(row); rhs.push(v); };
+    add([[0, basis(0,0,Ts[0])]], w[0]); add([[m-1, basis(1,0,Ts[m-1])]], w[m]);
+    for (let r = 1; r < R; r++){ add([[0, basis(0,r,Ts[0])]], 0); add([[m-1, basis(1,r,Ts[m-1])]], 0); }
+    for (let i = 1; i < m; i++){
+      add([[i-1, basis(1,0,Ts[i-1])]], w[i]); add([[i, basis(0,0,Ts[i])]], w[i]);
+      for (let r = 1; r < R; r++){
+        if (stop){ add([[i-1, basis(1,r,Ts[i-1])]], 0); add([[i, basis(0,r,Ts[i])]], 0); }
+        else add([[i-1, basis(1,r,Ts[i-1])], [i, basis(0,r,Ts[i]).map(x => -x)]], 0);
+      }
+    }
+    const nc = rhs.length, K = [];
+    const Qs = Ts.map(qmat);
+    for (let a = 0; a < n; a++){
+      const row = new Array(n + nc).fill(0), s = Math.floor(a / N), i = a % N;
+      for (let j = 0; j < N; j++) row[s*N + j] = 2 * Qs[s][i][j];
+      for (let c = 0; c < nc; c++) row[n + c] = rows[c][a];
+      K.push(row);
+    }
+    for (let c = 0; c < nc; c++) K.push(rows[c].concat(new Array(nc).fill(0)));
+    const sol = gauss(K, new Array(n).fill(0).concat(rhs));
+    if (!sol) return null;
+    const coefs = [], J = Qs.reduce((acc, Q, s) => { const c = sol.slice(s*N, s*N+N); coefs.push(c);
+      let v = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) v += c[i]*Q[i][j]*c[j]; return acc + v; }, 0);
+    return { coefs, nc, J };
+  }
+  const evalP = (c, tau, r, T) => basis(tau, r, T).reduce((s, b, k) => s + b * c[k], 0);
+  const px = x => x * SC, py = y => H - y * SC;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+  function times(){
+    const mode = lab.querySelector('input[name=talloc]:checked').value, a = +optAlpha.value;
+    return wps.slice(1).map((p, i) => {
+      const L = Math.hypot(p[0] - wps[i][0], p[1] - wps[i][1]);
+      const T = mode === 'unit' ? 1 : (L < 1e-6 ? WAIT_T : L / V_AVG);
+      return T * a;
+    });
+  }
+
+  function render(){
+    const Ts = times(), stop = optStop.checked, m = Ts.length;
+    const sx = minSnap1D(wps.map(p => p[0]), Ts, stop), sy = minSnap1D(wps.map(p => p[1]), Ts, stop);
+    world.innerHTML = ''; speed.innerHTML = '';
+    for (let x = 0; x <= 10; x++) el('line', { class:'w-grid', x1:px(x), y1:0, x2:px(x), y2:H }, world);
+    for (let y = 0; y <= 6; y++) el('line', { class:'w-grid', x1:0, y1:py(y), x2:W, y2:py(y) }, world);
+    el('polyline', { class:'w-poly', points: wps.map(p => px(p[0]) + ',' + py(p[1])).join(' ') }, world);
+    if (!sx || !sy){ live.innerHTML = '<p>求解失败。</p>'; return; }
+
+    // 采样
+    const pts = [], sp = [], dots = []; let t0 = 0, vPeak = 0, aPeak = 0, maxDev = 0;
+    const tMarks = [0];
+    for (let s = 0; s < m; s++){
+      const T = Ts[s], steps = Math.max(8, Math.ceil(T / 0.01));
+      for (let k = 0; k <= steps; k++){
+        const tau = k / steps, t = t0 + tau * T;
+        const x = evalP(sx.coefs[s], tau, 0, T), y = evalP(sy.coefs[s], tau, 0, T);
+        const vx = evalP(sx.coefs[s], tau, 1, T), vy = evalP(sy.coefs[s], tau, 1, T);
+        const ax = evalP(sx.coefs[s], tau, 2, T), ay = evalP(sy.coefs[s], tau, 2, T);
+        const v = Math.hypot(vx, vy), acc = Math.hypot(ax, ay);
+        pts.push([x, y]); sp.push([t, v]); vPeak = Math.max(vPeak, v); aPeak = Math.max(aPeak, acc);
+        const L = Math.hypot(wps[s+1][0] - wps[s][0], wps[s+1][1] - wps[s][1]);
+        if (L < 1e-6) maxDev = Math.max(maxDev, Math.hypot(x - wps[s][0], y - wps[s][1]));
+      }
+      t0 += T; tMarks.push(t0);
+    }
+    const total = t0;
+    for (let t = 0.25; t < total - 1e-9; t += 0.25){
+      let s = 0, acc = 0; while (s < m - 1 && t > acc + Ts[s]) { acc += Ts[s]; s++; }
+      const tau = (t - acc) / Ts[s];
+      dots.push([evalP(sx.coefs[s], tau, 0, Ts[s]), evalP(sy.coefs[s], tau, 0, Ts[s])]);
+    }
+    el('polyline', { class:'w-traj', points: pts.map(p => px(p[0]).toFixed(1) + ',' + py(p[1]).toFixed(1)).join(' ') }, world);
+    dots.forEach(p => el('circle', { class:'w-dot', cx:px(p[0]), cy:py(p[1]), r:2.6 }, world));
+
+    // waypoint（可拖动）；重合的点画成一个，标 ×2
+    const seen = {};
+    wps.forEach((p, i) => {
+      const key = p[0].toFixed(3) + ',' + p[1].toFixed(3);
+      if (seen[key] !== undefined){ seen[key].lbl.textContent = '×' + (++seen[key].n); return; }
+      const isStop = stop && i > 0 && i < wps.length - 1;
+      const g = el('g', { class:'w-wp' + (isStop ? ' stop' : ''), 'data-i':i, tabindex:0, role:'button', 'aria-label':'waypoint ' + i + '，可拖动' }, world);
+      g.setAttribute('transform', 'translate(' + px(p[0]) + ',' + py(p[1]) + ')');
+      el('circle', { r:11 }, g);
+      const t = el('text', {}, g); t.textContent = i;
+      const lbl = el('text', { class:'w-lbl', x:0, y:-18 }, g);
+      seen[key] = { lbl, n:1 };
+    });
+
+    // 速度图
+    const PW = 560, PH = 150, L0 = 34, B0 = 128, T0 = 10;
+    const vTop = Math.max(vPeak, V_MAX) * 1.15;
+    const tx = t => L0 + t / total * (PW - L0 - 10), ty = v => B0 - v / vTop * (B0 - T0);
+    el('line', { class:'s-ax', x1:L0, y1:B0, x2:PW-10, y2:B0 }, speed);
+    el('line', { class:'s-ax', x1:L0, y1:T0, x2:L0, y2:B0 }, speed);
+    tMarks.forEach(t => el('line', { class:'s-tick', x1:tx(t), y1:T0, x2:tx(t), y2:B0 }, speed));
+    el('line', { class:'s-lim', x1:L0, y1:ty(V_MAX), x2:PW-10, y2:ty(V_MAX) }, speed);
+    el('polyline', { class:'s-v', points: sp.map(q => tx(q[0]).toFixed(1) + ',' + ty(q[1]).toFixed(1)).join(' ') }, speed);
+    const lab_ = (x, y, s, anchor) => { const t = el('text', { class:'s-t', x, y, 'text-anchor':anchor || 'start' }, speed); t.textContent = s; };
+    lab_(L0 - 4, B0 + 4, '0', 'end'); lab_(L0 - 4, ty(V_MAX) + 4, '3', 'end');
+    lab_(PW - 10, B0 + 16, total.toFixed(1) + ' s', 'end'); lab_(L0, B0 + 16, '0 s');
+
+    // 侧栏
+    const free = N * m - sx.nc;
+    const pill = ok => '<span class="pill ' + (ok ? 'ok' : 'bad') + '">' + (ok ? '未超限' : '超限') + '</span>';
+    kv.innerHTML =
+      '<span>段数 m</span><span>' + m + '</span>' +
+      '<span>每维未知数</span><span>8m = ' + (N*m) + '</span>' +
+      '<span>每维等式约束</span><span>' + sx.nc + '</span>' +
+      '<span>自由度</span><span>' + free + (free ? '（中间点的 v、a、j）' : '（全被约束定死）') + '</span>' +
+      '<span>各段 T</span><span>' + Ts.map(T => T.toFixed(2)).join(', ') + ' s</span>' +
+      '<span>总时间</span><span>' + total.toFixed(2) + ' s</span>' +
+      '<span>峰值 |v|</span><span>' + vPeak.toFixed(2) + ' m/s' + pill(vPeak <= V_MAX + 1e-6) + '</span>' +
+      '<span>峰值 |a|</span><span>' + aPeak.toFixed(2) + ' m/s²' + pill(aPeak <= A_MAX + 1e-6) + '</span>' +
+      '<span>Cost J</span><span>' + (sx.J + sy.J).toExponential(2) + '</span>';
+    const msg = [];
+    msg.push(stop ? '<p>中间点都是停止点：每个 waypoint 处速度降到 0，自由度为 0，轨迹完全由约束决定。</p>'
+                  : '<p>中间点只要求导数连续：机器人带着速度穿过 waypoint，经过时的 v、a、j 是优化器挑的。</p>');
+    if (maxDev > 0.02 && !stop) msg.push('<p><b>Overshoot：</b>重复 waypoint 那段本该原地等，轨迹却偏出去 ' + maxDev.toFixed(2) + ' m 再绕回来，速度图上等待那段的速度也不是 0。勾上"停住"就消失。</p>');
+    if (vPeak > V_MAX + 1e-6 || aPeak > A_MAX + 1e-6){
+      const need = Math.max(vPeak / V_MAX, Math.sqrt(aPeak / A_MAX)) * (+optAlpha.value);
+      msg.push('<p><b>超限：</b>把 α 调到约 ' + need.toFixed(2) + '。速度按 1/α、加速度按 1/α² 下降，形状不变。</p>');
+    }
+    live.innerHTML = msg.join('');
+  }
+
+  // 拖动
+  let drag = null, raf = 0;
+  const toWorld = e => { const pt = world.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(world.getScreenCTM().inverse()); return [Math.min(9.8, Math.max(0.2, q.x / SC)), Math.min(5.8, Math.max(0.2, (H - q.y) / SC))]; };
+  world.addEventListener('pointerdown', e => { const g = e.target.closest('.w-wp'); if (!g) return; drag = +g.dataset.i; world.setPointerCapture(e.pointerId); e.preventDefault(); });
+  world.addEventListener('pointermove', e => { if (drag === null) return; wps[drag] = toWorld(e); if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
+  const end = () => { drag = null; };
+  world.addEventListener('pointerup', end); world.addEventListener('pointercancel', end);
+  // 键盘：方向键移动聚焦的 waypoint
+  world.addEventListener('keydown', e => {
+    const g = e.target.closest && e.target.closest('.w-wp'); if (!g) return;
+    const d = { ArrowLeft:[-.2,0], ArrowRight:[.2,0], ArrowUp:[0,.2], ArrowDown:[0,-.2] }[e.key]; if (!d) return;
+    e.preventDefault(); const i = +g.dataset.i;
+    wps[i] = [Math.min(9.8, Math.max(.2, wps[i][0] + d[0])), Math.min(5.8, Math.max(.2, wps[i][1] + d[1]))];
+    render(); const ng = world.querySelector('.w-wp[data-i="' + i + '"]'); if (ng) ng.focus();
+  });
+
+  function setPreset(p){
+    preset = p; wps = PRESETS[p].map(q => q.slice());
+    lab.querySelectorAll('button.pre').forEach(b => b.classList.toggle('on', b.dataset.p === p));
+    if (p === 'wait') optStop.checked = false;
+    render();
+  }
+  lab.querySelectorAll('button.pre').forEach(b => b.addEventListener('click', () => setPreset(b.dataset.p)));
+  lab.querySelectorAll('input[name=talloc]').forEach(r => r.addEventListener('change', render));
+  optStop.addEventListener('change', render);
+  optAlpha.addEventListener('input', () => { outAlpha.textContent = (+optAlpha.value).toFixed(2); render(); });
+  setPreset('L');
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>

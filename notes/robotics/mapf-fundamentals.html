@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-14">
+<meta name="tags" content="mapf, multi-robot-planning, a-star, space-time-a-star, prioritized-planning, cbs, system-design, interview">
+<title>MAPF 基础：从 A* 到多机器人路径规划</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 apriltag-pose-estimation.html、transforms-and-manipulation.html 同一套样式：左侧固定目录 + 右侧单栏笔记。
+     a1..a4 固定表示 agent A B C D，bad 只用来标 conflict */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --a3:#2F8F3A; --a4:#8A4FC8; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2; --wall:#8E99AB;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --a3:#63C36C; --a4:#B58AF0; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422; --wall:#566176;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --a3:#63C36C; --a4:#B58AF0; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422; --wall:#566176;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}.g-agent{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,tr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.note.intro{border-left-color:var(--a1)}
+.note.intro p{font-size:15px}
+.note.intro .hint{display:block;font-size:13px;color:var(--muted,inherit);margin-bottom:6px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:520px}
+.fig figcaption,.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-okbox{fill:var(--bg);stroke:var(--ok);stroke-width:1.5}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12.5px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ok{fill:var(--ok);font-size:12.5px;font-family:var(--body)}
+.d-m{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+.d-dash{stroke:var(--line-strong);fill:none;stroke-width:1.5;stroke-dasharray:5 4}
+
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+button.pre:disabled{opacity:.45;cursor:default;border-color:var(--line-strong);color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:start}
+.stage-main{min-width:280px}
+.stage-side{min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.grid{display:block;max-width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.g-cell{fill:var(--surface);stroke:var(--line-strong);stroke-width:1}
+.g-wall{fill:var(--wall);stroke:var(--wall);stroke-width:1}
+.g-lab{fill:var(--muted);font-family:var(--mono);font-size:11px;text-anchor:middle}
+.g-goal{fill:none;stroke-width:2;stroke-dasharray:4 3}
+.g-goal-t{font-family:var(--body);font-size:10.5px;font-weight:600}
+.g-path{fill:none;stroke-width:3.5;opacity:.38;stroke-linecap:round;stroke-linejoin:round}
+.g-conf{fill:var(--bad-soft);stroke:var(--bad);stroke-width:2}
+.g-agent{transition:transform .28s ease}
+.g-agent circle{stroke:var(--surface);stroke-width:2}
+.g-agent text{fill:var(--on-agent);font-family:var(--body);font-size:14px;font-weight:600;text-anchor:middle;dominant-baseline:central}
+.g-agent.ghost{opacity:.4}
+.tctl{display:flex;gap:6px;align-items:center;margin-top:8px}
+.tctl input[type=range]{flex:1;min-width:60px}
+.tctl output{font-family:var(--mono);font-size:13px;min-width:4.2em;text-align:right;font-variant-numeric:tabular-nums}
+.tctl button.pre{padding:4px 9px}
+.film{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px}
+.film button{flex:none;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 5px 2px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5}
+.film button:hover{border-color:var(--accent)}
+.film button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.film svg{display:block}
+.film button span{display:block}
+.f-cell{fill:var(--surface);stroke:var(--line);stroke-width:.6}
+.f-wall{fill:var(--wall);stroke:var(--wall);stroke-width:.6}
+.f-conf{fill:var(--bad);stroke:var(--bad);stroke-width:.6}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:0 0 10px}
+.live .mono{font-family:var(--mono);font-size:13px}
+.ag{font-weight:600}
+.ag.c0{color:var(--a1)}.ag.c1{color:var(--a2)}.ag.c2{color:var(--a3)}.ag.c3{color:var(--a4)}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body)}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}.pill.mid{color:var(--warn)}.pill.dim{color:var(--muted)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+.ct{max-height:290px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
+.ct table{font-size:13px}
+.ct th{position:sticky;top:0;background:var(--surface);z-index:1}
+.ct td{padding:5px 10px}
+.ct tbody tr{cursor:pointer}
+.ct tbody tr:hover{background:var(--bg)}
+.ct tbody tr.sel{background:var(--accent-soft)}
+.ct .nid{font-family:var(--mono);white-space:nowrap}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+.qa-tools{display:flex;gap:8px;margin:0 0 12px}
+ul.check{list-style:none;padding-left:0}
+ul.check li{display:flex;gap:10px;align-items:baseline}
+ul.check input{flex:none;transform:translateY(2px)}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .stage-main{min-width:0}
+}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+</defs></svg>
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#map"><span class="k">01</span>学习地图</a></li>
+  </ol>
+  <p class="toc-part">PART A · 问题</p>
+  <ol>
+    <li><a href="#mapf"><span class="k">02</span>MAPF 是什么</a></li>
+    <li><a href="#conflict"><span class="k">03</span>Conflict 的类型</a></li>
+    <li><a href="#objective"><span class="k">04</span>目标函数</a></li>
+    <li><a href="#hard"><span class="k">05</span>为什么难</a></li>
+  </ol>
+  <p class="toc-part">PART B · 单个 AGENT</p>
+  <ol>
+    <li><a href="#astar"><span class="k">06</span>A* 回顾</a></li>
+    <li><a href="#stastar"><span class="k">07</span>Space-time A*</a></li>
+  </ol>
+  <p class="toc-part">PART C · 多个 AGENT</p>
+  <ol>
+    <li><a href="#pp"><span class="k">08</span>Prioritized Planning</a></li>
+    <li><a href="#cbs"><span class="k">09</span>CBS</a></li>
+    <li><a href="#choose"><span class="k">10</span>PP 和 CBS 怎么选</a></li>
+  </ol>
+  <p class="toc-part">PART D · 系统设计</p>
+  <ol>
+    <li><a href="#arch"><span class="k">11</span>从算法到系统</a></li>
+    <li><a href="#lifelong"><span class="k">12</span>Lifelong 与 rolling horizon</a></li>
+    <li><a href="#assign"><span class="k">13</span>Task assignment</a></li>
+    <li><a href="#deadlock"><span class="k">14</span>Corridor 与 deadlock</a></li>
+    <li><a href="#exec"><span class="k">15</span>延误与故障</a></li>
+    <li><a href="#scale"><span class="k">16</span>规模再大怎么办</a></li>
+    <li><a href="#design"><span class="k">17</span>设计题完整示范</a></li>
+  </ol>
+  <p class="toc-part">REVIEW</p>
+  <ol>
+    <li><a href="#qa"><span class="k">18</span>面试题与答案</a></li>
+    <li><a href="#cheatsheet"><span class="k">19</span>速查表与自测</a></li>
+    <li><a href="#refs"><span class="k">20</span>References</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>MAPF 基础：从 A* 到多机器人路径规划</h1>
+  <p>这一页假设你只会单个 robot 的 A*。从 MAPF 的定义讲起，依次是 space-time A*、Prioritized Planning、CBS，最后是怎么把这些算法拼成一个仓库调度系统。只讲基础主线，进阶算法只在速查表里留一个名字。</p>
+  <p>每个算法都是同一个顺序：要解决什么问题、思路、pseudo-code、可以点的实验台、优缺点、面试时怎么说。实验台里跑的是真实算法，换场景、换顺序，结果都是当场算出来的。最后有 28 道面试题（答案默认折叠，先自己答）和一张速查表。</p>
+  <p>坐标一律写成 <span class="m">(row, col)</span>，左上角是 <span class="m">(0,0)</span>。</p>
+</header>
+
+<!-- ============ 01 ============ -->
+<section id="map">
+<h2><span class="n">01</span>学习地图</h2>
+<p>整页只有一条主线：<strong>先会给一个 robot 规划，再把别的 robot 当成会动的障碍，最后决定谁让谁</strong>。</p>
+<div class="tw"><table>
+<tr><th>顺序</th><th>内容</th><th>一句话</th><th>被问概率</th><th>要到的程度</th></tr>
+<tr><td>1</td><td><a href="#mapf">MAPF 建模</a></td><td>输入、输出、conflict、目标函数</td><td>~85%</td><td>能用自己的话定义问题，说出为什么不能在 joint state space 上搜</td></tr>
+<tr><td>2</td><td><a href="#astar">A* 理论</a></td><td>admissible、consistent、true-distance heuristic</td><td>~65%</td><td>能回答追问</td></tr>
+<tr><td>3</td><td><a href="#stastar">Space-time A*</a></td><td>state 加上时间，别的 robot 写进 reservation table</td><td>~90%</td><td>能写 pseudo-code</td></tr>
+<tr><td>4</td><td><a href="#pp">Prioritized Planning</a></td><td>排好 priority，一个一个规划</td><td>~90%</td><td>能写 pseudo-code，能举出失败的例子</td></tr>
+<tr><td>5</td><td><a href="#cbs">CBS</a></td><td>各走各的最短路，有 conflict 再加 constraint</td><td>~80%</td><td>能手推 2 个 agent 的例子，能讲清为什么 optimal</td></tr>
+<tr><td>6</td><td><a href="#lifelong">Rolling horizon</a></td><td>task 不停地来，每隔几步 replan 一次</td><td>~75%</td><td>讲清 w 和 h 的 tradeoff</td></tr>
+<tr><td>7</td><td><a href="#deadlock">Corridor 与 deadlock</a></td><td>窄 aisle 里对头怎么办</td><td>~70%</td><td>能说出 3 种预防办法</td></tr>
+<tr><td>8</td><td><a href="#assign">Task assignment</a></td><td>哪个 robot 做哪个 task</td><td>~50%</td><td>会建 cost matrix，知道 Hungarian algorithm 当黑盒用</td></tr>
+<tr><td>9</td><td><a href="#design">设计题答法</a></td><td>澄清、baseline、扩展、tradeoff、边界情况、指标</td><td>整场都在用</td><td>出声讲两遍</td></tr>
+</table></div>
+<div class="note"><p>概率是主观估计。Symbotic 的公开 blog 描述的 planner 是 prioritized planning：大约每 5 秒 replan 一次，deadline 决定 priority；最近署名 Symbotic 的公开论文做的是 lifelong planner。</p></div>
+<h3>两天怎么分</h3>
+<ul>
+<li><strong>第 1 天</strong>：02 到 10 节。四个实验台都点一遍，在纸上手推一次 CBS 的十字路口例子，默写一次 space-time A* 的 pseudo-code。</li>
+<li><strong>第 2 天</strong>：11 到 17 节。把 17 节的设计题出声讲两遍，每遍 30 分钟。最后过一遍 18 节的面试题。</li>
+</ul>
+</section>
+
+<!-- ============ PART A ============ -->
+<div class="part"><div class="tag">PART A</div><h2>问题</h2><p>先把问题本身说清楚：输入是什么、什么叫撞、什么叫好、为什么难。设计题的前五分钟讲的就是这一部分。</p></div>
+
+<section id="mapf">
+<h2><span class="n">02</span>MAPF 是什么</h2>
+<p>MAPF 是 Multi-Agent Path Finding 的缩写：给很多 robot 同时规划 path，保证它们互相不撞。下文里 agent 就是 robot。</p>
+<h3>输入</h3>
+<ul>
+<li>一张 graph <span class="m">G = (V, E)</span>。仓库里通常是 4-connected grid：每个 cell 是一个 vertex，上下左右相邻的 cell 之间有一条 edge。</li>
+<li><span class="m">k</span> 个 agent。第 <span class="m">i</span> 个 agent 有一个 start <span class="m">s<sub>i</sub></span> 和一个 goal <span class="m">g<sub>i</sub></span>。</li>
+</ul>
+<h3>规则</h3>
+<ul>
+<li>时间是离散的：<span class="m">t = 0, 1, 2, …</span></li>
+<li>每一步，每个 agent 只能做两件事之一：move 到相邻的 cell，或者 wait 在原地。两种 action 都花 1 个 timestep。</li>
+<li>agent 到达 goal 之后一直停在那里，并且<strong>继续占着那个 cell</strong>。</li>
+</ul>
+<h3>输出</h3>
+<p>每个 agent 一条 path。和单 robot 的 A* 不同，这里的 path 是一张<strong>时刻表</strong>：<span class="m">path[t]</span> 是它在时刻 <span class="m">t</span> 所在的 cell。</p>
+<pre>A 的 path:  (1,0)  (1,0)  (1,1)  (1,2)      # t=0 在 (1,0)，t=1 原地 wait，t=2 到 (1,1)，t=3 到 goal
+B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在 (2,1)</pre>
+<p>一组 path 是合法的 solution，条件是任意两条 path 之间都没有 conflict。conflict 的定义在下一节。</p>
+<div class="note"><p><span class="q">和单 robot 规划最大的区别</span>同一个 cell 可以被两个 agent 在不同时刻使用。所以问题不再是“这个 cell 能不能走”，而是“这个 cell 在这个时刻能不能走”。后面所有算法都围绕这一点。</p></div>
+</section>
+
+<section id="conflict">
+<h2><span class="n">03</span>Conflict 的类型</h2>
+<div class="tw"><table>
+<tr><th>名字</th><th>定义</th><th>记法</th><th>标准 MAPF 里</th></tr>
+<tr><td><strong>vertex conflict</strong></td><td>同一时刻，两个 agent 在同一个 cell</td><td class="m">⟨a<sub>i</sub>, a<sub>j</sub>, v, t⟩</td><td>禁止</td></tr>
+<tr><td><strong>edge conflict</strong>，也叫 swap conflict</td><td>从 t 到 t+1，两个 agent 互换位置</td><td class="m">⟨a<sub>i</sub>, a<sub>j</sub>, u, v, t⟩</td><td>禁止</td></tr>
+<tr><td>following conflict</td><td>一个 agent 进入另一个 agent 刚离开的 cell</td><td></td><td>允许。真实 robot 要留安全距离，常常禁止</td></tr>
+<tr><td>cycle conflict</td><td>一圈 agent 同时各往前挪一格</td><td></td><td>允许。真实 robot 常常禁止</td></tr>
+</table></div>
+<p>只检查 vertex conflict 是不够的。两个 agent 对穿时，每个时刻它们都在不同的 cell 里，但物理上已经撞了，所以 edge conflict 要单独检查。</p>
+<div class="lab" id="lab-conf"></div>
+<p class="try">红色的 cell 是发生 conflict 的位置。先看 <b>edge conflict</b>：拖动时间轴，确认每个时刻两个 agent 都不在同一个 cell 里。</p>
+<div class="note say"><p><span class="q">面试时先说出假设</span>“Let me state my assumptions: a 4-connected grid, unit time steps, agents can wait, and I only consider vertex and edge conflicts. In a real system I’d also add a following constraint or a safety margin.” 这句话本身就是在澄清问题。</p></div>
+</section>
+
+<section id="objective">
+<h2><span class="n">04</span>目标函数</h2>
+<p>合法的 solution 有很多，需要一个标准来比较好坏。先定义单个 agent 的 cost：它<strong>到达 goal 并且不再离开</strong>的时刻。中间的 wait 也算在里面。</p>
+<div class="tw"><table>
+<tr><th>名字</th><th>定义</th><th>什么时候用</th></tr>
+<tr><td><strong>SoC</strong>（sum of costs，也叫 flowtime）</td><td>所有 agent 的 cost 之和</td><td>one-shot MAPF 里最常用</td></tr>
+<tr><td><strong>makespan</strong></td><td>所有 agent 的 cost 里最大的那个</td><td>关心最后一个 agent 什么时候到</td></tr>
+<tr><td><strong>throughput</strong></td><td>单位时间完成的 task 数</td><td>lifelong 场景。仓库最关心这个</td></tr>
+</table></div>
+<p>02 节的例子里，A 的 cost 是 3，B 的 cost 是 2，所以 SoC = 5，makespan = 3。</p>
+<p>衡量 planner 本身还有两个指标：planning time（规划一次要多久）和 success rate（限时内找到解的比例）。</p>
+<h3>One-shot 和 lifelong</h3>
+<ul>
+<li><strong>one-shot MAPF</strong>：每个 agent 只有一个 goal，全部到达就结束。02 到 10 节讲的都是它。</li>
+<li><strong>lifelong MAPF</strong>：agent 到达 goal 之后马上拿到新的 goal，永远不结束。仓库属于这一种。</li>
+</ul>
+<p>lifelong 的做法是在 one-shot 算法外面套一层“每隔几步 replan”的框架（见 <a href="#lifelong">12 节</a>），所以先把 one-shot 学扎实。</p>
+</section>
+
+<section id="hard">
+<h2><span class="n">05</span>为什么难：joint state space</h2>
+<p>最直接的想法是把 k 个 agent 看成一个“大 agent”，state 是所有 agent 的位置 <span class="m">(v<sub>1</sub>, …, v<sub>k</sub>)</span>，然后直接跑 A*。这样做是 complete 而且 optimal 的，但规模撑不住：</p>
+<ul>
+<li><strong>state 数是 |V|<sup>k</sup>。</strong>20×20 的 grid 有 400 个 cell，10 个 agent 就是 400<sup>10</sup> ≈ 10<sup>26</sup> 个 state。</li>
+<li><strong>branching factor 是 5<sup>k</sup>。</strong>每个 agent 有 5 个 action（4 个方向加 wait），10 个 agent 每 expand 一次要生成 5<sup>10</sup> ≈ 980 万个 successor。</li>
+</ul>
+<p>求 SoC 或 makespan optimal 的 MAPF 是 NP-hard 的。所以实用算法都在想办法回避 joint state space，区别只在回避的方式：</p>
+<div class="tw"><table>
+<tr><th>做法</th><th>怎么回避 joint state space</th><th>complete</th><th>optimal</th><th>大致规模</th></tr>
+<tr><td>joint-space A*</td><td>不回避，所有 agent 一起搜</td><td>是</td><td>是</td><td>几个 agent</td></tr>
+<tr><td><a href="#cbs">CBS</a></td><td>各自规划，只在出现 conflict 的地方耦合</td><td>是</td><td>是</td><td>几十个 agent</td></tr>
+<tr><td><a href="#pp">Prioritized Planning</a></td><td>排好顺序一个一个规划，后面的让前面的</td><td>否</td><td>否</td><td>上百到上千个 agent</td></tr>
+</table></div>
+<p>从上到下，耦合越来越松，速度越来越快，保证越来越少。这条从 coupled 到 decoupled 的轴，是整个领域最基本的 tradeoff。</p>
+<div class="note say"><p><span class="q">面试怎么说</span>“The difficulty of MAPF is that the joint state space grows exponentially with the number of agents: |V|<sup>k</sup> states and a branching factor of 5<sup>k</sup>. So instead of searching the joint space, I’d plan each agent separately and then resolve the conflicts.”</p></div>
+</section>
+
+<!-- ============ PART B ============ -->
+<div class="part"><div class="tag">PART B</div><h2>单个 agent</h2><p>所有多 agent 算法的底层，都是反复给一个 agent 规划。这一部分把这块地基打牢。</p></div>
+
+<section id="astar">
+<h2><span class="n">06</span>A* 回顾：可能被追问的理论</h2>
+<p>A* 你已经会写了，这一节只列容易被追问的点。</p>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with A*?”</span>“Yes. A* is a shortest-path search on a graph, for example a grid map. It’s best-first search: it always expands the node with the smallest f, where f is g, the cost from the start so far, plus h, a heuristic estimate of the remaining cost to the goal. The heuristic is what makes it faster than Dijkstra, because it pulls the search toward the goal instead of spreading out in every direction. As long as the heuristic is admissible, meaning it never overestimates, the path it returns is optimal. On a 4-connected grid the usual heuristic is Manhattan distance, and in MAPF people often precompute the true distance to each goal with a backward BFS.”</p></div>
+<div class="eq">f(n) = g(n) + h(n)
+g(n)：从 start 到 n 已经花掉的 cost
+h(n)：从 n 到 goal 还要花多少的估计，也就是 heuristic
+每次从 OPEN 里 pop 出 f 最小的 node</div>
+<h3>Admissible 和 consistent</h3>
+<ul>
+<li><strong>admissible</strong>：h(n) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的。</li>
+<li><strong>consistent</strong>：对每条 edge (n, n′) 都有 h(n) ≤ c(n, n′) + h(n′)，并且 h(goal) = 0。直观上就是 heuristic 满足三角不等式。满足它，f 沿着任何 path 都不会下降，每个 node 只需要 expand 一次。</li>
+<li>consistent 的 heuristic 一定 admissible，反过来不一定。只 admissible 不 consistent 时，已经进了 CLOSED 的 node 可能要 reopen，否则结果可能不是 optimal。</li>
+</ul>
+<h3>Grid 上用什么 heuristic</h3>
+<ul>
+<li><strong>Manhattan distance</strong>：在 4-connected grid 上是 consistent 的。但它看不见障碍物，障碍物多的时候估得太低，A* 会 expand 很多没用的 node。</li>
+<li><strong>true-distance heuristic</strong>：从 goal 出发做一次反向 BFS（edge 有权重时用反向 Dijkstra），得到每个 cell 到 goal 的真实最短距离，存成一张表，之后查表是 O(1)。MAPF 里基本都这么做：每个 goal 预计算一次，后面成百上千次搜索都复用这张表。</li>
+</ul>
+<h3>几个常见追问</h3>
+<div class="tw"><table>
+<tr><th>问题</th><th>答案</th></tr>
+<tr><td>f 相同的 node 先 pop 哪个？</td><td>先 pop g 大的。g 大说明离 goal 更近，能少 expand 很多 node。这叫 tie-breaking。</td></tr>
+<tr><td>怎么让 A* 更快？</td><td>更准的 heuristic，好的 tie-breaking，或者用 weighted A* 牺牲一点 optimality。</td></tr>
+<tr><td>weighted A* 是什么？</td><td>f = g + w·h，其中 w &gt; 1。搜索更贪心、更快，返回的 path cost 不超过 optimal 的 w 倍。这种有上界的次优叫 bounded-suboptimal。</td></tr>
+<tr><td>A* 和 Dijkstra、BFS 的关系？</td><td>h = 0 的 A* 就是 Dijkstra。edge cost 全是 1 的 Dijkstra 就是 BFS。</td></tr>
+</table></div>
+</section>
+
+<section id="stastar">
+<h2><span class="n">07</span>Space-time A*</h2>
+<p>先解决最小的多 agent 问题：<strong>别的 agent 的 path 已经定了，给我这一个规划一条不撞它们的 path</strong>。后面的 Prioritized Planning 和 CBS，底层都是反复调用这一步。</p>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with space-time A*?”</span>“Space-time A* is A* extended to multi-robot settings. The state is a cell plus a time step, and besides moving to a neighbor, the robot can also wait in place. The paths of other robots go into a reservation table, so the search just skips any cell-and-time, or any edge, that’s already taken. That lets one robot plan around robots whose paths are already fixed. It’s the building block of both prioritized planning and CBS. One subtle point is the goal test: reaching the goal only counts if no other robot needs to pass through that cell later.”</p></div>
+<h3>思路：把时间加进 state</h3>
+<p>普通 A* 的 state 是位置 <span class="m">v</span>。多 agent 时，一个 cell 现在被占，不代表两步之后还被占，所以 state 要变成 <span class="m">(v, t)</span>：在时刻 t 位于 v。</p>
+<div class="tw"><table>
+<tr><th></th><th>普通 A*</th><th>space-time A*</th></tr>
+<tr><td>state</td><td class="m">v</td><td class="m">(v, t)</td></tr>
+<tr><td>action</td><td>move 到相邻的 cell</td><td>move 到相邻的 cell，或者 <strong>wait</strong>。两者都让 t 加 1</td></tr>
+<tr><td>障碍物</td><td>静态的墙</td><td>墙，加上 reservation table 里别人占用的时空位置</td></tr>
+<tr><td>heuristic</td><td>到 goal 的距离</td><td>不变，还是到 goal 的空间距离</td></tr>
+<tr><td>goal 条件</td><td class="m">v == goal</td><td><span class="m">v == goal</span>，<strong>并且之后没有人再预约 goal</strong></td></tr>
+</table></div>
+<h3>Reservation table</h3>
+<p>一张 hash table，记录别的 agent 已经占用的时空位置，查询是 O(1)。它存三种东西，正好对应 03 节的 conflict：</p>
+<ul>
+<li><strong>vertex reservation</strong> <span class="m">(v, t)</span>：时刻 t，cell v 有人。用来防 vertex conflict。</li>
+<li><strong>edge reservation</strong> <span class="m">(u→v, t)</span>：别人在 t 到 t+1 从 v 走到 u，所以我不能同时从 u 走到 v。用来防 edge conflict。</li>
+<li><strong>停在 goal 的 agent</strong>：从它到达的时刻起，goal 那个 cell 永久被占。</li>
+</ul>
+<h3>Pseudo-code</h3>
+<pre>function SpaceTimeAStar(start, goal, RT, T_max):
+    OPEN ← priority queue，按 f = g + h 排序
+    push (start, t=0)，g = 0
+    CLOSED ← {}
+    while OPEN 非空:
+        (v, t) ← pop f 最小的
+        if (v, t) in CLOSED: continue
+        CLOSED.add((v, t))
+        if v == goal and RT 里 goal 在 t 之后没有 reservation:
+            return 沿 parent 指针回溯出的 path
+        if t ≥ T_max: continue
+        for u in neighbors(v) ∪ {v}:              # {v} 就是 wait
+            if (u, t+1) in RT.vertex: continue    # vertex conflict
+            if (v→u, t) in RT.edge:   continue    # edge conflict
+            push (u, t+1)，g = t+1，f = g + h(u)
+    return FAIL</pre>
+<h3>三个容易漏的细节</h3>
+<ol>
+<li><strong>goal 条件。</strong>agent 到达 goal 之后会停在那里。如果之后某个时刻别人要经过这个 cell，现在就不能算完成，要继续搜。实验台的第三个场景演示的就是这一点。</li>
+<li><strong>T_max。</strong>问题无解时，wait 可以无限重复，搜索不会自己停。可以取 T_max = 最后一个 reservation 的时刻 + free cell 的个数。理由是：过了最后一个 reservation，环境就是静态的了，而静态环境里的最短路不会超过 free cell 的个数。</li>
+<li><strong>heuristic 为什么还 admissible。</strong>加了时间只会让实际 cost 变大，多出来的是 wait 和绕路。空间上的最短距离仍然不会高估。</li>
+</ol>
+<p>复杂度：state 最多有 |V| × T_max 个，每个 state 有 5 个 successor。</p>
+<div class="lab" id="lab-sta"></div>
+<p class="try">橙色的 B 的 path 已经定了，蓝色的 A 是 space-time A* 当场规划出来的。前两个场景都试一次<b>关掉 wait</b>，看 A 的结果怎么变。第三个场景看 A 到了 goal 之后为什么还要让开。</p>
+<details class="qa code"><summary>可以直接运行的 Python：space-time A* 和 Prioritized Planning</summary><div class="a">
+<pre>import heapq
+
+def space_time_astar(grid, start, goal, reserved_v, reserved_e, parked, t_max):
+    """grid[r][c] == '#' 是墙，cell 写成 (r, c)。
+    reserved_v: {(cell, t)}        时刻 t 这个 cell 被占
+    reserved_e: {(u, v, t)}        t→t+1 不能从 u 走到 v
+    parked:     {cell: t0}         从 t0 起这个 cell 永久被占（别的车停在 goal 上）"""
+    H, W = len(grid), len(grid[0])
+    h = lambda c: abs(c[0] - goal[0]) + abs(c[1] - goal[1])        # Manhattan distance
+    # goal 最晚被别人预约到什么时候：在那之前到达不算完成
+    goal_free_from = max((t + 1 for (c, t) in reserved_v if c == goal), default=0)
+
+    open_list = [(h(start), 0, start)]      # (f, -g, cell)。unit cost 下 g 就是 t；用 -g 让 f 相同时先 pop g 大的
+    parent = {(start, 0): None}
+    closed = set()
+    while open_list:
+        _, neg_t, cur = heapq.heappop(open_list)
+        t = -neg_t
+        if (cur, t) in closed:
+            continue
+        closed.add((cur, t))
+        if cur == goal and t &gt;= goal_free_from:                     # 到了 goal，而且之后没人再预约它
+            path, node = [], (cur, t)
+            while node is not None:
+                path.append(node[0])
+                node = parent[node]
+            return path[::-1]                                       # path[t] 就是时刻 t 的位置
+        if t &gt;= t_max:
+            continue
+        r, c = cur
+        for nxt in [(r - 1, c), (r, c + 1), (r + 1, c), (r, c - 1), (r, c)]:   # 最后一个是 wait
+            nr, nc = nxt
+            if not (0 &lt;= nr &lt; H and 0 &lt;= nc &lt; W) or grid[nr][nc] == '#':
+                continue
+            if (nxt, t + 1) in reserved_v:                          # vertex conflict
+                continue
+            if nxt in parked and t + 1 &gt;= parked[nxt]:              # 别人已经停在那里
+                continue
+            if (cur, nxt, t) in reserved_e:                         # edge (swap) conflict
+                continue
+            if (nxt, t + 1) not in parent:
+                parent[(nxt, t + 1)] = (cur, t)
+                heapq.heappush(open_list, (t + 1 + h(nxt), -(t + 1), nxt))
+    return None
+
+
+def prioritized_planning(grid, starts, goals, order):
+    reserved_v, reserved_e, parked, paths = set(), set(), {}, {}
+    free_cells = sum(row.count('.') for row in grid)
+    for i in order:                                                 # priority 从高到低
+        t_max = max((t for (_, t) in reserved_v), default=0) + free_cells
+        path = space_time_astar(grid, starts[i], goals[i], reserved_v, reserved_e, parked, t_max)
+        if path is None:
+            return None                                             # 这个顺序失败了
+        paths[i] = path
+        for t, cell in enumerate(path):
+            reserved_v.add((cell, t))
+            if t + 1 &lt; len(path) and path[t + 1] != cell:
+                reserved_e.add((path[t + 1], cell, t))              # 禁止别人反向对穿
+        parked[path[-1]] = len(path) - 1                            # 到 goal 后永久占用
+    return paths
+
+
+if __name__ == '__main__':
+    grid = ['...', '...', '...']                                    # 十字路口
+    starts, goals = {'A': (1, 0), 'B': (0, 1)}, {'A': (1, 2), 'B': (2, 1)}
+    print(prioritized_planning(grid, starts, goals, ['B', 'A']))</pre>
+<p>运行结果：B 先规划，走最短路。A 后规划，在 t=1 原地 wait 一步。面试时写到 pseudo-code 的程度就够，这段代码用来自己动手改着玩。</p>
+</div></details>
+<div class="note say"><p><span class="q">面试怎么说</span>“I’d start from single-agent space-time A*: the state is (cell, time) and the actions include waiting. Paths of other robots go into a reservation table with vertex and edge reservations; the edge ones prevent swaps. The heuristic is the precomputed true distance to the goal, which is still admissible. One detail: reaching the goal isn’t enough, the goal also has to stay free afterwards.”</p></div>
+</section>
+
+<!-- ============ PART C ============ -->
+<div class="part"><div class="tag">PART C</div><h2>多个 agent</h2><p>两种最基础的做法：排好顺序一个一个规划，或者一起规划、有 conflict 再解决。其他算法几乎都是这两种的变体。</p></div>
+
+<section id="pp">
+<h2><span class="n">08</span>Prioritized Planning</h2>
+<p>有了 space-time A*，多 agent 规划最简单的办法就出来了：<strong>排一个 priority 顺序，按顺序一个一个规划，后面的把前面所有 agent 的 path 当成 reservation</strong>。这就是 Prioritized Planning，简称 PP，也叫 Cooperative A*。</p>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with prioritized planning?”</span>“Prioritized planning is the simplest practical approach to multi-agent path finding. You give the robots a priority order and plan them one at a time with space-time A*. Each robot treats the paths of all higher-priority robots as moving obstacles. It’s fast, just one single-agent search per robot, so it scales to hundreds or even thousands of robots. The downside is that it’s neither complete nor optimal: a bad order can make it fail even when a solution exists. So choosing the order matters a lot, for example by deadline, and when it fails you can retry with a different order.”</p></div>
+<pre>function PrioritizedPlanning(agents, order):
+    RT ← 空的 reservation table
+    for i in order:                               # priority 从高到低
+        path_i ← SpaceTimeAStar(s_i, g_i, RT, T_max)
+        if path_i == FAIL: return FAIL            # 或者换一个顺序重试
+        把 path_i 的每个 (cell, 时刻) 和每条 edge 写进 RT
+        把 g_i 从到达时刻起永久写进 RT            # 停在 goal 上
+    return 所有 path</pre>
+<p>一共只调用 k 次单 agent 搜索，所以很快，能用到上百上千个 agent。代价是 complete 和 optimal 两个保证都没有了。</p>
+<div class="lab" id="lab-pp"></div>
+<p class="try">每个场景都把所有 priority 顺序点一遍。重点看三个：<b>终点挡路</b>里顺序改变 cost，<b>走廊 + 居中避让位</b>里两种顺序都失败，<b>3 个 agent</b> 里六种顺序都成功但都不是 optimal。</p>
+<h3>为什么不 complete</h3>
+<p>complete 的意思是：问题有解时一定能找到。PP 做不到。高 priority 的 agent 规划时完全不知道后面还有谁，只管走自己的最短路，而且 path 一旦定下就不再改。</p>
+<p>看“走廊 + 居中避让位”：A 先规划，径直穿过走廊，B 就没有任何合法的 path 了。B 先规划也一样。但这个问题是有解的，其中一个先进避让位等一下就行。切到 <a href="#cbs">CBS 实验台</a>的同一个场景可以看到这个解。</p>
+<h3>为什么不 optimal</h3>
+<ul>
+<li>“终点挡路”：B 先规划，就早早停在了 A 的必经之路上，A 只能绕路，SoC 是 6。A 先规划，SoC 是 4。</li>
+<li>“3 个 agent”：六种顺序的 SoC 是 9 或 10，而 optimal 是 7。原因是排在前面的 agent 在几条一样短的 path 里随便选了一条，恰好挡住了后面的 agent。它不知道后面还有谁，所以没法选对。</li>
+</ul>
+<h3>Priority 怎么定</h3>
+<div class="tw"><table>
+<tr><th>规则</th><th>理由</th></tr>
+<tr><td>deadline 近的优先</td><td>最自然的业务规则。Symbotic 的公开 blog 写的就是这个：每个 case 有出库的 deadline，最紧急的 case 决定哪些 robot 优先</td></tr>
+<tr><td>剩余距离长的优先</td><td>path 长的 agent 更难绕路</td></tr>
+<tr><td>要离开 corridor 的，优先于要进去的</td><td>先把窄的地方腾空，防止堵死</td></tr>
+<tr><td>失败后换一个顺序重试</td><td>便宜而有效的 baseline</td></tr>
+</table></div>
+<h3>失败了怎么办</h3>
+<ul>
+<li>换顺序重试，通常是把失败的那个 agent 提到前面。</li>
+<li>让失败的 agent 这一轮先原地 wait，或者退到最近的空位，下一轮 replan 时再规划。</li>
+<li>只对卡住的这几个 agent 用 CBS 做一次小规模求解。</li>
+</ul>
+<h3>什么时候保证能成功</h3>
+<p>直观的条件是：<strong>停车位不在主干道上</strong>。准确的说法叫 well-formed：任意两个 endpoint（某个 agent 的 start 或 goal）之间，都存在一条不经过其他 endpoint 的 path。在这样的地图上，只要再加一条规则“高 priority 的 agent 不穿过别人的 start”，PP 就保证成功。因为低 priority 的 agent 最坏可以在自己的 start 等所有人停好，再走一条不经过任何 endpoint 的 path。仓库设计时会尽量满足这一点，比如取货位在货架旁边，不占主通道。</p>
+<div class="note say"><p><span class="q">面试怎么说</span>“As a baseline I’d use prioritized planning: order the robots by priority and plan them one by one with space-time A*, treating earlier paths as moving obstacles. It scales almost linearly, but it’s neither complete nor optimal, because a high-priority robot can park on a low-priority robot’s only route. I’d mitigate that with deadline-based priorities, retrying with a different order, and a local CBS repair.”</p></div>
+</section>
+
+<section id="cbs">
+<h2><span class="n">09</span>CBS：Conflict-Based Search</h2>
+<p>PP 的毛病在于顺序一开始就定死了。CBS 换了一个思路：<strong>先让每个 agent 各走各的最短路，完全不管别人。发现 conflict 之后，再用 constraint 一点一点把 conflict 消掉</strong>。</p>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with CBS?”</span>“Yes. CBS, conflict-based search, is a classic optimal algorithm for multi-agent path finding, and it has two levels. At the low level, each robot plans its own shortest path, ignoring the others. At the high level, CBS checks those paths for conflicts, like two robots in the same cell at the same time, or two robots swapping cells. When it finds one, it branches into two children: in one, robot A gets a constraint to stay out of that cell at that time; in the other, robot B does. Only that one robot replans. The high level searches this constraint tree best-first by total cost, so the first conflict-free solution it finds is optimal. It works well when conflicts are sparse, but it can grow exponentially in dense areas like narrow corridors.”</p></div>
+<h3>核心观察</h3>
+<p>假设 A 和 B 在时刻 t 都在 cell v，也就是有一个 vertex conflict <span class="m">⟨A, B, v, t⟩</span>。那么在任何合法的 solution 里，下面两件事至少有一件成立：</p>
+<ul>
+<li>A 在时刻 t 不在 v。</li>
+<li>B 在时刻 t 不在 v。</li>
+</ul>
+<p>CBS 不去猜是哪一种，而是分成两支，两种都试。每一支给一个 agent 加一条 constraint，并且只让这一个 agent 重新规划。</p>
+<h3>两层结构</h3>
+<div class="tw"><table>
+<tr><th></th><th>搜索什么</th><th>怎么搜</th></tr>
+<tr><td><strong>high level</strong></td><td>constraint tree，简称 CT。每个 node 存三样东西：一组 constraint、满足这些 constraint 的一组 path、这组 path 的 SoC</td><td>best-first：每次 pop cost 最小的 node</td></tr>
+<tr><td><strong>low level</strong></td><td>单个 agent 的 path，要满足这个 agent 身上的所有 constraint</td><td>07 节的 space-time A*，把 reservation table 换成这个 agent 自己的 constraint</td></tr>
+</table></div>
+<p>constraint 有两种，和 conflict 一一对应：</p>
+<ul>
+<li><strong>vertex constraint</strong> <span class="m">⟨a, v, t⟩</span>：agent a 在时刻 t 不能在 v。</li>
+<li><strong>edge constraint</strong> <span class="m">⟨a, u, v, t⟩</span>：agent a 不能在 t 到 t+1 从 u 走到 v。</li>
+</ul>
+<h3>Pseudo-code</h3>
+<pre>function CBS(agents):
+    Root.constraints ← {}
+    Root.paths ← 每个 agent 各自的最短路              # low level，互相不管
+    Root.cost ← SoC(Root.paths)
+    OPEN ← {Root}
+    while OPEN 非空:
+        N ← pop cost 最小的 node
+        C ← N.paths 里的第一个 conflict
+        if C 不存在: return N.paths                   # 没有 conflict，这就是 optimal 解
+        for a in C 涉及的两个 agent:
+            M ← N 的拷贝
+            M.constraints ← N.constraints + {a 不能出现在 C 的位置和时刻}
+            M.paths[a] ← LowLevel(a, M.constraints)   # 只有 a 重新规划
+            if M.paths[a] 存在:
+                M.cost ← SoC(M.paths)
+                push M
+    return FAIL</pre>
+<h3>手推：十字路口</h3>
+<p>3×3 的 grid。A 从 (1,0) 到 (1,2)，从左往右。B 从 (0,1) 到 (2,1)，从上往下。两条最短路在正中间的 (1,1) 交叉。</p>
+<figure class="fig">
+<svg viewBox="0 0 720 262" role="img" aria-label="十字路口例子的 constraint tree：Root N0 分成 N1 和 N2 两个子 node，N1 没有 conflict，是 optimal 解">
+  <rect class="d-box" x="215" y="12" width="290" height="92" rx="6"/>
+  <text class="d-t" x="231" y="36">Root N0</text>
+  <text class="d-s" x="231" y="57">constraint：无</text>
+  <text class="d-s" x="231" y="76">SoC = 2 + 2 = 4</text>
+  <text class="d-a" x="231" y="95">conflict ⟨A, B, (1,1), t=1⟩</text>
+  <path class="d-ln" d="M300 104 L188 157" marker-end="url(#arr2)"/>
+  <path class="d-ln" d="M420 104 L532 157" marker-end="url(#arr2)"/>
+  <text class="d-m" x="196" y="126">A 让</text>
+  <text class="d-m" x="494" y="126">B 让</text>
+  <rect class="d-okbox" x="30" y="160" width="310" height="92" rx="6"/>
+  <text class="d-t" x="46" y="184">N1</text>
+  <text class="d-s" x="46" y="205">constraint：A 在 t=1 不能在 (1,1)</text>
+  <text class="d-s" x="46" y="224">A 改成先 wait 一步，SoC = 3 + 2 = 5</text>
+  <text class="d-ok" x="46" y="243">没有 conflict，这就是 optimal 解</text>
+  <rect class="d-box" x="380" y="160" width="310" height="92" rx="6"/>
+  <text class="d-t" x="396" y="184">N2</text>
+  <text class="d-s" x="396" y="205">constraint：B 在 t=1 不能在 (1,1)</text>
+  <text class="d-s" x="396" y="224">B 改成先 wait 一步，SoC = 2 + 3 = 5</text>
+  <text class="d-s" x="396" y="243">留在 OPEN 里，没有被 expand</text>
+</svg>
+<figcaption>面试时在白板上画的就是这张图：一个 root，两个子 node，每个 node 写上 constraint、cost 和 conflict。</figcaption>
+</figure>
+<ol>
+<li><strong>Root。</strong>没有 constraint。A 走 (1,0) (1,1) (1,2)，cost 2。B 走 (0,1) (1,1) (2,1)，cost 2。SoC = 4。检查 conflict：t=1 时两个都在 (1,1)。</li>
+<li><strong>分两支。</strong>N1 给 A 加 constraint：A 在 t=1 不能在 (1,1)。A 重新规划，先 wait 一步再走，cost 3，B 不变，SoC = 5。N2 对称，给 B 加 constraint，SoC 也是 5。</li>
+<li><strong>继续。</strong>OPEN 里是 N1 和 N2，cost 都是 5。pop N1，检查 conflict，没有。返回 N1 的 path，optimal SoC = 5。</li>
+</ol>
+<p>A 也可以绕路，但绕路的 cost 是 4，比 wait 一步的 3 大，所以 low level 选了 wait。</p>
+<div class="lab" id="lab-cbs"></div>
+<p class="try">先在<b>十字路口</b>点两次“下一步”，和上面的手推对一遍。再到<b>两个房间 + 长走廊</b>点“跑到结束”，看只有 2 个 agent 的时候 CT 能长到多大。</p>
+<h3>为什么是 optimal 的</h3>
+<ol>
+<li><strong>分支不会丢掉解。</strong>任何合法的 solution，在那个 conflict 上要么 A 让了，要么 B 让了，所以它一定满足两个子 node 里至少一个的 constraint。</li>
+<li><strong>node 的 cost 是一个 lower bound。</strong>node 里每个 agent 走的都是满足 constraint 的最短路，还没处理的 conflict 被忽略了。所以满足这些 constraint 的任何合法 solution，cost 都不会比它小。</li>
+<li><strong>best-first 保证先找到的最好。</strong>high level 总是 pop cost 最小的 node。第一个被 pop 出来而且没有 conflict 的 node，cost 不大于 OPEN 里所有其他 node 的 lower bound，所以它就是 optimal。</li>
+</ol>
+<p>这和 A* 的 optimal 证明是同一个逻辑：按 lower bound 从小到大看，第一个真正可行的就是最好的。</p>
+<p>CBS 也是 complete 的，有解就一定能找到。但问题无解时它不会自己停下来，要另外设 node 数上限或者时间上限。</p>
+<h3>什么时候慢</h3>
+<p>每个 conflict 让 tree 分一次叉，最坏情况下 node 数是指数级的。看“两个房间 + 长走廊”：只有 2 个 agent，在 one-wide corridor 里对头，其中一个必须等另一个完全通过，SoC 要比 root 多出 5。CBS 每加一条 constraint 只能把 cost 抬高一点，而且每一层都有“A 让”和“B 让”两种选择，于是一共要生成 63 个 node。corridor 每加长一格，node 数翻一倍：</p>
+<div class="tw"><table>
+<tr><th>corridor 长度</th><td class="num">1</td><td class="num">2</td><td class="num">3</td><td class="num">4</td><td class="num">5</td><td class="num">6</td></tr>
+<tr><th>CBS 生成的 node 数</th><td class="num">15</td><td class="num">31</td><td class="num">63</td><td class="num">127</td><td class="num">255</td><td class="num">511</td></tr>
+</table></div>
+<p>这些数字是本页的实现实际跑出来的。同一个场景，PP 一次就得到了 cost 相同的解。</p>
+<p>结论：CBS 适合 conflict 稀疏的情况。agent 密、corridor 多的时候会很慢，而仓库正是这样。实际使用时要靠各种加速技巧，或者放弃 optimal 来换速度。</p>
+<div class="note say"><p><span class="q">面试怎么说</span>“If I need a quality guarantee I’d use CBS. The high level does best-first search on a constraint tree: when two agents conflict, it branches into two children, each adding a constraint to one of the agents. The low level replans just that agent with space-time A*. It’s optimal for sum of costs, because branching never loses a solution and node costs are lower bounds. The downside is exponential growth when conflicts are dense, for example two robots head-on in a one-wide corridor.”</p></div>
+</section>
+
+<section id="choose">
+<h2><span class="n">10</span>PP 和 CBS 怎么选</h2>
+<div class="tw"><table>
+<tr><th></th><th>Prioritized Planning</th><th>CBS</th></tr>
+<tr><td>思路</td><td>定好顺序，一个一个规划</td><td>各自规划，有 conflict 再分支</td></tr>
+<tr><td>complete</td><td>否</td><td>是</td></tr>
+<tr><td>optimal</td><td>否</td><td>是，对 SoC</td></tr>
+<tr><td>速度</td><td>k 次单 agent 搜索，很快</td><td>最坏指数级</td></tr>
+<tr><td>规模</td><td>上百到上千个 agent</td><td>几十个 agent</td></tr>
+<tr><td>失败的样子</td><td>某个 agent 找不到 path</td><td>超时</td></tr>
+<tr><td>适合</td><td>实时系统的主干</td><td>小规模、要质量保证的问题，或者局部修复</td></tr>
+</table></div>
+<p>实际系统里常见的组合是：PP 负责全局，每几秒跑一次。PP 卡住的那几个 robot，局部用 CBS 解。</p>
+<h3>两者之间还有什么</h3>
+<p>下面两个知道名字和一句话就够，不用会写。</p>
+<ul>
+<li><strong>ECBS</strong>：允许 solution 的 cost 最多是 optimal 的 w 倍，比如 w = 1.2，换来快几个数量级。做法是在 cost 不超过 w 倍 lower bound 的 node 里，优先 expand conflict 最少的那个。思想和 06 节的 weighted A* 一样，都是 bounded-suboptimal。</li>
+<li><strong>PBS</strong>：和 CBS 一样在 conflict 处分支，但分支的内容是“A 的 priority 高于 B”还是反过来，然后按这个顺序跑 PP。相当于自动搜索 PP 的 priority 顺序。</li>
+</ul>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with ECBS?”</span><span class="hint">只要求知道思路的算法，开头先说清楚没有实现过，比硬撑更好。</span>“I know the idea, though I haven’t implemented it. ECBS is a bounded-suboptimal version of CBS. You choose a factor, say 1.2, and it guarantees the solution cost is at most 1.2 times the optimal. In exchange it’s much faster, because among the nodes within that bound it expands the ones with the fewest conflicts first. It’s the same idea as weighted A*: trade a bounded amount of quality for a lot of speed.”</p></div>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with PBS?”</span><span class="hint">只要求知道思路的算法，开头先说清楚没有实现过，比硬撑更好。</span>“I know the idea, though I haven’t implemented it. PBS, priority-based search, combines CBS and prioritized planning. When two robots conflict, instead of adding a location constraint, it branches on which of the two gets higher priority, and then replans with that ordering. So it’s essentially searching for a good priority order for prioritized planning. It isn’t guaranteed to be optimal, but it’s fast and works well when the map is crowded.”</p></div>
+</section>
+
+<!-- ============ PART D ============ -->
+<div class="part"><div class="tag">PART D</div><h2>系统设计</h2><p>前面的算法回答的是“给定 start 和 goal，path 怎么走”。这一部分讲怎么把它们拼成一个能在仓库里一直跑下去的系统，以及设计题怎么答。</p></div>
+
+<section id="arch">
+<h2><span class="n">11</span>从算法到系统</h2>
+<p>真实仓库比 one-shot MAPF 多三个问题：goal 从哪来，task 不停地来怎么办，robot 没按计划走怎么办。一个调度系统通常分成三层，靠一个定时循环连起来。</p>
+<figure class="fig">
+<svg viewBox="0 0 760 190" role="img" aria-label="系统架构：task 来源、task assignment、path planning、execution 四个方框从左到右连接，execution 每 h 个 timestep 把最新状态反馈给 assignment 和 planning">
+  <rect class="d-box" x="14" y="30" width="140" height="66" rx="6"/>
+  <text class="d-t" x="84" y="58" text-anchor="middle">Task 来源</text>
+  <text class="d-s" x="84" y="79" text-anchor="middle">订单、deadline</text>
+  <path class="d-ln" d="M154 63 H196" marker-end="url(#arr2)"/>
+  <text class="d-m" x="175" y="54" text-anchor="middle">task</text>
+  <rect class="d-box" x="200" y="30" width="160" height="66" rx="6"/>
+  <text class="d-t" x="280" y="58" text-anchor="middle">Task assignment</text>
+  <text class="d-s" x="280" y="79" text-anchor="middle">哪个 robot 做哪个 task</text>
+  <path class="d-ln" d="M360 63 H402" marker-end="url(#arr2)"/>
+  <text class="d-m" x="381" y="54" text-anchor="middle">goal</text>
+  <rect class="d-hbox" x="406" y="30" width="160" height="66" rx="6"/>
+  <text class="d-t" x="486" y="58" text-anchor="middle">Path planning</text>
+  <text class="d-s" x="486" y="79" text-anchor="middle">未来 w 步怎么走</text>
+  <path class="d-ln" d="M566 63 H608" marker-end="url(#arr2)"/>
+  <text class="d-m" x="587" y="54" text-anchor="middle">path</text>
+  <rect class="d-box" x="612" y="30" width="134" height="66" rx="6"/>
+  <text class="d-t" x="679" y="58" text-anchor="middle">Execution</text>
+  <text class="d-s" x="679" y="79" text-anchor="middle">指令发给 robot</text>
+  <path class="d-acc" d="M679 96 V140 H280 V101" marker-end="url(#arr3)"/>
+  <path class="d-acc" d="M486 140 V101" marker-end="url(#arr3)"/>
+  <text class="d-a" x="480" y="164" text-anchor="middle">每 h 个 timestep：最新位置、延误、故障、新 task</text>
+</svg>
+<figcaption>设计题里先把这张图画出来，再逐层展开，比一上来就讲某个算法清楚得多。</figcaption>
+</figure>
+<div class="tw"><table>
+<tr><th>层</th><th>决定什么</th><th>基础做法</th><th>章节</th></tr>
+<tr><td>Task assignment</td><td>哪个 robot 做哪个 task</td><td>cost matrix，加 greedy 或 Hungarian algorithm</td><td><a href="#assign">13</a></td></tr>
+<tr><td>Path planning</td><td>每个 robot 接下来几步怎么走</td><td>rolling horizon，里面跑 PP 和 space-time A*</td><td><a href="#lifelong">12</a>、<a href="#pp">08</a>、<a href="#stastar">07</a></td></tr>
+<tr><td>Execution</td><td>真正发给 robot 的指令，处理延误和故障</td><td>只保证先后顺序，偏差太大就 replan</td><td><a href="#exec">15</a></td></tr>
+</table></div>
+<p>公开信息里的量级：Symbotic 的 blog 提到大型站点有 1500 个以上的 robot，每层超过 100 个，系统大约每 5 秒 replan 一次。</p>
+</section>
+
+<section id="lifelong">
+<h2><span class="n">12</span>Lifelong MAPF 与 rolling horizon</h2>
+<p>仓库里 robot 到达 goal 之后马上有新的 task，问题永远不结束，目标是 throughput。两种朴素做法都不行：</p>
+<ul>
+<li>每次有 robot 到达，就给所有 robot 完整地重新解一次 MAPF：太慢。而且很远的 conflict 现在解了也白解，因为到那时 goal 早就变了。</li>
+<li>只给拿到新 task 的 robot 规划，其他 robot 的 path 不动：越到后面越挤，容易堵死。</li>
+</ul>
+<h3>Rolling horizon</h3>
+<p>折中的办法是定时 replan，但每次只管眼前的一段。有两个参数：</p>
+<ul>
+<li><strong>planning window w</strong>：只保证未来 w 步内没有 conflict。path 仍然规划到 goal，但 w 步之后的 conflict 不检查。</li>
+<li><strong>replanning period h</strong>：每执行 h 步，重新规划一次。要求 <span class="m">h ≤ w</span>，这样真正执行掉的那 h 步都在已经消除 conflict 的范围里。</li>
+</ul>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with rolling-horizon planning?”</span>“Rolling-horizon planning is how you handle lifelong MAPF, where robots keep getting new tasks and the problem never ends. Instead of solving everything once, you replan every h time steps, and each time you only resolve conflicts within the next w steps, with h no larger than w. Robots still plan all the way to their goals, but conflicts beyond the window are ignored, because the situation will have changed by then. The two parameters trade quality against planning time: a short window is fast but short-sighted, a long one is slower. Inside the window you can run any MAPF solver, and windowed prioritized planning is the common choice.”</p></div>
+<pre>loop 每 h 个 timestep:
+    给已经到达 goal 的 agent 分配新的 goal          # task assignment
+    paths ← WindowedMAPF(当前位置, goals, w)        # 只在未来 w 步内消除 conflict
+    执行每条 path 的前 h 步</pre>
+<figure class="fig">
+<svg viewBox="0 0 720 196" role="img" aria-label="rolling horizon 的时间轴：三轮规划，每轮的 window 长 20 步，只执行前 5 步，然后从 5 步之后重新规划">
+  <path class="d-ln" d="M100 22 H360"/><path class="d-ln" d="M100 17 V27"/><path class="d-ln" d="M360 17 V27"/>
+  <text class="d-s" x="230" y="14" text-anchor="middle">w = 20：这一段保证没有 conflict</text>
+  <text class="d-s" x="14" y="57">第 1 轮</text>
+  <rect x="100" y="40" width="65" height="26" rx="3" style="fill:var(--accent)"/>
+  <text x="132" y="58" text-anchor="middle" style="fill:var(--surface);font-size:12.5px;font-family:var(--body);font-weight:600">h = 5</text>
+  <rect class="d-hbox" x="165" y="40" width="195" height="26" rx="3"/>
+  <path class="d-dash" d="M360 53 H440"/>
+  <text class="d-s" x="448" y="57">一直规划到 goal，但这一段不检查 conflict</text>
+  <text class="d-s" x="14" y="97">第 2 轮</text>
+  <rect x="165" y="80" width="65" height="26" rx="3" style="fill:var(--accent)"/>
+  <rect class="d-hbox" x="230" y="80" width="195" height="26" rx="3"/>
+  <path class="d-dash" d="M425 93 H505"/>
+  <text class="d-s" x="14" y="137">第 3 轮</text>
+  <rect x="230" y="120" width="65" height="26" rx="3" style="fill:var(--accent)"/>
+  <rect class="d-hbox" x="295" y="120" width="195" height="26" rx="3"/>
+  <path class="d-dash" d="M490 133 H570"/>
+  <path class="d-ln" d="M100 164 H580"/>
+  <g class="d-m" text-anchor="middle">
+    <path class="d-ln" d="M100 160 V168"/><text x="100" y="184">t=0</text>
+    <path class="d-ln" d="M165 160 V168"/><text x="165" y="184">5</text>
+    <path class="d-ln" d="M230 160 V168"/><text x="230" y="184">10</text>
+    <path class="d-ln" d="M295 160 V168"/><text x="295" y="184">15</text>
+    <path class="d-ln" d="M360 160 V168"/><text x="360" y="184">20</text>
+    <path class="d-ln" d="M425 160 V168"/><text x="425" y="184">25</text>
+    <path class="d-ln" d="M490 160 V168"/><text x="490" y="184">30</text>
+    <path class="d-ln" d="M555 160 V168"/><text x="555" y="184">35</text>
+  </g>
+</svg>
+<figcaption>深色是真正执行的 h 步。浅色是 window 里剩下的部分：已经消除了 conflict，但会被下一轮的规划覆盖。</figcaption>
+</figure>
+<p><span class="m">WindowedMAPF</span> 可以是任何 one-shot 算法的 window 版本。最简单的是 windowed PP：在 space-time A* 里，t 超过 w 之后就不再查 reservation table。</p>
+<h3>w 和 h 怎么选</h3>
+<div class="tw"><table>
+<tr><th></th><th>太小</th><th>太大</th></tr>
+<tr><td>w</td><td>短视。看不到稍远的 conflict，容易把 robot 带进堵点</td><td>规划慢。远处的 conflict 解了也白解</td></tr>
+<tr><td>h</td><td>replan 太频繁，算力开销大</td><td>对新 task 和延误的反应慢</td></tr>
+</table></div>
+<p>常见的取法是 w 为 h 的几倍，然后在仿真里扫参数。一篇和 Symbotic 合作的公开论文用的是 w = 20、h = 5。</p>
+<h3>规划和执行是重叠的</h3>
+<ul>
+<li>规划需要时间，这段时间里 robot 还在走。所以规划的起点不是现在的位置，而是这一轮规划结束时预计到达的位置。</li>
+<li>规划超时怎么办：继续执行上一轮 path 剩下的部分。因为 w 大于 h，上一轮的 path 还有 w − h 步没有 conflict 的余量。</li>
+</ul>
+<div class="note say"><p><span class="q">面试怎么说</span>“A warehouse is a lifelong problem, so I’d use a rolling horizon: replan every h steps, and only resolve conflicts within the next w steps, with h ≤ w. A small w is fast but myopic; a large w is slow and wastes effort on conflicts that will change anyway. If planning times out, robots keep following the leftover part of the previous plan.”</p></div>
+</section>
+
+<section id="assign">
+<h2><span class="n">13</span>Task assignment</h2>
+<p>n 个空闲的 robot，m 个待做的 task。把 robot i 派去做 task j 的代价是 <span class="m">c<sub>ij</sub></span>。每个 robot 最多做一个 task，每个 task 最多给一个 robot，要让总 cost 最小。这叫 linear assignment problem。</p>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with the Hungarian algorithm?”</span>“Yes. The Hungarian algorithm solves the linear assignment problem: given n robots, n tasks, and a cost for every robot–task pair, it finds the one-to-one matching with the minimum total cost. It’s optimal and runs in O(n³). In a warehouse, the cost could be the travel time to the pickup plus terms for the deadline and congestion. Compared with greedy nearest-robot assignment, which can be far from optimal, it gives the globally best matching. In practice I’d just call a library, like linear_sum_assignment in SciPy.”</p></div>
+<h3>Cost matrix 怎么建</h3>
+<div class="eq">c_ij = robot i 到 pickup 的距离          # 用 06 节的 true distance，不用 Manhattan distance
+     + pickup 到 delivery 的距离
+     + deadline 项                         # task 越急，cost 越低
+     + congestion penalty                  # 目的地附近已经派去了多少 robot</div>
+<h3>Greedy 不是 optimal 的</h3>
+<div class="tw"><table style="width:auto">
+<tr><th></th><th class="num">task T1</th><th class="num">task T2</th></tr>
+<tr><th>robot R1</th><td class="num">1</td><td class="num">2</td></tr>
+<tr><th>robot R2</th><td class="num">2</td><td class="num">10</td></tr>
+</table></div>
+<p>greedy 每次挑 cost 最小的一对。先挑 (R1, T1)，cost 1。剩下只能 (R2, T2)，cost 10。总共 11。而 optimal 是 (R1, T2) 加 (R2, T1)，总共 4。greedy 把最近的 robot 抢走了，别的 task 只能分给很远的 robot。</p>
+<h3>三种做法</h3>
+<div class="tw"><table>
+<tr><th>做法</th><th>质量</th><th>复杂度</th><th>什么时候用</th></tr>
+<tr><td>greedy：每次选 cost 最小的一对</td><td>没有保证</td><td>排序的开销</td><td>最快的 baseline</td></tr>
+<tr><td><strong>Hungarian algorithm</strong></td><td>optimal</td><td>O(n³)</td><td>默认选择。当黑盒用，Python 里直接调 <code>scipy.optimize.linear_sum_assignment</code>，它解的是同一个问题</td></tr>
+<tr><td>一个 robot 要串起多个 task，或者有时间窗</td><td>看 solver</td><td>NP-hard</td><td>问题变成了 vehicle routing problem，要用专门的 solver。知道这个名字就够</td></tr>
+</table></div>
+<h3>Assignment 和 path 是耦合的</h3>
+<p>如果只按距离分配，可能把 10 个 robot 派进同一条 aisle。距离上最优，实际上全在排队。两个办法：在 cost 里加 congestion penalty，或者直接用规划出来的时间代替距离。</p>
+<div class="note say"><p><span class="q">面试怎么说</span>“For task assignment I’d build a cost matrix: travel time to the pickup plus pickup-to-drop, with a deadline term and a congestion penalty, and solve it with the Hungarian algorithm, which is optimal in O(n³). Greedy nearest-robot is the fast baseline. The key tradeoff is that solving assignment and routing separately is fast but can send many robots into the same aisle.”</p></div>
+</section>
+
+<section id="deadlock">
+<h2><span class="n">14</span>Corridor 与 deadlock</h2>
+<p>deadlock 是指一组 robot 互相等对方让开，结果谁都动不了。最典型的是 one-wide corridor 里两个 robot 对头：A 要去的 cell 被 B 占着，B 要去的 cell 被 A 占着。</p>
+<p>完整的 space-time 规划本身不会产生 deadlock，因为每一步谁走谁等都排好了。deadlock 出现在两个地方：rolling horizon 的 window 之外没人管；执行时 robot 没按计划走。</p>
+<h3>检测：wait-for graph</h3>
+<p>每个 robot 是一个 node。如果 A 下一步要去的 cell 被 B 占着，就画一条 A→B 的 edge，意思是 A 在等 B。<strong>图里有环就是 deadlock。</strong>找环用 DFS，或者沿着 edge 一路走，看会不会回到出发点。</p>
+<figure class="fig">
+<svg viewBox="0 0 720 176" role="img" aria-label="两个 wait-for graph：左边 A 和 B 互相等待，右边 A 等 B、B 等 C、C 等 A 形成三个 node 的环">
+  <path class="d-ln" d="M140 62 Q190 36 238 60" marker-end="url(#arr2)"/>
+  <path class="d-ln" d="M240 98 Q190 124 142 100" marker-end="url(#arr2)"/>
+  <circle cx="120" cy="80" r="20" style="fill:var(--a1)"/><text x="120" y="85" text-anchor="middle" style="fill:var(--on-agent);font-weight:600;font-size:15px;font-family:var(--body)">A</text>
+  <circle cx="260" cy="80" r="20" style="fill:var(--a2)"/><text x="260" y="85" text-anchor="middle" style="fill:var(--on-agent);font-weight:600;font-size:15px;font-family:var(--body)">B</text>
+  <text class="d-m" x="190" y="38" text-anchor="middle">A 等 B</text>
+  <text class="d-m" x="190" y="134" text-anchor="middle">B 等 A</text>
+  <text class="d-s" x="190" y="164" text-anchor="middle">corridor 里对头：2 个 node 的环</text>
+  <path class="d-ln" d="M492 50 H586" marker-end="url(#arr2)"/>
+  <path class="d-ln" d="M599 67 L556 116" marker-end="url(#arr2)"/>
+  <path class="d-ln" d="M524 116 L481 67" marker-end="url(#arr2)"/>
+  <circle cx="470" cy="50" r="20" style="fill:var(--a1)"/><text x="470" y="55" text-anchor="middle" style="fill:var(--on-agent);font-weight:600;font-size:15px;font-family:var(--body)">A</text>
+  <circle cx="610" cy="50" r="20" style="fill:var(--a2)"/><text x="610" y="55" text-anchor="middle" style="fill:var(--on-agent);font-weight:600;font-size:15px;font-family:var(--body)">B</text>
+  <circle cx="540" cy="130" r="20" style="fill:var(--a3)"/><text x="540" y="135" text-anchor="middle" style="fill:var(--on-agent);font-weight:600;font-size:15px;font-family:var(--body)">C</text>
+  <text class="d-s" x="540" y="168" text-anchor="middle">A 等 B，B 等 C，C 等 A：3 个 node 的环</text>
+</svg>
+</figure>
+<h3>预防比检测重要</h3>
+<div class="tw"><table>
+<tr><th>办法</th><th>做法</th><th>代价</th></tr>
+<tr><td>one-way aisle</td><td>像城市的单行道，每条 aisle 规定一个方向</td><td>path 变长，但对头的情况直接消失</td></tr>
+<tr><td>把 corridor 当成一个资源</td><td>整条 corridor 同一时间只允许一个方向通行，进入之前先预约整段</td><td>并发度下降</td></tr>
+<tr><td>admission control</td><td>出口或者 goal 有空位，才允许 robot 进入 corridor</td><td>robot 要在 corridor 外面等</td></tr>
+<tr><td>出 corridor 的优先</td><td>要离开 corridor 的 robot，priority 高于要进去的</td><td>进去的 robot 多等一会</td></tr>
+</table></div>
+<p>如果 deadlock 还是发生了：让环里 priority 最低的 robot 退到最近的空位，然后对这一小块区域做一次局部 replan。</p>
+<div class="note"><p>Symbotic 作者 2026 年 11 月的一篇公开论文里，仓库地图上 691 个 free cell 有 470 个在 one-wide corridor 里，分析出的 bottleneck 正是 corridor 的入口。“出 corridor 的优先”是那篇论文里提到的机制之一。</p></div>
+<div class="note say"><p><span class="q">面试怎么说</span>“I’d handle deadlock mostly by prevention: treat each one-wide aisle as a single resource that’s reserved for one direction at a time, give robots leaving an aisle priority over robots entering, and only admit a robot when its exit is free. As a fallback I’d keep a wait-for graph at execution time, detect cycles, and back out the lowest-priority robot.”</p></div>
+</section>
+
+<section id="exec">
+<h2><span class="n">15</span>延误与故障</h2>
+<p>规划时假设每一步刚好花 1 个 timestep。真实的 robot 会慢，会停。如果所有 robot 都死守时刻表，一个 robot 晚了 1 秒，就可能撞上按时到达的另一个。</p>
+<h3>只守先后顺序，不守时刻</h3>
+<p>如果 plan 里 A 先经过 cell v，B 后经过，那么执行时 B 必须等 A 真的离开 v 之后才能进。只要这个先后顺序不变，不管怎么延误都不会撞。论文里把这种依赖关系画成一张图，叫 Action Dependency Graph，简称 ADG。知道这个思路和名字就够。</p>
+<p>代价是延误会传染：A 慢了，所有排在 A 后面的 robot 都跟着等。所以要设一个阈值，延误超过它就触发 replan。</p>
+<h3>Robot 故障</h3>
+<ul>
+<li>把故障的 robot 当成新的障碍物写进地图。</li>
+<li>path 经过它的 robot 重新规划，其他 robot 不动。</li>
+<li>它身上的 task 重新做 assignment。</li>
+<li>如果它堵在 one-wide aisle 里，里面的 robot 只能从另一头出去，或者等人工处理。</li>
+</ul>
+<div class="note say"><p><span class="q">面试怎么说</span>“At execution time I wouldn’t enforce exact timestamps, only the ordering: if the plan says A passes a cell before B, then B waits until A has actually left. That keeps the plan collision-free under delays. If the delay grows beyond a threshold, I’d trigger a replan.”</p></div>
+</section>
+
+<section id="scale">
+<h2><span class="n">16</span>规模再大怎么办</h2>
+<p>1000 个以上的 robot，每几秒就要 replan 一次。办法按从简单到复杂排：</p>
+<ol>
+<li><strong>window。</strong>rolling horizon 已经把每次规划的时间范围砍到了 w 步。</li>
+<li><strong>分区。</strong>按楼层或者区域把仓库切开，每块各自规划，可以并行。区域边界上的 cell 用 reservation 来协调。每层 100 多个 robot、层与层之间独立，就是天然的分区。</li>
+<li><strong>只 replan 受影响的。</strong>没有新 task、path 也没被别人影响的 robot，沿用旧 path。</li>
+<li><strong>anytime。</strong>先用最快的方法拿到一个可行解，剩下的时间预算再用来改进质量。</li>
+<li><strong>更快的 solver。</strong>知道一个名字就够：PIBT。它不规划整条 path，每个 timestep 只决定所有 robot 的下一格，priority 高的先选，挡路的被推开。上千个 robot 也只要毫秒级，但 path 质量一般。</li>
+</ol>
+<div class="note intro"><p><span class="q">被问 “Are you familiar with PIBT?”</span><span class="hint">只要求知道思路的算法，开头先说清楚没有实现过，比硬撑更好。</span>“I know the idea, though I haven’t implemented it. PIBT, priority inheritance with backtracking, is a very fast MAPF method for large fleets. Instead of planning full paths, it only decides the next move of every robot at each time step. Robots choose their next cell in priority order, and if a higher-priority robot wants a cell occupied by a lower-priority one, that robot inherits the priority and has to move out of the way; if it gets stuck, it backtracks. It runs in milliseconds even with thousands of robots. The tradeoff is lower path quality than search-based planners like CBS.”</p></div>
+</section>
+
+<section id="design">
+<h2><span class="n">17</span>设计题完整示范</h2>
+<p>假设题目是：<strong>一个仓库里有 1000 个 robot，在 grid 上不停地取货、送货。请设计它们的 planner。</strong>不管题目怎么变，都按下面六步走。面试一开始就把这六个词写在白板角上。</p>
+<div class="eq">澄清 → baseline → 扩展 → tradeoff → 边界情况 → 指标</div>
+<h3>第 1 步：澄清</h3>
+<p>挑 5 个左右来问。面试官没有给答案时，说出自己的默认假设然后继续。</p>
+<div class="tw"><table>
+<tr><th>问什么</th><th>为什么问</th><th>默认假设</th></tr>
+<tr><td>地图是 4-connected grid 吗？aisle 是 one-wide 的吗？有几层？</td><td>决定 conflict 模型和 deadlock 的风险</td><td>grid，有 one-wide aisle，每层独立</td></tr>
+<tr><td>robot 能原地 wait 吗？速度都一样吗？</td><td>决定 action 集合</td><td>能 wait，速度相同</td></tr>
+<tr><td>task 是一次给完，还是持续到达？有 deadline 吗？</td><td>one-shot 还是 lifelong，priority 从哪来</td><td>持续到达，有 deadline</td></tr>
+<tr><td>task 由我来分配，还是已经分好了？</td><td>要不要设计 assignment 层</td><td>我来分配</td></tr>
+<tr><td>多久 replan 一次？每次规划的时间预算是多少？</td><td>决定能用多重的算法</td><td>几秒一次</td></tr>
+<tr><td>优化的目标是 throughput、准时率，还是总行驶距离？</td><td>决定 cost function</td><td>throughput，同时满足 deadline</td></tr>
+<tr><td>robot 会延误、会故障吗？</td><td>要不要 execution 层</td><td>会</td></tr>
+</table></div>
+<h3>第 2 步：baseline</h3>
+<p>两分钟内讲完一个能工作的最简单版本，然后<strong>主动说出它的缺陷</strong>。</p>
+<ul>
+<li>assignment：每个新 task 分给最近的空闲 robot，也就是 greedy。</li>
+<li>planning：Prioritized Planning，deadline 近的优先。每个 robot 跑 space-time A*，reservation table 里记 vertex 和 edge 两种 reservation。</li>
+<li>缺陷：PP 不 complete 也不 optimal；one-wide aisle 里容易堵死；greedy 不看拥堵；每次都规划到 goal，1000 个 robot 算不完。</li>
+</ul>
+<h3>第 3 步：扩展</h3>
+<p>对着刚才说的缺陷，一条一条修。</p>
+<div class="tw"><table>
+<tr><th>缺陷</th><th>改进</th><th>章节</th></tr>
+<tr><td>1000 个 robot 算不完</td><td>rolling horizon：每 h 步 replan，只管未来 w 步。按楼层或区域分区，并行规划</td><td><a href="#lifelong">12</a>、<a href="#scale">16</a></td></tr>
+<tr><td>PP 会失败</td><td>换顺序重试；失败的 robot 先 wait；卡住的一小撮用 CBS 局部求解</td><td><a href="#pp">08</a>、<a href="#cbs">09</a></td></tr>
+<tr><td>aisle 堵死</td><td>corridor 当成资源整段预约；出 corridor 的优先；出口有空位才放行</td><td><a href="#deadlock">14</a></td></tr>
+<tr><td>assignment 不看拥堵</td><td>Hungarian algorithm，cost 里加 congestion penalty</td><td><a href="#assign">13</a></td></tr>
+<tr><td>延误和故障</td><td>执行时只守先后顺序；偏差超过阈值就 replan；故障的 robot 当成障碍物</td><td><a href="#exec">15</a></td></tr>
+</table></div>
+<h3>第 4 步：tradeoff</h3>
+<p>挑两三个讲，每个都说清楚选了什么、放弃了什么。</p>
+<ul>
+<li><strong>optimal 和实时。</strong>CBS 有保证，但撑不住 1000 个 robot。PP 快，但没有保证。所以用 PP 做主干，CBS 只做局部修复。</li>
+<li><strong>w 的大小。</strong>小了短视，大了慢。在仿真里扫参数，看 throughput 和 planning time 的 p99。</li>
+<li><strong>assignment 和 planning 分开解，还是一起解。</strong>分开解快，但可能把 robot 派进堵点。一起解质量好，但慢。先分开解，再用 congestion penalty 弥补。</li>
+<li><strong>centralized 和 decentralized。</strong>centralized 有全局信息，质量好，但有算力瓶颈和单点故障。仓库通常是 centralized 的规划，加上 robot 本地的安全机制。</li>
+</ul>
+<h3>第 5 步：边界情况</h3>
+<ul>
+<li>one-wide aisle 里对头。</li>
+<li>规划超时：沿用上一轮剩下的 path。</li>
+<li>robot 故障，占着一个 cell 不动。</li>
+<li>task 突然增多，或者某个区域过度拥堵：限制同时进入这个区域的 robot 数。robot 越多不等于 throughput 越高。</li>
+<li>priority 低的 robot 一直等，这叫 starvation：让等待时间越长的 robot priority 越高。</li>
+</ul>
+<h3>第 6 步：指标</h3>
+<ul>
+<li>throughput：每小时完成的 task 数。</li>
+<li>准时率：在 deadline 之前完成的 task 比例。</li>
+<li>planning time 的平均值和 p99。</li>
+<li>robot 的 wait 时间占比、空驶距离占比。</li>
+<li>deadlock 的次数。</li>
+</ul>
+<h3>面试官加码时，对应拿什么</h3>
+<div class="tw"><table>
+<tr><th>面试官说</th><th>你拿出</th><th>章节</th></tr>
+<tr><td>一个 robot，在 grid 上找最短路</td><td>A*，true-distance heuristic</td><td><a href="#astar">06</a></td></tr>
+<tr><td>另一个 robot 的 path 已知</td><td>space-time A*，reservation table</td><td><a href="#stastar">07</a></td></tr>
+<tr><td>现在有 N 个 robot</td><td>先说为什么不能 joint-space A*，再给 PP，然后主动说缺陷</td><td><a href="#hard">05</a>、<a href="#pp">08</a></td></tr>
+<tr><td>PP 失败了怎么办，或者要 optimal</td><td>CBS</td><td><a href="#cbs">09</a></td></tr>
+<tr><td>task 不停地来</td><td>rolling horizon，task assignment</td><td><a href="#lifelong">12</a>、<a href="#assign">13</a></td></tr>
+<tr><td>1000 个 robot，每几秒 replan</td><td>windowed PP，分区，anytime</td><td><a href="#scale">16</a></td></tr>
+<tr><td>aisle 很窄</td><td>corridor 规则，wait-for graph</td><td><a href="#deadlock">14</a></td></tr>
+<tr><td>robot 晚到了，或者坏了</td><td>只守先后顺序，replan</td><td><a href="#exec">15</a></td></tr>
+</table></div>
+<h3>45 分钟怎么分</h3>
+<div class="tw"><table>
+<tr><th>时间</th><th>做什么</th></tr>
+<tr><td>0 到 5 分钟</td><td>自我介绍，90 到 120 秒，剩下的留给追问</td></tr>
+<tr><td>5 到 10 分钟</td><td>复述题目，问澄清问题，在白板上写下输入、输出、目标、假设</td></tr>
+<tr><td>10 到 18 分钟</td><td>baseline，并主动说出它的缺陷</td></tr>
+<tr><td>18 到 32 分钟</td><td>扩展，每一步都讲 tradeoff</td></tr>
+<tr><td>32 到 42 分钟</td><td>边界情况和指标</td></tr>
+<tr><td>42 到 45 分钟</td><td>用 30 秒总结整个架构，然后问一个好问题</td></tr>
+</table></div>
+<h3>卡住的时候可以说</h3>
+<ul>
+<li>“Let me start with the simplest version that works, and then find where it breaks.”</li>
+<li>“There are two directions here: A is faster, B gives better solution quality. Which one matters more in your setting?”</li>
+<li>“I’m not sure about this detail. My assumption is … Please correct me if that’s wrong.”</li>
+</ul>
+<h3>最后可以问的问题</h3>
+<ul>
+<li>“What’s the planning time budget and fleet size in production? Is the bottleneck more in planning compute or in execution delays?”</li>
+<li>“Which metrics do you use to judge a planner change, and how do you handle the gap between simulation and the real floor?”</li>
+</ul>
+</section>
+
+<!-- ============ REVIEW ============ -->
+<div class="part"><div class="tag">REVIEW</div><h2>复习</h2><p>先自己答，再展开看答案。</p></div>
+
+<section id="qa">
+<h2><span class="n">18</span>面试题与答案</h2>
+<div class="qa-tools"><button class="pre" type="button" id="qa-open">全部展开</button><button class="pre" type="button" id="qa-close">全部收起</button></div>
+
+<h3>问题定义</h3>
+<details class="qa"><summary>MAPF 的输入和输出是什么？</summary><div class="a"><p>输入是一张 graph 和 k 个 agent 的 start、goal。时间离散，每一步每个 agent 要么 move 到相邻的 cell，要么 wait。输出是每个 agent 一条带时间的 path，任意两条之间没有 vertex conflict 和 edge conflict。目标通常是最小化 SoC 或 makespan，lifelong 场景看 throughput。</p></div></details>
+<details class="qa"><summary>为什么只检查 vertex conflict 不够？</summary><div class="a"><p>两个 agent 对穿时，每个时刻它们都在不同的 cell 里，vertex conflict 检查不出来，但物理上已经撞了。所以要单独检查 edge conflict：t 到 t+1 之间两个 agent 互换了位置。</p></div></details>
+<details class="qa"><summary>为什么不直接在 joint state space 上跑 A*？</summary><div class="a"><p>state 数是 |V|<sup>k</sup>，branching factor 是 5<sup>k</sup>，都随 agent 数指数增长。20×20 的 grid 上 10 个 agent 就有大约 10<sup>26</sup> 个 state，每次 expand 要生成约 980 万个 successor。所以实用算法都是先各自规划，再处理 conflict。</p></div></details>
+<details class="qa"><summary>SoC 和 makespan 有什么区别？仓库里看哪个？</summary><div class="a"><p>SoC 是所有 agent 到达时间的和，makespan 是最晚到达的那个时间。仓库是 lifelong 场景，看的是 throughput。SoC optimal 不等于 throughput optimal，因为 throughput 还取决于 task assignment、拥堵和执行时的延误。</p></div></details>
+
+<h3>A* 和 space-time A*</h3>
+<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 h 从不高估真实的剩余 cost，它保证 A* 返回 optimal 的 path。consistent 是 h(n) ≤ c(n, n′) + h(n′)，它保证 f 沿 path 不下降，每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。只 admissible 不 consistent 时，CLOSED 里的 node 可能要 reopen。</p></div></details>
+<details class="qa"><summary>有障碍物的 grid 上，怎么得到比 Manhattan distance 更准的 heuristic？</summary><div class="a"><p>从 goal 做一次反向 BFS，edge 有权重时用反向 Dijkstra，得到每个 cell 到 goal 的真实最短距离，存成表。它考虑了障碍物，仍然 admissible 而且 consistent。每个 goal 只算一次，之后所有搜索都复用。</p></div></details>
+<details class="qa"><summary>space-time A* 和普通 A* 差在哪？</summary><div class="a"><p>state 从 v 变成 (v, t)。action 多了一个 wait。障碍物除了墙，还有 reservation table 里别人占用的时空位置，分 vertex 和 edge 两种。goal 条件多了一条：到达之后 goal 不能再被别人预约。heuristic 不变。</p></div></details>
+<details class="qa"><summary>agent 一到 goal 就能结束搜索吗？</summary><div class="a"><p>不能。agent 到达之后会停在 goal 上。如果之后某个时刻别人要经过这个 cell，那么现在停下就会撞。必须检查 goal 在这之后没有任何 reservation，否则继续搜，结果可能是先让开再回来。</p></div></details>
+<details class="qa"><summary>加了时间维之后，heuristic 还 admissible 吗？</summary><div class="a"><p>还是。heuristic 是到 goal 的空间最短距离。加了时间和 reservation 之后，实际的 cost 只会更大，因为多出来的是 wait 和绕路，所以空间距离仍然不会高估。</p></div></details>
+<details class="qa"><summary>问题无解时，space-time A* 怎么停下来？</summary><div class="a"><p>因为有 wait，state 可以无限多，所以要设一个 T_max。可以取最后一个 reservation 的时刻加上 free cell 的个数：过了最后一个 reservation，环境是静态的，最短路不会超过 free cell 的个数。超过 T_max 的 state 不再 expand。</p></div></details>
+<details class="qa"><summary>reservation table 用什么数据结构？</summary><div class="a"><p>hash set。vertex reservation 的 key 是 (cell, t)，edge reservation 的 key 是 (u, v, t)，查询都是 O(1)。停在 goal 上的 agent 另外存一张 cell 到起始时刻的表。配合 rolling horizon 时，只需要存未来 w 步。</p></div></details>
+
+<h3>Prioritized Planning 和 CBS</h3>
+<details class="qa"><summary>PP 为什么不 complete？举一个例子。</summary><div class="a"><p>高 priority 的 agent 规划时不考虑后面的 agent，path 定了也不再改。例子：one-wide corridor 中间有一个避让位，A 和 B 从两头对穿。不管谁先规划，先规划的都径直穿过去，后规划的没有任何合法的 path。但问题有解，其中一个先进避让位就行。</p></div></details>
+<details class="qa"><summary>PP 的 priority 怎么定？</summary><div class="a"><p>常用的规则：deadline 近的优先；剩余距离长的优先；要离开 corridor 的优先于要进去的；失败之后换一个顺序重试。也可以让等待时间越长的 agent priority 越高，防止 starvation。</p></div></details>
+<details class="qa"><summary>PP 失败了怎么办？</summary><div class="a"><p>三个层次。先换顺序重试，把失败的 agent 提前。还不行，就让失败的 agent 这一轮先 wait，下一轮 replan 时再规划。再不行，对卡住的几个 agent 用 CBS 做局部求解。</p></div></details>
+<details class="qa"><summary>CBS 的两层各做什么？</summary><div class="a"><p>high level 在 constraint tree 上做 best-first search。每个 node 有一组 constraint、一组 path 和它们的 SoC。每次 pop cost 最小的 node，找第一个 conflict，分成两个子 node，每个子 node 给 conflict 里的一个 agent 加一条 constraint。low level 用 space-time A* 给被加了 constraint 的那个 agent 重新规划。</p></div></details>
+<details class="qa"><summary>CBS 为什么是 optimal 的？</summary><div class="a"><p>三点。第一，分支不丢解：任何合法的 solution 一定满足两个子 node 之一的 constraint。第二，node 的 cost 是 lower bound：每个 agent 走的是满足 constraint 的最短路，还没处理的 conflict 被忽略了。第三，high level 按 cost 做 best-first，所以第一个没有 conflict 的 node 的 cost，不大于其他所有 node 的 lower bound。</p></div></details>
+<details class="qa"><summary>CBS 什么时候会很慢？</summary><div class="a"><p>conflict 多的时候。每个 conflict 让 tree 分一次叉，最坏情况是指数级。典型的坏情况是 one-wide corridor 里对头：其中一个必须等另一个完全通过，cost 要增加很多，而每条 constraint 只抬高一点 cost。corridor 每长一格，node 数大约翻一倍。</p></div></details>
+<details class="qa"><summary>PP 和 CBS 怎么选？</summary><div class="a"><p>看规模和时间预算。几十个 agent、需要质量保证，用 CBS。上百上千个 agent、每几秒 replan，用 PP 做主干。常见的组合是 PP 负责全局，PP 卡住的地方用 CBS 做局部修复。</p></div></details>
+<details class="qa"><summary>想比 PP 质量好、又比 CBS 快，有什么办法？</summary><div class="a"><p>两个方向。一是 bounded-suboptimal 的 CBS，比如 ECBS：允许 cost 最多是 optimal 的 w 倍，换来快几个数量级。二是 PBS：在 conflict 处搜索两个 agent 的 priority 谁高谁低，相当于自动找 PP 的顺序。</p></div></details>
+
+<h3>系统设计</h3>
+<details class="qa"><summary>lifelong MAPF 和 one-shot MAPF 有什么不同？</summary><div class="a"><p>one-shot 里每个 agent 只有一个 goal，全部到达就结束，目标是 SoC 或 makespan。lifelong 里 agent 到达之后马上有新的 goal，永远不结束，目标是 throughput。做法是 rolling horizon：每隔 h 步用 one-shot 算法的 window 版本重新规划一次。</p></div></details>
+<details class="qa"><summary>window w 和 replan 周期 h 怎么选？</summary><div class="a"><p>必须 h ≤ w。w 小了短视，容易把 robot 带进堵点；w 大了规划慢，而且远处的 conflict 解了也白解。h 小了算力开销大；h 大了对新 task 和延误的反应慢。实际是在仿真里扫参数，看 throughput 和 planning time 的 p99。</p></div></details>
+<details class="qa"><summary>这一轮规划超时了怎么办？</summary><div class="a"><p>继续执行上一轮 path 剩下的部分。因为 w 大于 h，上一轮还有 w − h 步没有 conflict 的余量。同时可以缩小 window，或者只给一部分 robot 重新规划，保证下一轮能按时算完。</p></div></details>
+<details class="qa"><summary>task assignment 怎么建模？greedy 有什么问题？</summary><div class="a"><p>建一个 cost matrix，c<sub>ij</sub> 是 robot i 做 task j 的代价，包括到 pickup 的距离、pickup 到 delivery 的距离、deadline 项和 congestion penalty。用 Hungarian algorithm 求 optimal 的一对一匹配，复杂度 O(n³)。greedy 每次选最小的一对，可能把最近的 robot 抢走，让别的 task 只能分给很远的 robot。</p></div></details>
+<details class="qa"><summary>one-wide corridor 里两个 robot 对头，怎么办？</summary><div class="a"><p>以预防为主：把 corridor 当成一个资源，同一时间只允许一个方向；出 corridor 的 robot 优先；出口有空位才允许进入；或者干脆规定成 one-way。兜底是在执行时维护 wait-for graph，发现环就让 priority 最低的 robot 退到最近的空位，然后局部 replan。</p></div></details>
+<details class="qa"><summary>一个 robot 晚到了 2 秒，原来的 plan 还安全吗？</summary><div class="a"><p>如果死守时刻表，就不安全。办法是执行时只保证先后顺序：plan 里 A 先过某个 cell、B 后过，那么 B 等 A 真的离开之后再进。这样任意延误下都不会撞。代价是延误会沿着依赖关系传播，超过阈值就 replan。</p></div></details>
+<details class="qa"><summary>为什么让每个 robot 都走自己的最短路，往往是错的？</summary><div class="a"><p>因为最短路会在同一个地方交汇，造成拥堵。全局更好的做法常常是让一部分 robot 绕路，或者先让开。PP 实验台里的“3 个 agent”就是例子：每个 agent 贪心地选最短路，SoC 是 9 或 10，协调之后是 7。</p></div></details>
+<details class="qa"><summary>throughput 下降了，怎么判断问题出在哪一层？</summary><div class="a"><p>分层看指标。空驶距离占比高，说明 assignment 有问题。wait 时间占比高、拥堵集中在某些 cell，说明 planning 或者地图的交通规则有问题。计划的时间和实际的时间偏差大，说明 execution 有问题。</p></div></details>
+<details class="qa"><summary>1000 个 robot、每 5 秒 replan，你怎么设计？</summary><div class="a"><p>分三层。assignment 层每个周期用 Hungarian algorithm 匹配空闲的 robot 和 task，cost 里带 deadline 和拥堵。planning 层用 rolling horizon，window 里跑 windowed PP，deadline 近的优先，按楼层分区并行；PP 卡住的地方用 CBS 局部修复；窄 aisle 用整段预约和出 corridor 优先来防 deadlock。execution 层只保证先后顺序，延误超过阈值就 replan。指标看 throughput、准时率、planning time 的 p99 和 deadlock 次数。</p></div></details>
+</section>
+
+<section id="cheatsheet">
+<h2><span class="n">19</span>速查表与自测</h2>
+<h3>基础算法</h3>
+<div class="tw"><table>
+<tr><th>算法</th><th>一句话</th><th>complete</th><th>optimal</th><th>代价</th></tr>
+<tr><td>A*</td><td>f = g + h，每次 pop f 最小的 node</td><td>是</td><td>h admissible 时是</td><td>单个 agent</td></tr>
+<tr><td>space-time A*</td><td>state 是 (v, t)，多一个 wait，查 reservation table</td><td>是，需要 T_max</td><td>是</td><td>|V| × T_max 个 state</td></tr>
+<tr><td>Prioritized Planning</td><td>排好 priority，逐个跑 space-time A*</td><td>否</td><td>否</td><td>k 次搜索</td></tr>
+<tr><td>CBS</td><td>各走各的最短路，有 conflict 就分两支加 constraint</td><td>是</td><td>是，对 SoC</td><td>最坏指数级</td></tr>
+<tr><td>rolling horizon</td><td>每 h 步 replan，只管未来 w 步，h ≤ w</td><td colspan="2">取决于 window 里用的 solver</td><td>每 h 步规划一次</td></tr>
+<tr><td>Hungarian algorithm</td><td>robot 和 task 一对一匹配，总 cost 最小</td><td>是</td><td>是</td><td>O(n³)</td></tr>
+</table></div>
+<h3>只需要认识名字的</h3>
+<p>这些不用学。面试官提到时，知道它大概是什么就行。</p>
+<div class="tw"><table>
+<tr><th>名字</th><th>一句话</th></tr>
+<tr><td>SIPP</td><td>space-time A* 的加速版。把一个 cell 上连续空闲的时间段合并成一个 safe interval，state 变成 (v, interval)</td></tr>
+<tr><td>WHCA*</td><td>window 版本的 Prioritized Planning</td></tr>
+<tr><td>ECBS、EECBS</td><td>bounded-suboptimal 的 CBS，牺牲一点 optimality 换速度</td></tr>
+<tr><td>PBS</td><td>在 conflict 处搜索 priority 的顺序</td></tr>
+<tr><td>PIBT</td><td>每个 timestep 只决定下一格，priority 高的把挡路的推开</td></tr>
+<tr><td>LaCAM</td><td>在 PIBT 外面套一层搜索，变成 complete</td></tr>
+<tr><td>MDD、cardinal conflict、symmetry reasoning、mutex propagation</td><td>都是 CBS 的加速技巧，目的是让 constraint tree 更小</td></tr>
+<tr><td>ADG</td><td>执行时只保证先后顺序的那张依赖图</td></tr>
+<tr><td>MAPD、Token Passing</td><td>lifelong 的 pickup and delivery 问题，以及它的一个经典解法</td></tr>
+</table></div>
+<h3>自测清单</h3>
+<ul class="check" id="selfcheck">
+<li><input type="checkbox" id="ck1"><label for="ck1">一分钟说清 MAPF 的输入、输出、两种 conflict 和三个目标函数。</label></li>
+<li><input type="checkbox" id="ck2"><label for="ck2">说出为什么不能在 joint state space 上跑 A*，给出两个数字。</label></li>
+<li><input type="checkbox" id="ck3"><label for="ck3">默写 space-time A* 的 pseudo-code，包括 wait、vertex 和 edge 两种检查、goal 条件。</label></li>
+<li><input type="checkbox" id="ck4"><label for="ck4">画出一个 Prioritized Planning 失败的例子。</label></li>
+<li><input type="checkbox" id="ck5"><label for="ck5">在纸上手推十字路口的 CBS，画出 3 个 node 的 constraint tree。</label></li>
+<li><input type="checkbox" id="ck6"><label for="ck6">用三句话讲清 CBS 为什么是 optimal 的。</label></li>
+<li><input type="checkbox" id="ck7"><label for="ck7">说清 rolling horizon 里 w 和 h 的含义，以及为什么 h ≤ w。</label></li>
+<li><input type="checkbox" id="ck8"><label for="ck8">写出 assignment 的 cost 由哪几项组成，举一个 greedy 不 optimal 的例子。</label></li>
+<li><input type="checkbox" id="ck9"><label for="ck9">画一个 wait-for graph 的环，说出 3 种预防 deadlock 的办法。</label></li>
+<li><input type="checkbox" id="ck10"><label for="ck10">对着 17 节的题目，用英文出声讲满 30 分钟。</label></li>
+</ul>
+</section>
+
+<section id="refs">
+<h2><span class="n">20</span>References</h2>
+<ul>
+<li>Stern et al., <em>Multi-Agent Pathfinding: Definitions, Variants, and Benchmarks</em>, SoCS 2019。问题定义和 conflict 类型的标准出处。</li>
+<li>Silver, <em>Cooperative Pathfinding</em>, AIIDE 2005。space-time A*、reservation table、WHCA*。</li>
+<li>Čáp et al., <em>Prioritized Planning Algorithms for Trajectory Coordination of Multiple Mobile Robots</em>, IEEE T-ASE 2015。well-formed 条件。</li>
+<li>Sharon, Stern, Felner, Sturtevant, <em>Conflict-Based Search for Optimal Multi-Agent Pathfinding</em>, Artificial Intelligence 2015。CBS。</li>
+<li>Li et al., <em>Lifelong Multi-Agent Path Finding in Large-Scale Warehouses</em>, AAAI 2021。rolling horizon，也就是 RHCR。</li>
+<li>Hönig et al., <em>Persistent and Robust Execution of MAPF Schedules in Warehouses</em>, RA-L 2019。ADG。</li>
+<li>Symbotic blog, <em>The bottleneck for dense storage isn’t robot performance, it’s the traffic</em>。prioritized planning、deadline 决定 priority、约 5 秒 replan。</li>
+<li><a href="https://mapf.info">mapf.info</a>：MAPF 社区的资料汇总。</li>
+</ul>
+</section>
+</main>
+</div>
+
+<script id="core">
+// MAPF core: 页面上所有实验台用的都是这里的真实算法，不是写死的动画。
+const MAPF = (() => {
+  'use strict';
+  const DIRS = [[-1,0],[0,1],[1,0],[0,-1]];
+
+  // ---------- grid ----------
+  function parseGrid(rows){
+    const H = rows.length, W = rows[0].length, N = H*W;
+    const free = new Array(N), nbrs = new Array(N);
+    for (let v=0; v<N; v++) free[v] = rows[Math.floor(v/W)][v%W] !== '#';
+    for (let v=0; v<N; v++){
+      nbrs[v] = [];
+      if (!free[v]) continue;
+      const r = Math.floor(v/W), c = v%W;
+      for (const [dr,dc] of DIRS){
+        const rr = r+dr, cc = c+dc;
+        if (rr>=0 && rr<H && cc>=0 && cc<W && free[rr*W+cc]) nbrs[v].push(rr*W+cc);
+      }
+    }
+    return {H, W, N, free, nbrs, nFree: free.filter(Boolean).length,
+            id: (r,c) => r*W+c, rc: v => [Math.floor(v/W), v%W]};
+  }
+
+  // true-distance heuristic：从 goal 反向 BFS 一次，得到每个格子到 goal 的真实最短距离
+  function bfsDist(G, goal){
+    const d = new Array(G.N).fill(Infinity); d[goal] = 0;
+    const q = [goal];
+    for (let i=0; i<q.length; i++){
+      const v = q[i];
+      for (const u of G.nbrs[v]) if (d[u] === Infinity){ d[u] = d[v]+1; q.push(u); }
+    }
+    return d;
+  }
+
+  // ---------- binary heap ----------
+  function Heap(less){ this.a = []; this.less = less; }
+  Heap.prototype.push = function(x){
+    const a = this.a; a.push(x); let i = a.length-1;
+    while (i > 0){ const p = (i-1)>>1; if (!this.less(a[i], a[p])) break; [a[i],a[p]] = [a[p],a[i]]; i = p; }
+  };
+  Heap.prototype.pop = function(){
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length){
+      a[0] = last; let i = 0;
+      for (;;){
+        const l = 2*i+1, r = l+1; let m = i;
+        if (l < a.length && this.less(a[l], a[m])) m = l;
+        if (r < a.length && this.less(a[r], a[m])) m = r;
+        if (m === i) break; [a[i],a[m]] = [a[m],a[i]]; i = m;
+      }
+    }
+    return top;
+  };
+
+  // ---------- reservation / constraint table ----------
+  // vertex "v@t"：时刻 t 不能在 v
+  // edge "u>v@t"：不能在 t→t+1 从 u 走到 v
+  // perm v→t0：从 t0 起 v 永久被占（别的车停在自己的 goal 上）
+  const vk = (v,t) => v+'@'+t, ek = (u,v,t) => u+'>'+v+'@'+t;
+  function newTable(){ return {vertex: new Set(), edge: new Set(), perm: new Map(), maxT: 0}; }
+  function addVertex(C,v,t){ C.vertex.add(vk(v,t)); if (t > C.maxT) C.maxT = t; }
+  function addEdge(C,u,v,t){ C.edge.add(ek(u,v,t)); if (t+1 > C.maxT) C.maxT = t+1; }
+  function reservePath(C,p){
+    for (let t=0; t<p.length; t++){
+      addVertex(C, p[t], t);
+      if (t+1 < p.length && p[t] !== p[t+1]) addEdge(C, p[t+1], p[t], t);   // 禁止别人反向对穿
+    }
+    const last = p.length-1;
+    C.perm.set(p[last], last); if (last > C.maxT) C.maxT = last;
+  }
+  function blocked(C,u,v,t){               // 能不能在 t→t+1 从 u 到 v（u===v 表示 wait）
+    if (C.vertex.has(vk(v,t+1))) return true;
+    const p = C.perm.get(v);
+    if (p !== undefined && t+1 >= p) return true;
+    if (u !== v && C.edge.has(ek(u,v,t))) return true;
+    return false;
+  }
+
+  // ---------- space-time A* ----------
+  function stAStar(G, start, goal, C, opt){
+    opt = opt || {};
+    const h = opt.h || bfsDist(G, goal);
+    const res = {path: null, expanded: 0};
+    if (h[start] === Infinity) return res;
+    // goal 条件：到达之后 goal 不能再被别人预约
+    let goalFreeFrom = 0;
+    C.vertex.forEach(k => {
+      const i = k.indexOf('@');
+      if (+k.slice(0,i) === goal) goalFreeFrom = Math.max(goalFreeFrom, +k.slice(i+1)+1);
+    });
+    // 过了最后一个 reservation，环境就是静态的，最短路不会超过 free cell 数
+    const Tmax = C.maxT + G.nFree;
+    const open = new Heap((a,b) => a.f !== b.f ? a.f < b.f : a.g !== b.g ? a.g > b.g : a.seq < b.seq);
+    const closed = new Set();
+    let seq = 0;
+    open.push({v: start, t: 0, g: 0, f: h[start], parent: null, seq: seq++});
+    while (open.a.length){
+      const n = open.pop(), key = vk(n.v, n.t);
+      if (closed.has(key)) continue;
+      closed.add(key); res.expanded++;
+      if (n.v === goal && n.t >= goalFreeFrom){
+        const path = [];
+        for (let x = n; x; x = x.parent) path.push(x.v);
+        res.path = path.reverse();
+        return res;
+      }
+      if (n.t >= Tmax) continue;
+      const cand = G.nbrs[n.v].slice();
+      if (opt.allowWait !== false) cand.push(n.v);
+      for (const u of cand){
+        if (h[u] === Infinity || blocked(C, n.v, u, n.t) || closed.has(vk(u, n.t+1))) continue;
+        open.push({v: u, t: n.t+1, g: n.g+1, f: n.g+1+h[u], parent: n, seq: seq++});
+      }
+    }
+    return res;
+  }
+
+  // ---------- paths, cost, conflicts ----------
+  const at = (p,t) => p[Math.min(t, p.length-1)];           // 到 goal 之后一直停在 goal
+  const soc = paths => paths.reduce((s,p) => s + (p ? p.length-1 : 0), 0);
+  const makespan = paths => Math.max(0, ...paths.map(p => p ? p.length-1 : 0));
+  function conflicts(paths){
+    const out = [], k = paths.length, T = Math.max(1, ...paths.map(p => p ? p.length : 1));
+    for (let t=0; t<T; t++){
+      for (let i=0; i<k; i++) for (let j=i+1; j<k; j++){
+        if (!paths[i] || !paths[j]) continue;
+        if (at(paths[i],t) === at(paths[j],t)) out.push({type:'vertex', a:i, b:j, v:at(paths[i],t), t});
+      }
+      for (let i=0; i<k; i++) for (let j=i+1; j<k; j++){
+        if (!paths[i] || !paths[j]) continue;
+        const u = at(paths[i],t), v = at(paths[i],t+1);
+        if (u !== v && at(paths[j],t) === v && at(paths[j],t+1) === u) out.push({type:'edge', a:i, b:j, u, v, t});
+      }
+    }
+    return out;
+  }
+
+  // ---------- Prioritized Planning ----------
+  function prioritized(G, agents, order, opt){
+    const C = newTable(), paths = new Array(agents.length).fill(null);
+    let expanded = 0;
+    for (const i of order){
+      const r = stAStar(G, agents[i].start, agents[i].goal, C, opt);
+      expanded += r.expanded;
+      if (!r.path) return {ok: false, failed: i, paths, expanded};
+      paths[i] = r.path;
+      reservePath(C, r.path);
+    }
+    return {ok: true, paths, cost: soc(paths), expanded};
+  }
+
+  // ---------- CBS ----------
+  function cbsNew(G, agents, opt){
+    const S = {G, agents, hs: agents.map(a => bfsDist(G, a.goal)), nodes: [], open: [],
+               done: false, failed: false, capped: false, solution: null, expanded: 0,
+               maxNodes: (opt && opt.maxNodes) || 20000};
+    const paths = agents.map((a,i) => stAStar(G, a.start, a.goal, newTable(), {h: S.hs[i]}).path);
+    if (paths.some(p => !p)){ S.done = S.failed = true; return S; }
+    cbsPush(S, {parent: -1, depth: 0, added: null, paths});
+    return S;
+  }
+  function cbsPush(S, n){
+    n.id = S.nodes.length; n.cost = soc(n.paths);
+    const cs = conflicts(n.paths);
+    n.nConf = cs.length; n.conflict = cs[0] || null; n.status = 'open';
+    S.nodes.push(n); S.open.push(n.id);
+    return n;
+  }
+  function cbsTable(S, node, extra, agent){      // 沿着 CT 往上收集这个 agent 的所有 constraint
+    const C = newTable();
+    const put = c => { if (c && c.agent === agent){ if (c.type === 'vertex') addVertex(C, c.v, c.t); else addEdge(C, c.u, c.v, c.t); } };
+    put(extra);
+    for (let n = node; n; n = n.parent >= 0 ? S.nodes[n.parent] : null) put(n.added);
+    return C;
+  }
+  function cbsStep(S){
+    if (S.done) return null;
+    if (!S.open.length){ S.done = S.failed = true; return null; }
+    let bi = 0;                                    // best-first：cost 最小；相同取 conflict 少的；再相同取先生成的
+    for (let i=1; i<S.open.length; i++){
+      const a = S.nodes[S.open[i]], b = S.nodes[S.open[bi]];
+      if (a.cost < b.cost || (a.cost === b.cost && (a.nConf < b.nConf || (a.nConf === b.nConf && a.id < b.id)))) bi = i;
+    }
+    const N = S.nodes[S.open.splice(bi,1)[0]];
+    S.expanded++;
+    if (!N.conflict){ N.status = 'goal'; S.done = true; S.solution = N; return {node: N, children: []}; }
+    N.status = 'expanded';
+    const c = N.conflict, kids = [];
+    const cons = c.type === 'vertex'
+      ? [{agent: c.a, type: 'vertex', v: c.v, t: c.t}, {agent: c.b, type: 'vertex', v: c.v, t: c.t}]
+      : [{agent: c.a, type: 'edge', u: c.u, v: c.v, t: c.t}, {agent: c.b, type: 'edge', u: c.v, v: c.u, t: c.t}];
+    for (const con of cons){
+      const i = con.agent, C = cbsTable(S, N, con, i);
+      const r = stAStar(S.G, S.agents[i].start, S.agents[i].goal, C, {h: S.hs[i]});
+      if (!r.path){ kids.push({pruned: true, added: con}); continue; }   // 这个 constraint 下该 agent 无路可走
+      const paths = N.paths.slice(); paths[i] = r.path;
+      kids.push(cbsPush(S, {parent: N.id, depth: N.depth+1, added: con, paths}));
+    }
+    if (S.nodes.length >= S.maxNodes){ S.done = S.capped = true; }
+    return {node: N, children: kids};
+  }
+  function cbsSolve(G, agents, opt){
+    const S = cbsNew(G, agents, opt);
+    while (!S.done) cbsStep(S);
+    return S;
+  }
+
+  return {parseGrid, bfsDist, newTable, addVertex, addEdge, reservePath, stAStar, at, soc, makespan,
+          conflicts, prioritized, cbsNew, cbsStep, cbsSolve};
+})();
+</script>
+
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const COL = ['var(--a1)', 'var(--a2)', 'var(--a3)', 'var(--a4)'];
+const CS = 52, ML = 26, MT = 24, PAD = 6;     // cell 边长、左/上留给行列号的空白
+
+function sv(tag, attrs, parent, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function ht(tag, attrs, parent, html){
+  const e = document.createElement(tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (html != null) e.innerHTML = html;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const cellName = (G, v) => '(' + G.rc(v).join(',') + ')';
+const ag = (agents, i) => '<span class="ag c' + i + '">' + agents[i].name + '</span>';
+function pathText(G, p){
+  if (!p) return '—';
+  return p.map((v, t) => t > 0 && p[t-1] === v ? 'wait' : cellName(G, v)).join(' → ');
+}
+function perms(n){
+  if (n === 1) return [[0]];
+  const out = [];
+  for (const p of perms(n-1)) for (let i = p.length; i >= 0; i--){ const q = p.slice(); q.splice(i, 0, n-1); out.push(q); }
+  return out;
+}
+function confText(G, agents, c){
+  const a = ag(agents, c.a), b = ag(agents, c.b);
+  return c.type === 'vertex'
+    ? 'vertex conflict：' + a + '、' + b + ' 在 t=' + c.t + ' 同在 ' + cellName(G, c.v)
+    : 'edge conflict：' + a + '、' + b + ' 在 t=' + c.t + '→' + (c.t+1) + ' 对穿 ' + cellName(G, c.u) + '↔' + cellName(G, c.v);
+}
+function consText(G, agents, c){
+  if (!c) return '（无）';
+  const a = ag(agents, c.agent);
+  return c.type === 'vertex'
+    ? a + ' 在 t=' + c.t + ' 不能在 ' + cellName(G, c.v)
+    : a + ' 不能在 t=' + c.t + '→' + (c.t+1) + ' 从 ' + cellName(G, c.u) + ' 走到 ' + cellName(G, c.v);
+}
+
+// ---------- 场景 ----------
+const SC = {
+  cross:   {name: '十字路口', rows: ['...','...','...'], agents: [['A',[1,0],[1,2]], ['B',[0,1],[2,1]]]},
+  park:    {name: '终点挡路', rows: ['...','...'], agents: [['A',[0,0],[0,2]], ['B',[1,2],[0,1]]]},
+  pocketL: {name: '走廊 + 靠左避让位', rows: ['#.###','.....'], agents: [['A',[1,0],[1,4]], ['B',[1,4],[1,0]]]},
+  pocketC: {name: '走廊 + 居中避让位', rows: ['##.##','.....'], agents: [['A',[1,0],[1,4]], ['B',[1,4],[1,0]]]},
+  three:   {name: '3 个 agent', rows: ['...','...','...'], agents: [['A',[2,0],[1,1]], ['B',[1,2],[2,0]], ['C',[1,0],[2,1]]]},
+  rooms:   {name: '两个房间 + 长走廊', rows: ['..###..','.......','..###..'], agents: [['A',[1,0],[1,6]], ['B',[1,6],[1,0]]]}
+};
+function load(key){
+  const s = SC[key], G = MAPF.parseGrid(s.rows);
+  return {key, name: s.name, G, agents: s.agents.map(a => ({name: a[0], start: G.id(a[1][0], a[1][1]), goal: G.id(a[2][0], a[2][1])}))};
+}
+const optCache = {};
+function optimalCost(sc){
+  if (!(sc.key in optCache)){ const S = MAPF.cbsSolve(sc.G, sc.agents); optCache[sc.key] = S.solution ? S.solution.cost : null; }
+  return optCache[sc.key];
+}
+
+// ---------- Stage：grid 视图 + 时间轴 + 每个时刻的快照 ----------
+function Stage(root){
+  const wrap = ht('div', {class: 'stage'}, root);
+  const main = ht('div', {class: 'stage-main'}, wrap);
+  const svg = sv('svg', {class: 'grid', role: 'img'}, main);
+  const ctl = ht('div', {class: 'tctl'}, main);
+  const side = ht('div', {class: 'stage-side'}, wrap);
+  ht('h4', {}, root, '每个时刻的快照（点一下跳到那个时刻）');
+  const film = ht('div', {class: 'film'}, root);
+
+  const bPrev = ht('button', {class: 'pre', type: 'button', 'aria-label': '上一个时刻'}, ctl, '◀');
+  const range = ht('input', {type: 'range', min: 0, max: 0, step: 1, value: 0, 'aria-label': '时刻 t'}, ctl);
+  const bNext = ht('button', {class: 'pre', type: 'button', 'aria-label': '下一个时刻'}, ctl, '▶');
+  const bPlay = ht('button', {class: 'pre', type: 'button'}, ctl, '播放');
+  const out = ht('output', {}, ctl, 't = 0');
+
+  let G, agents, paths, T = 0, t = 0, confs = [], timer = null, gConf, gAgents = [], frames = [];
+  const X = v => ML + G.rc(v)[1]*CS + CS/2, Y = v => MT + G.rc(v)[0]*CS + CS/2;
+  const posAt = (i, tt) => paths[i] ? MAPF.at(paths[i], tt) : agents[i].start;
+
+  function confCells(tt){
+    const cells = new Set();
+    for (const c of confs){
+      if (c.type === 'vertex' && c.t === tt) cells.add(c.v);
+      if (c.type === 'edge' && (c.t === tt || c.t + 1 === tt)){ cells.add(c.u); cells.add(c.v); }
+    }
+    return cells;
+  }
+  function draw(){
+    const w = ML + G.W*CS + PAD, h = MT + G.H*CS + PAD;
+    svg.innerHTML = '';
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    svg.setAttribute('aria-label', G.H + ' 行 ' + G.W + ' 列的 grid，显示每个 agent 在当前时刻的位置');
+    for (let c = 0; c < G.W; c++) sv('text', {class: 'g-lab', x: ML + c*CS + CS/2, y: MT - 8}, svg, c);
+    for (let r = 0; r < G.H; r++) sv('text', {class: 'g-lab', x: ML/2, y: MT + r*CS + CS/2 + 4}, svg, r);
+    for (let v = 0; v < G.N; v++){
+      const [r, c] = G.rc(v);
+      sv('rect', {class: G.free[v] ? 'g-cell' : 'g-wall', x: ML + c*CS, y: MT + r*CS, width: CS, height: CS}, svg);
+    }
+    gConf = sv('g', {}, svg);
+    agents.forEach((a, i) => {                                   // goal：虚线圈 + 角上的字母
+      sv('circle', {class: 'g-goal', cx: X(a.goal), cy: Y(a.goal), r: 21, stroke: COL[i]}, svg);
+      sv('text', {class: 'g-goal-t', x: X(a.goal) - CS/2 + 4, y: Y(a.goal) - CS/2 + 13, fill: COL[i]}, svg, a.name);
+    });
+    const OFF = [[-5,-5],[5,5],[-5,5],[5,-5]];
+    agents.forEach((a, i) => {                                   // 整条 path：半透明折线，各 agent 错开一点
+      const p = paths[i]; if (!p) return;
+      const pts = p.filter((v, k) => k === 0 || v !== p[k-1]).map(v => (X(v) + OFF[i][0]) + ',' + (Y(v) + OFF[i][1]));
+      if (pts.length > 1) sv('polyline', {class: 'g-path', points: pts.join(' '), stroke: COL[i]}, svg);
+    });
+    gAgents = agents.map((a, i) => {
+      const g = sv('g', {class: 'g-agent' + (paths[i] ? '' : ' ghost')}, svg);
+      sv('circle', {r: 16, fill: COL[i]}, g);
+      sv('text', {}, g, a.name);
+      return g;
+    });
+    // 快照
+    film.innerHTML = ''; frames = [];
+    const m = 13;
+    for (let tt = 0; tt <= T; tt++){
+      const b = ht('button', {type: 'button', 'aria-label': '跳到 t=' + tt}, film);
+      const s = sv('svg', {width: G.W*m, height: G.H*m, viewBox: '0 0 ' + G.W*m + ' ' + G.H*m, 'aria-hidden': 'true'}, b);
+      const bad = confCells(tt);
+      for (let v = 0; v < G.N; v++){
+        const [r, c] = G.rc(v);
+        sv('rect', {class: !G.free[v] ? 'f-wall' : bad.has(v) ? 'f-conf' : 'f-cell', x: c*m, y: r*m, width: m, height: m}, s);
+      }
+      agents.forEach((a, i) => { const v = posAt(i, tt), [r, c] = G.rc(v); sv('circle', {cx: c*m + m/2, cy: r*m + m/2, r: 4.3, fill: COL[i], stroke: 'var(--surface)', 'stroke-width': .8}, s); });
+      ht('span', {}, b, 't=' + tt);
+      b.addEventListener('click', () => { stop(); setT(tt); });
+      frames.push(b);
+    }
+  }
+  function setT(tt){
+    t = Math.max(0, Math.min(T, tt));
+    range.value = t; out.textContent = 't = ' + t;
+    gAgents.forEach((g, i) => { const v = posAt(i, t); g.style.transform = 'translate(' + X(v) + 'px,' + Y(v) + 'px)'; });
+    gConf.innerHTML = '';
+    confCells(t).forEach(v => { const [r, c] = G.rc(v); sv('rect', {class: 'g-conf', x: ML + c*CS + 2, y: MT + r*CS + 2, width: CS - 4, height: CS - 4, rx: 4}, gConf); });
+    frames.forEach((b, k) => b.classList.toggle('on', k === t));
+    bPrev.disabled = t === 0; bNext.disabled = t === T;
+  }
+  function stop(){ if (timer){ clearInterval(timer); timer = null; } bPlay.textContent = '播放'; }
+  function play(){
+    if (timer){ stop(); return; }
+    if (t >= T) setT(0);
+    bPlay.textContent = '暂停';
+    timer = setInterval(() => { if (t >= T) stop(); else setT(t + 1); }, 700);
+  }
+  bPrev.addEventListener('click', () => { stop(); setT(t - 1); });
+  bNext.addEventListener('click', () => { stop(); setT(t + 1); });
+  bPlay.addEventListener('click', play);
+  range.addEventListener('input', () => { stop(); setT(+range.value); });
+
+  return {
+    side,
+    show(g, ags, ps){
+      stop();
+      G = g; agents = ags; paths = ps;
+      confs = MAPF.conflicts(paths);
+      T = Math.max(0, ...paths.map(p => p ? p.length - 1 : 0));
+      range.max = T; bPlay.disabled = T === 0;
+      draw(); setT(0);
+      return confs;
+    }
+  };
+}
+function presetRow(root, label, items, onPick){
+  const row = ht('div', {class: 'presets'}, root, '<span>' + label + '</span>');
+  const btns = items.map((it, k) => {
+    const b = ht('button', {class: 'pre', type: 'button'}, row, it);
+    b.addEventListener('click', () => pick(k));
+    return b;
+  });
+  function pick(k){ btns.forEach((b, j) => b.classList.toggle('on', j === k)); onPick(k); }
+  return {pick, row};
+}
+
+// ---------- 实验台 1：conflict 类型 ----------
+(function(){
+  const root = document.getElementById('lab-conf'); if (!root) return;
+  const scenes = [
+    {name: 'vertex conflict', rows: ['...','...','...'], agents: [['A',[[1,0],[1,1],[1,2]]], ['B',[[0,1],[1,1],[2,1]]]],
+     note: '两条 path 单独看都是最短路。合在一起，t=1 时两个 agent 都在 (1,1)。'},
+    {name: 'edge conflict', rows: ['....'], agents: [['A',[[0,0],[0,1],[0,2],[0,3]]], ['B',[[0,3],[0,2],[0,1],[0,0]]]],
+     note: '每个时刻两个 agent 都在不同的 cell 里，所以没有 vertex conflict。但 t=1 到 t=2 它们互换了位置，物理上必然相撞。'},
+    {name: 'following（允许）', rows: ['....'], agents: [['A',[[0,1],[0,2],[0,3]]], ['B',[[0,0],[0,1],[0,2]]]],
+     note: 'B 每一步都进入 A 刚离开的 cell。标准 MAPF 模型允许这样走。真实 robot 之间要留安全距离，常常会禁止。'},
+    {name: 'cycle（允许）', rows: ['..','..'], agents: [['A',[[0,0],[0,1]]], ['B',[[0,1],[1,1]]], ['C',[[1,1],[1,0]]], ['D',[[1,0],[0,0]]]],
+     note: '四个 agent 同时顺时针各挪一格。没有两个 agent 同时在一个 cell，也没有两个 agent 互换位置，所以标准模型允许。'},
+    {name: '用 wait 解决', rows: ['...','...','...'], agents: [['A',[[1,0],[1,0],[1,1],[1,2]]], ['B',[[0,1],[1,1],[2,1]]]],
+     note: 'A 在 t=1 原地 wait 一步，让 B 先过 (1,1)。A 的 cost 从 2 变成 3，conflict 消失。'}
+  ];
+  let stage;
+  const pr = presetRow(root, '场景', scenes.map(s => s.name), k => {
+    const s = scenes[k], G = MAPF.parseGrid(s.rows);
+    const paths = s.agents.map(a => a[1].map(rc => G.id(rc[0], rc[1])));
+    const agents = s.agents.map((a, i) => ({name: a[0], start: paths[i][0], goal: paths[i][paths[i].length - 1]}));
+    const confs = stage.show(G, agents, paths);
+    let html = '<h4>检测结果</h4><p class="live">';
+    html += confs.length ? confs.map(c => '<span class="pill bad">conflict</span> ' + confText(G, agents, c)).join('<br>')
+                         : '<span class="pill ok">合法</span> 没有 conflict，SoC = ' + MAPF.soc(paths) + '，makespan = ' + MAPF.makespan(paths);
+    html += '</p><p class="live">' + s.note + '</p><h4>每个 agent 的 path</h4><div class="kv">';
+    agents.forEach((a, i) => { html += '<span>' + ag(agents, i) + '</span><span>' + pathText(G, paths[i]) + '</span>'; });
+    stage.side.innerHTML = html + '</div>';
+  });
+  stage = Stage(root);
+  pr.pick(0);
+})();
+
+// ---------- 实验台 2：space-time A* ----------
+(function(){
+  const root = document.getElementById('lab-sta'); if (!root) return;
+  const scenes = [
+    {name: '十字路口', rows: ['...','...','...'], A: [[1,0],[1,2]], B: [[0,1],[1,1],[2,1]],
+     note: 'B 在 t=1 占着 (1,1)。A 的最短路正好也要在 t=1 经过 (1,1)，于是 A 先 wait 一步。把 wait 关掉，A 只能绕路，cost 多 1。'},
+    {name: '走廊让行', rows: ['#.###','.....'], A: [[1,0],[1,4]], B: [[1,4],[1,3],[1,2],[1,1],[1,0]],
+     note: 'B 迎面穿过走廊。A 必须先躲进 (0,1) 这个避让位，等 B 过去再出来。把 wait 关掉，A 没法在避让位里停住，于是无解。'},
+    {name: 'goal 被人经过', rows: ['...','...','...'], A: [[1,0],[1,1]], B: [[0,1],[0,1],[0,1],[0,1],[1,1],[2,1]],
+     note: 'A 的 goal 是 (1,1)，一步就到。但 B 在 t=4 要经过 (1,1)。所以 A 在 t=1 到达不算完成：它必须在 t=4 让开，t=5 再回来。cost 是 5，不是 1。'}
+  ];
+  let stage, cur = 0;
+  const pr = presetRow(root, '场景', scenes.map(s => s.name), k => { cur = k; run(); });
+  const opts = ht('div', {class: 'opts'}, root);
+  const lab = ht('label', {}, opts);
+  const cb = ht('input', {type: 'checkbox', checked: ''}, lab);
+  lab.appendChild(document.createTextNode('允许 wait'));
+  cb.addEventListener('change', run);
+  stage = Stage(root);
+  function run(){
+    const s = scenes[cur], G = MAPF.parseGrid(s.rows);
+    const pB = s.B.map(rc => G.id(rc[0], rc[1]));
+    const agents = [{name: 'A', start: G.id(s.A[0][0], s.A[0][1]), goal: G.id(s.A[1][0], s.A[1][1])},
+                    {name: 'B', start: pB[0], goal: pB[pB.length - 1]}];
+    const C = MAPF.newTable(); MAPF.reservePath(C, pB);
+    const r = MAPF.stAStar(G, agents[0].start, agents[0].goal, C, {allowWait: cb.checked});
+    stage.show(G, agents, [r.path, pB]);
+    const vres = pB.map((v, t) => cellName(G, v) + '@' + t).join(' ');
+    const eres = pB.slice(1).map((v, t) => v !== pB[t] ? cellName(G, v) + '→' + cellName(G, pB[t]) + ' @' + t + '→' + (t+1) : null).filter(Boolean).join('，');
+    let html = '<h4>结果</h4><p class="live">';
+    html += r.path ? '<span class="pill ok">找到 path</span> ' + ag(agents, 0) + ' 的 cost = ' + (r.path.length - 1)
+                   : '<span class="pill bad">FAIL</span> ' + ag(agents, 0) + ' 在这些 reservation 下没有合法的 path';
+    html += '</p><div class="kv">';
+    html += '<span>' + ag(agents, 0) + ' 的 path</span><span>' + pathText(G, r.path) + '</span>';
+    html += '<span>expand 的 (v, t)</span><span>' + r.expanded + ' 个</span>';
+    html += '</div><h4>reservation table（' + ag(agents, 1) + ' 的 path 写进去的）</h4><div class="kv">';
+    html += '<span>vertex</span><span>' + vres + '，之后 ' + cellName(G, pB[pB.length - 1]) + ' 永久被占</span>';
+    html += '<span>edge</span><span>A 不能走：' + eres + '</span>';
+    html += '</div><p class="live" style="margin-top:10px">' + s.note + '</p>';
+    stage.side.innerHTML = html;
+  }
+  pr.pick(0);
+})();
+
+// ---------- 实验台 3：Prioritized Planning ----------
+(function(){
+  const root = document.getElementById('lab-pp'); if (!root) return;
+  const keys = ['cross', 'park', 'pocketL', 'pocketC', 'three'];
+  let stage, sc, orders = [], orderRow = null;
+  const pr = presetRow(root, '场景', keys.map(k => SC[k].name), k => {
+    sc = load(keys[k]);
+    orders = perms(sc.agents.length);
+    if (orderRow) orderRow.row.remove();
+    orderRow = presetRow(root, 'priority 顺序', orders.map(o => o.map(i => sc.agents[i].name).join(' &gt; ')), run);
+    root.insertBefore(orderRow.row, pr.row.nextSibling);
+    orderRow.pick(0);
+  });
+  stage = Stage(root);
+  function run(k){
+    const order = orders[k], G = sc.G, agents = sc.agents;
+    const r = MAPF.prioritized(G, agents, order);
+    stage.show(G, agents, r.paths);
+    const opt = optimalCost(sc);
+    let html = '<h4>结果</h4><p class="live">';
+    if (!r.ok) html += '<span class="pill bad">FAIL</span> ' + ag(agents, r.failed) + ' 找不到 path。' + (opt != null ? '但这个问题有解，optimal SoC = ' + opt + '。' : '');
+    else if (r.cost === opt) html += '<span class="pill ok">成功</span> SoC = ' + r.cost + '，等于 optimal。';
+    else html += '<span class="pill mid">成功但不是 optimal</span> SoC = ' + r.cost + '，optimal 是 ' + opt + '，多了 ' + (r.cost - opt) + '。';
+    html += '</p><h4>按规划的先后顺序</h4><div class="kv">';
+    order.forEach((i, n) => {
+      const p = r.paths[i];
+      html += '<span>' + (n+1) + '. ' + ag(agents, i) + '</span><span>' +
+        (p ? pathText(G, p) + '　cost ' + (p.length - 1) : (i === r.failed ? 'FAIL：前面的 agent 把路占死了' : '没有轮到')) + '</span>';
+    });
+    html += '</div>';
+    stage.side.innerHTML = html;
+  }
+  pr.pick(0);
+})();
+
+// ---------- 实验台 4：CBS ----------
+(function(){
+  const root = document.getElementById('lab-cbs'); if (!root) return;
+  const keys = ['cross', 'three', 'pocketC', 'rooms'];
+  let stage, sc, S, sel = 0, msg = '';
+  const pr = presetRow(root, '场景', keys.map(k => SC[k].name), k => { sc = load(keys[k]); reset(); });
+  const btns = ht('div', {class: 'btns'}, root);
+  const bStep = ht('button', {class: 'pre', type: 'button'}, btns, '下一步：expand 一个 node');
+  const bRun = ht('button', {class: 'pre', type: 'button'}, btns, '跑到结束');
+  const bReset = ht('button', {class: 'pre', type: 'button'}, btns, '重置');
+  const narr = ht('p', {class: 'live', 'aria-live': 'polite'}, root);
+  stage = Stage(root);
+  ht('h4', {}, root, 'constraint tree（点一行，上面的 grid 显示那个 node 的 path）');
+  const ctWrap = ht('div', {class: 'ct'}, root);
+  const NID = n => 'N' + n.id;
+
+  function reset(){
+    S = MAPF.cbsNew(sc.G, sc.agents);
+    sel = 0;
+    msg = 'Root N0 已生成：每个 agent 各走各的最短路，SoC = ' + S.nodes[0].cost + '。点“下一步”开始。';
+    render();
+  }
+  function describe(r){
+    const N = r.node, G = sc.G, A = sc.agents;
+    if (!N.conflict) return 'pop ' + NID(N) + '（cost ' + N.cost + '，OPEN 里最小）。它没有 conflict，所以它就是 optimal 解：SoC = ' + N.cost + '。';
+    let s = 'pop ' + NID(N) + '（cost ' + N.cost + '，OPEN 里最小）。第一个 conflict 是 ' + confText(G, A, N.conflict) + '。分成两支：';
+    s += r.children.map(c => c.pruned ? '给 ' + ag(A, c.added.agent) + ' 加 constraint 之后它没有 path，这一支剪掉'
+                                      : NID(c) + ' 给 ' + ag(A, c.added.agent) + ' 加 constraint，cost ' + c.cost).join('；') + '。';
+    return s;
+  }
+  function step(){
+    const r = MAPF.cbsStep(S);
+    if (!r) return;
+    sel = r.node.id; msg = describe(r);
+    render();
+  }
+  function runAll(){
+    let last = null;
+    while (!S.done){ const r = MAPF.cbsStep(S); if (r) last = r; }
+    if (S.solution){ sel = S.solution.id; msg = '跑完了。' + describe(last) + ' 一共生成 ' + S.nodes.length + ' 个 node，expand 了 ' + S.expanded + ' 个。'; }
+    else msg = '到达 node 数上限，停止。';
+    render();
+  }
+  function render(){
+    const G = sc.G, A = sc.agents, N = S.nodes[sel];
+    narr.innerHTML = msg;
+    bStep.disabled = bRun.disabled = S.done;
+    stage.show(G, A, N.paths);
+    let side = '<h4>当前显示：' + NID(N) + '</h4><div class="kv">';
+    A.forEach((a, i) => { side += '<span>' + ag(A, i) + '</span><span>' + pathText(G, N.paths[i]) + '　cost ' + (N.paths[i].length - 1) + '</span>'; });
+    side += '<span>SoC</span><span>' + N.cost + '</span>';
+    side += '<span>conflict 数</span><span>' + N.nConf + '</span>';
+    side += '</div><h4>搜索进度</h4><div class="kv">';
+    side += '<span>生成的 node</span><span>' + S.nodes.length + '</span>';
+    side += '<span>expand 的 node</span><span>' + S.expanded + '</span>';
+    side += '<span>OPEN 里还有</span><span>' + S.open.length + '</span></div>';
+    stage.side.innerHTML = side;
+    let html = '<table><thead><tr><th>node</th><th>新加的 constraint</th><th class="num">cost</th><th>第一个 conflict</th><th>状态</th></tr></thead><tbody>';
+    for (const n of S.nodes){
+      const st = n.status === 'goal' ? '<span class="pill ok">solution</span>' : n.status === 'expanded' ? '<span class="pill dim">expanded</span>' : '<span class="pill mid">OPEN</span>';
+      html += '<tr data-id="' + n.id + '" tabindex="0"' + (n.id === sel ? ' class="sel"' : '') + '><td class="nid" style="padding-left:' + (10 + n.depth*14) + 'px">' +
+        (n.depth ? '└ ' : '') + NID(n) + '</td><td>' + consText(G, A, n.added) + '</td><td class="num">' + n.cost + '</td><td>' +
+        (n.conflict ? confText(G, A, n.conflict).replace(' conflict', '') : '无') + '</td><td>' + st + '</td></tr>';
+    }
+    ctWrap.innerHTML = html + '</tbody></table>';
+    const row = ctWrap.querySelector('tr.sel');
+    if (row) ctWrap.scrollTop = Math.max(0, row.offsetTop - ctWrap.clientHeight / 2);
+  }
+  function pickRow(e){
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    sel = +tr.getAttribute('data-id');
+    const keep = ctWrap.scrollTop;
+    render(); ctWrap.scrollTop = keep;
+  }
+  ctWrap.addEventListener('click', pickRow);
+  ctWrap.addEventListener('keydown', pickRow);
+  bStep.addEventListener('click', step);
+  bRun.addEventListener('click', runAll);
+  bReset.addEventListener('click', reset);
+  pr.pick(0);
+})();
+
+// ---------- 自测清单：勾选状态存在浏览器本地，存不了也不影响使用 ----------
+(function(){
+  const boxes = document.querySelectorAll('#selfcheck input[type=checkbox]');
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('mapf-selfcheck') || '{}') || {}; } catch (e) { saved = {}; }
+  boxes.forEach(b => {
+    b.checked = !!saved[b.id];
+    b.addEventListener('change', () => {
+      saved[b.id] = b.checked;
+      try { localStorage.setItem('mapf-selfcheck', JSON.stringify(saved)); } catch (e) {}
+    });
+  });
+})();
+
+// ---------- 面试题：全部展开 / 收起 ----------
+(function(){
+  const all = () => document.querySelectorAll('#qa details.qa');
+  const o = document.getElementById('qa-open'), c = document.getElementById('qa-close');
+  if (o) o.addEventListener('click', () => all().forEach(d => d.open = true));
+  if (c) c.addEventListener('click', () => all().forEach(d => d.open = false));
+})();
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>

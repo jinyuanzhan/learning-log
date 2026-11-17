@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rigid Body Transforms 与 Manipulation 基础复习</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 apriltag-pose-estimation.html 同一套样式：左侧固定目录 + 右侧单栏笔记；红绿蓝固定表示 X Y Z 轴 */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --x:#D2413C; --y:#2F8F3A; --z:#2B78D0; --ray:#C97F12;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --x:#F0706A; --y:#63C36C; --z:#62A6F2; --ray:#E7A84A;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --x:#F0706A; --y:#63C36C; --z:#62A6F2; --ray:#E7A84A;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.cx{color:var(--x)}.cy{color:var(--y)}.cz{color:var(--z)}.ca{color:var(--accent)}.cr{color:var(--ray)}.cm{color:var(--muted)}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.mat{position:relative;display:inline-grid;vertical-align:middle;margin:0 .15em;grid-template-columns:repeat(var(--c,3),auto);gap:.2em 1em;padding:.35em .8em;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--mono);font-size:13.5px}
+.mat::before,.mat::after{content:"";position:absolute;top:0;bottom:0;width:.42em;border:1.5px solid currentColor}
+.mat::before{left:0;border-right:0}
+.mat::after{right:0;border-left:0}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:520px}
+.fig figcaption,.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12.5px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-m{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+.d-dash{stroke:var(--line-strong);fill:none;stroke-width:1;stroke-dasharray:4 3}
+
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab-views{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px}
+.lab-views.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.lab-views.one{grid-template-columns:minmax(0,1fr)}
+.lab-views svg,.lab-views canvas{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+svg.drag,canvas.drag{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+svg.drag:active,canvas.drag:active{cursor:grabbing}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:0 0 6px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+.sw.dash{background:none!important;border-top:2px dashed currentColor;height:0}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+select{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:12px 0 2px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:4px 28px;margin-top:10px}
+.ctl fieldset{border:0;padding:0;margin:0;min-width:0}
+.ctl legend{font-size:12.5px;font-weight:600;color:var(--accent);padding:0;margin:8px 0 2px}
+.row{display:grid;grid-template-columns:132px minmax(0,1fr) 72px;gap:10px;align-items:center;font-size:13.5px;min-height:30px}
+.row output{text-align:right;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px 24px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.out .blk{min-width:0;overflow-x:auto}
+.live{font-family:var(--mono);font-size:13.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body)}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--x)}.pill.mid{color:var(--warn)}
+.try{font-size:14px;color:var(--muted);margin:10px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+.qa-tools{display:flex;gap:8px;margin:0 0 12px}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){
+  .lab-views,.lab-views.two{grid-template-columns:minmax(0,1fr)}
+  .row{grid-template-columns:110px minmax(0,1fr) 64px}
+}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+</defs></svg>
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#map"><span class="k">01</span>复习地图</a></li>
+  </ol>
+  <p class="toc-part">PART A · TRANSFORMS</p>
+  <ol>
+    <li><a href="#so3"><span class="k">02</span>Rotation matrix 与 SO(3)</a></li>
+    <li><a href="#rotlab"><span class="k">03</span>实验台：四种表示法</a></li>
+    <li><a href="#euler"><span class="k">04</span>Euler angles 与 gimbal lock</a></li>
+    <li><a href="#axisangle"><span class="k">05</span>Axis-angle 与 exponential map</a></li>
+    <li><a href="#quat"><span class="k">06</span>Quaternion 与 SLERP</a></li>
+    <li><a href="#convert"><span class="k">07</span>表示法对比与转换 pitfalls</a></li>
+    <li><a href="#order"><span class="k">08</span>Composition order</a></li>
+    <li><a href="#se3"><span class="k">09</span>SE(3) 与 homogeneous transform</a></li>
+    <li><a href="#chain"><span class="k">10</span>Frame transform chain</a></li>
+    <li><a href="#handeye"><span class="k">11</span>Hand-eye calibration</a></li>
+  </ol>
+  <p class="toc-part">PART B · MANIPULATION</p>
+  <ol>
+    <li><a href="#fk"><span class="k">12</span>Forward kinematics</a></li>
+    <li><a href="#armlab"><span class="k">13</span>实验台：planar arm</a></li>
+    <li><a href="#ik"><span class="k">14</span>Inverse kinematics</a></li>
+    <li><a href="#jacobian"><span class="k">15</span>Jacobian</a></li>
+    <li><a href="#singularity"><span class="k">16</span>Singularity</a></li>
+    <li><a href="#cspace"><span class="k">17</span>Configuration space</a></li>
+    <li><a href="#rrt"><span class="k">18</span>RRT 家族</a></li>
+    <li><a href="#trajopt"><span class="k">19</span>Trajectory optimization</a></li>
+    <li><a href="#pid"><span class="k">20</span>PID control</a></li>
+    <li><a href="#armctl"><span class="k">21</span>从 PID 到 arm control</a></li>
+    <li><a href="#impedance"><span class="k">22</span>Impedance control</a></li>
+  </ol>
+  <p class="toc-part">REVIEW</p>
+  <ol>
+    <li><a href="#qa"><span class="k">23</span>面试题与答案</a></li>
+    <li><a href="#cheatsheet"><span class="k">24</span>公式速查表</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Rigid Body Transforms 与 Manipulation 基础复习</h1>
+  <p>接着 <a href="apriltag-pose-estimation.html">AprilTag 那一页</a>往下走。那一页最后得到了 <span class="m">T<sub>cam_tag</sub></span>，并说“沿变换链传回 base，再用 inverse kinematics 求关节角”。这一页把这句话展开：Part A 讲清楚 rotation 和 transform 本身，Part B 讲机械臂怎么算、怎么规划、怎么控制。</p>
+  <p>每个主题都是同一个顺序：定义 → 公式 → 可以动手拖的实验台 → 容易踩的坑。最后有 36 道面试题（答案默认折叠，先自己答）和一张公式速查表。</p>
+</header>
+
+<section id="map">
+  <h2><span class="n">01</span>复习地图</h2>
+  <p>一个 pick-and-place 任务从头到尾会用到这一页的全部内容。先看整条流水线，后面每一节是其中一环：</p>
+  <figure class="fig">
+    <svg viewBox="0 0 760 210" role="img" aria-label="pick and place 流水线与本页章节的对应关系">
+      <rect x="10" y="30" width="118" height="62" rx="6" class="d-box"/><text x="69" y="56" text-anchor="middle" class="d-t">感知</text><text x="69" y="76" text-anchor="middle" class="d-s">T_cam_tag</text>
+      <rect x="168" y="30" width="118" height="62" rx="6" class="d-hbox"/><text x="227" y="56" text-anchor="middle" class="d-t">Transform chain</text><text x="227" y="76" text-anchor="middle" class="d-s">T_base_obj</text>
+      <rect x="326" y="30" width="118" height="62" rx="6" class="d-hbox"/><text x="385" y="56" text-anchor="middle" class="d-t">IK</text><text x="385" y="76" text-anchor="middle" class="d-s">goal q</text>
+      <rect x="484" y="30" width="118" height="62" rx="6" class="d-hbox"/><text x="543" y="56" text-anchor="middle" class="d-t">Motion planning</text><text x="543" y="76" text-anchor="middle" class="d-s">q(t)</text>
+      <rect x="642" y="30" width="108" height="62" rx="6" class="d-hbox"/><text x="696" y="56" text-anchor="middle" class="d-t">Control</text><text x="696" y="76" text-anchor="middle" class="d-s">τ 或 q̇ 指令</text>
+      <line x1="130" y1="61" x2="164" y2="61" class="d-ln" marker-end="url(#arr2)"/>
+      <line x1="288" y1="61" x2="322" y2="61" class="d-ln" marker-end="url(#arr2)"/>
+      <line x1="446" y1="61" x2="480" y2="61" class="d-ln" marker-end="url(#arr2)"/>
+      <line x1="604" y1="61" x2="638" y2="61" class="d-ln" marker-end="url(#arr2)"/>
+      <line x1="69" y1="96" x2="69" y2="128" class="d-dash"/><line x1="227" y1="96" x2="227" y2="128" class="d-dash"/><line x1="385" y1="96" x2="385" y2="128" class="d-dash"/><line x1="543" y1="96" x2="543" y2="128" class="d-dash"/><line x1="696" y1="96" x2="696" y2="128" class="d-dash"/>
+      <text x="69" y="146" text-anchor="middle" class="d-s">AprilTag 那一页</text>
+      <text x="227" y="146" text-anchor="middle" class="d-s">SO(3)、SE(3)</text><text x="227" y="164" text-anchor="middle" class="d-s">hand-eye calibration</text><text x="227" y="184" text-anchor="middle" class="d-a">§02 – §11</text>
+      <text x="385" y="146" text-anchor="middle" class="d-s">FK、Jacobian</text><text x="385" y="164" text-anchor="middle" class="d-s">singularity</text><text x="385" y="184" text-anchor="middle" class="d-a">§12 – §16</text>
+      <text x="543" y="146" text-anchor="middle" class="d-s">C-space、RRT</text><text x="543" y="164" text-anchor="middle" class="d-s">trajectory optimization</text><text x="543" y="184" text-anchor="middle" class="d-a">§17 – §19</text>
+      <text x="696" y="146" text-anchor="middle" class="d-s">PID</text><text x="696" y="164" text-anchor="middle" class="d-s">impedance control</text><text x="696" y="184" text-anchor="middle" class="d-a">§20 – §22</text>
+    </svg>
+    <figcaption>相机给出物体相对相机的 pose；transform chain 把它换到 base frame；IK 把目标 pose 换成关节角；planner 找一条不碰撞的路；controller 让电机真的走过去。</figcaption>
+  </figure>
+  <h3>全页统一的记号</h3>
+  <div class="tw"><table>
+    <tr><th>记号</th><th>含义</th></tr>
+    <tr><td class="m">R<sub>a_b</sub></td><td>frame b 相对 frame a 的 orientation。三列是 b 的 x、y、z 轴在 a 里的坐标。作用在坐标上：<span class="m">p<sub>a</sub> = R<sub>a_b</sub> · p<sub>b</sub></span></td></tr>
+    <tr><td class="m">T<sub>a_b</sub></td><td>4×4 的 homogeneous transform，b 在 a 里的 pose。<span class="m">p<sub>a</sub> = T<sub>a_b</sub> · p<sub>b</sub></span>。和 AprilTag 那一页的写法一致</td></tr>
+    <tr><td class="m">q</td><td>在 Part A 里是 quaternion；在 Part B 里是 joint angle 向量。两处都是领域里的惯用写法，靠上下文区分</td></tr>
+    <tr><td><span class="cx">红</span> <span class="cy">绿</span> <span class="cz">蓝</span></td><td>x、y、z 轴。所有 3D 图都是右手系，world 的 z 朝上</td></tr>
+    <tr><td class="m">c₁, s₁₂</td><td><span class="m">cos(q₁)</span>、<span class="m">sin(q₁+q₂)</span> 的缩写</td></tr>
+  </table></div>
+</section>
+
+<div class="part" id="part-a">
+  <span class="tag">PART A</span>
+  <h2>Rigid Body Transforms</h2>
+  <p>rotation 的四种表示法、它们之间怎么转、各自在哪里出问题；然后加上 translation 变成 SE(3)，用它串 frame chain、做 hand-eye calibration。</p>
+</div>
+
+<section id="so3">
+  <h2><span class="n">02</span>Rotation matrix 与 SO(3)</h2>
+  <p>所有 3D rotation 组成的集合叫 <strong>SO(3)</strong>（special orthogonal group）。写成矩阵就是：</p>
+  <div class="eq">SO(3) = { R ∈ ℝ³ˣ³ | RᵀR = I,  det(R) = +1 }</div>
+  <ul>
+    <li><span class="m">RᵀR = I</span>：三列互相垂直、长度都是 1（orthonormal）。所以 <span class="m">R⁻¹ = Rᵀ</span>，求 inverse 不用真的去算。</li>
+    <li><span class="m">det(R) = +1</span>：保持右手系。<span class="m">det = −1</span> 的是 reflection（镜像），不是 rotation。</li>
+    <li>9 个数，6 个约束（3 个长度 + 3 个垂直），所以只有 <strong>3 个 degree of freedom</strong>。</li>
+  </ul>
+  <h3>列是什么</h3>
+  <p>这是最该记住的一句话：<strong><span class="m">R<sub>a_b</sub></span> 的三列，就是 frame b 的 <span class="cx">x</span>、<span class="cy">y</span>、<span class="cz">z</span> 轴在 frame a 里的坐标。</strong>反过来，三行是 frame a 的三个轴在 frame b 里的坐标。</p>
+  <div class="eq">R<sub>a_b</sub> = [ <span class="cx">x̂<sub>b</sub></span>  <span class="cy">ŷ<sub>b</sub></span>  <span class="cz">ẑ<sub>b</sub></span> ]   （每个都写成 a 里的坐标）</div>
+  <p>验证方法：<span class="m">R · (1,0,0)ᵀ</span> 取出的是第一列，而 <span class="m">(1,0,0)</span> 就是 b 的 x 轴在 b 自己里面的坐标。</p>
+  <h3>同一个矩阵的三种用法</h3>
+  <div class="tw"><table>
+    <tr><th>用法</th><th>怎么读</th><th>例子</th></tr>
+    <tr><td>表示 orientation</td><td>frame b 相对 frame a 怎么摆</td><td>“末端相对 base 的朝向”</td></tr>
+    <tr><td>换坐标（passive）</td><td>点不动，换一个 frame 来描述它：<span class="m">p<sub>a</sub> = R<sub>a_b</sub> p<sub>b</sub></span></td><td>把相机里看到的点换到 base 里</td></tr>
+    <tr><td>转动一个向量（active）</td><td>frame 不动，把向量转到新位置：<span class="m">v′ = R v</span></td><td>把夹爪绕 z 转 90°</td></tr>
+  </table></div>
+  <p>passive 和 active 用的是同一个矩阵，只是解读不同。容易混的地方是：“把 frame 转 +θ”和“把点转 −θ”在坐标上的效果相同，所以两种解读正好差一个 inverse。写代码时先说清楚你的 R 是 <span class="m">R<sub>a_b</sub></span> 还是 <span class="m">R<sub>b_a</sub></span>，比记 passive / active 更可靠。</p>
+  <h3>组合与基本性质</h3>
+  <div class="eq">R<sub>a_c</sub> = R<sub>a_b</sub> · R<sub>b_c</sub>          相邻的下标相消
+R<sub>b_a</sub> = (R<sub>a_b</sub>)ᵀ                inverse 就是 transpose，下标对调
+R₁R₂ ≠ R₂R₁                   3D rotation 一般不可交换（§08）
+trace(R) = 1 + 2cos θ          θ 是这个 rotation 转过的总角度</div>
+  <ul>
+    <li>绕单个坐标轴的基本 rotation（后面反复用到）：
+      <div class="eq" style="margin-top:8px">R<sub>x</sub>(φ) = <span class="mat" style="--c:3"><span>1</span><span>0</span><span>0</span><span>0</span><span>cφ</span><span>−sφ</span><span>0</span><span>sφ</span><span>cφ</span></span>  R<sub>y</sub>(θ) = <span class="mat" style="--c:3"><span>cθ</span><span>0</span><span>sθ</span><span>0</span><span>1</span><span>0</span><span>−sθ</span><span>0</span><span>cθ</span></span>  R<sub>z</sub>(ψ) = <span class="mat" style="--c:3"><span>cψ</span><span>−sψ</span><span>0</span><span>sψ</span><span>cψ</span><span>0</span><span>0</span><span>0</span><span>1</span></span></div>
+    </li>
+    <li>SO(3) 是一个 <strong>group</strong>，不是 vector space：两个 rotation 相乘还是 rotation，但相加、直接取平均都不再是 rotation。</li>
+    <li>数值误差会让 R 慢慢不再 orthonormal。修正方法：做 SVD，<span class="m">R = UΣVᵀ</span>，取 <span class="m">R ← UVᵀ</span>（若 det 为 −1，把 U 的最后一列取反）。AprilTag 那一页从 H 恢复 R 时用的就是这一步。</li>
+  </ul>
+  <div class="note"><span class="q">为什么需要别的表示法？</span><p>rotation matrix 没有 singularity、组合就是矩阵乘法，是“最老实”的表示。但 9 个数只表达 3 个自由度：存储冗余、不能直接插值、放进 optimizer 里要带 6 个约束。所以实际中 Euler angles 用来给人看，quaternion 用来存储和插值，axis-angle 用来做优化和算误差，rotation matrix 用来做计算。</p></div>
+</section>
+
+<section id="rotlab">
+  <h2><span class="n">03</span>实验台：同一个 rotation 的四种表示法</h2>
+  <p>拖三个 Euler angle 滑块，右边实时显示同一个 orientation 的 rotation matrix、quaternion、axis-angle。在 3D 图上按住拖动可以换视角。</p>
+  <div class="lab">
+    <div class="lab-views">
+      <div>
+        <h4>3D 视图（按住拖动换视角）</h4>
+        <svg id="rot-svg" class="drag" viewBox="0 0 520 410" role="img" aria-label="world frame 与 body frame 的三维视图"></svg>
+        <div class="legend">
+          <span>细线：world frame　粗线：body frame</span>
+          <span style="color:var(--ray)"><span class="sw dash"></span>axis-angle 的转轴</span>
+          <span><span class="sw dash" style="color:var(--muted)"></span>Euler 的三根转轴（yaw <span class="cz">蓝</span> / pitch <span class="cy">绿</span> / roll <span class="cx">红</span>）</span>
+        </div>
+      </div>
+      <div>
+        <h4>Rotation matrix（三列 = body 的 <span class="cx">x</span> <span class="cy">y</span> <span class="cz">z</span> 轴）</h4>
+        <div class="live" id="rot-R"></div>
+        <h4 style="margin-top:14px">Quaternion (w, x, y, z)</h4>
+        <div class="kv" id="rot-q"></div>
+        <h4 style="margin-top:14px">Axis-angle</h4>
+        <div class="kv" id="rot-aa"></div>
+        <h4 style="margin-top:14px">从 R 反解 Euler angles</h4>
+        <div class="kv" id="rot-eu"></div>
+      </div>
+    </div>
+    <div class="presets">预设：
+      <button class="pre" data-rot="30,20,40">一般姿态</button>
+      <button class="pre" data-rot="0,0,0">identity</button>
+      <button class="pre" data-rot="40,90,0">gimbal lock（pitch = 90°）</button>
+      <button class="pre" data-rot="0,0,180">绕 x 转 180°</button>
+      <button class="pre" data-rot="90,0,90">yaw 90° + roll 90°</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="rot-ea" checked>显示 Euler 的三根转轴</label>
+      <label><input type="checkbox" id="rot-ax" checked>显示 axis-angle 的转轴</label>
+    </div>
+    <div class="ctl" id="rot-ctl"></div>
+    <p class="try"><b>试一试：</b>① 点“gimbal lock”，然后分别拖 yaw 和 roll，看 body frame 的运动：两个滑块做的是同一件事，都是绕 world 的 z 轴转，少了一个自由度。② 点“绕 x 转 180°”，看 quaternion 的 w 变成 0，这时 q 和 −q 哪个“更短”已经分不出来。③ 回到 identity，axis-angle 的转轴没有定义。</p>
+  </div>
+</section>
+
+<section id="euler">
+  <h2><span class="n">04</span>Euler angles 与 gimbal lock</h2>
+  <p>Euler angles 把一个 rotation 拆成<strong>依次绕三个坐标轴</strong>的三次转动。三个数，直观，适合给人看和输入。问题全部出在“依次”这两个字上。</p>
+  <h3>先把 convention 问清楚</h3>
+  <p>“Euler angles 是 (30°, 20°, 40°)”这句话本身没有意义，必须同时说明三件事：</p>
+  <ul>
+    <li><strong>轴的顺序</strong>：共 12 种。三根轴都不同的 6 种叫 Tait–Bryan angles（如 ZYX，就是 yaw-pitch-roll）；首尾同轴的 6 种叫 proper Euler angles（如 ZYZ，机械臂 wrist 常用）。</li>
+    <li><strong>intrinsic 还是 extrinsic</strong>：intrinsic 是每次绕<em>转过之后的 body 轴</em>转；extrinsic 是每次绕<em>固定的 world 轴</em>转。</li>
+    <li>单位（degree / radian）和每个角的正方向（右手定则）。</li>
+  </ul>
+  <p>一个必须记住的等价关系：<strong>intrinsic ZYX 和 extrinsic XYZ 是同一个矩阵。</strong></p>
+  <div class="eq">R = R<sub>z</sub>(yaw) · R<sub>y</sub>(pitch) · R<sub>x</sub>(roll)
+
+intrinsic 读法（从左往右）：先绕 z 转 yaw，再绕新的 y 转 pitch，再绕更新的 x 转 roll
+extrinsic 读法（从右往左）：先绕固定 x 转 roll，再绕固定 y 转 pitch，再绕固定 z 转 yaw</div>
+  <p>ROS 的 RPY（<code>tf</code> 的 <code>setRPY</code>、URDF 里的 <code>rpy</code>）就是这个：fixed-axis X-Y-Z，矩阵是 <span class="m">R<sub>z</sub>R<sub>y</sub>R<sub>x</sub></span>。本页的实验台也用它。展开后：</p>
+  <div class="eq">R = <span class="mat" style="--c:3"><span>cψcθ</span><span>cψsθsφ − sψcφ</span><span>cψsθcφ + sψsφ</span><span>sψcθ</span><span>sψsθsφ + cψcφ</span><span>sψsθcφ − cψsφ</span><span>−sθ</span><span>cθsφ</span><span>cθcφ</span></span>   ψ = yaw, θ = pitch, φ = roll</div>
+  <h3>从 R 反解</h3>
+  <div class="eq">pitch = −asin(R₃₁)
+yaw   = atan2(R₂₁, R₁₁)
+roll  = atan2(R₃₂, R₃₃)</div>
+  <p>用 <code>atan2</code> 不用 <code>atan</code>，才能拿到正确的象限。<code>asin</code> 的输入先 clamp 到 [−1, 1]，否则数值误差会给出 NaN。</p>
+  <h3>Gimbal lock</h3>
+  <p>看上面矩阵的第一列和第三行：当 <span class="m">pitch = ±90°</span> 时 <span class="m">cθ = 0</span>，<span class="m">R₁₁, R₂₁, R₃₂, R₃₃</span> 全是 0，两个 <code>atan2</code> 都变成 <code>atan2(0, 0)</code>。此时矩阵里只剩下 <span class="m">roll − yaw</span>（pitch = +90°）或 <span class="m">roll + yaw</span>（pitch = −90°）这一个组合。</p>
+  <p>几何上：pitch 转了 90° 之后，roll 的转轴（body 的 x 轴）被转到和 yaw 的转轴（world 的 z 轴）<strong>共线</strong>。三根转轴只张成一个平面，有一个方向的转动表达不出来。回到 §03 的实验台点“gimbal lock”可以直接看到两根虚线重合。</p>
+  <p>定量地看，Euler angle 的变化率和 angular velocity 之间差一个矩阵，它的三列就是三根转轴：</p>
+  <div class="eq">ω = [ ẑ   ŷ′   x̂″ ] · (yaẇ, pitcḣ, rolİ)ᵀ          det = −cos(pitch)</div>
+  <p>pitch = ±90° 时这个矩阵不可逆：要产生某个方向的 ω，需要无穷大的 Euler angle 速率。这和 §16 机械臂的 singularity 是同一件事，三轴相交的 wrist 本质上就是一组机械的 Euler angles。</p>
+  <div class="note warn"><span class="q">常见误解</span><p>gimbal lock 不是“物体卡住转不动了”。物体本身可以随便转，是 <strong>Euler angles 这种参数化</strong>在那个姿态附近失效：同一个姿态对应无穷多组角度，角度会突变，微分关系变 singular。任何只用 3 个数表示 rotation 的方法都必然有这样的 singularity，换轴顺序只是把它挪到别处。</p></div>
+  <h3>其他 pitfalls</h3>
+  <ul>
+    <li><strong>不唯一</strong>：<span class="m">(ψ, θ, φ)</span> 和 <span class="m">(ψ+π, π−θ, φ+π)</span> 是同一个 rotation。通常把 pitch 限制在 [−90°, 90°] 来消歧。</li>
+    <li><strong>±180° 跳变</strong>：角度从 179° 到 −179° 实际只差 2°。直接相减做控制误差会出大错。</li>
+    <li><strong>不能逐分量相减或插值</strong>：两组 Euler angles 的差不是两个 orientation 之间的 rotation；线性插值走的也不是最短路径（§06 的 SLERP 实验台有对比）。</li>
+    <li><strong>不同库的默认 convention 不同</strong>：scipy 的 <code>from_euler('xyz')</code> 小写是 extrinsic，<code>'XYZ'</code> 大写是 intrinsic；Eigen 的 <code>eulerAngles(2,1,0)</code> 返回范围和你想的可能不一样。换库时用一个已知姿态核对。</li>
+  </ul>
+  <p>什么时候可以放心用：给人显示、UI 输入、姿态变化很小、或者问题本身只有一个角（移动机器人的 heading）。</p>
+</section>
+
+<section id="axisangle">
+  <h2><span class="n">05</span>Axis-angle、Rodrigues 公式与 exponential map</h2>
+  <p><strong>Euler’s rotation theorem</strong>：任何 3D rotation 都等价于绕某一根固定轴 <span class="m">ω̂</span>（单位向量）转一个角度 <span class="m">θ</span>。这就是 axis-angle。把两者乘在一起，<span class="m">r = θ·ω̂</span>，只用 3 个数，叫 <strong>rotation vector</strong>（OpenCV 的 <code>rvec</code>、<code>cv2.Rodrigues</code> 用的就是它）。</p>
+  <h3>Skew-symmetric matrix</h3>
+  <p>把 cross product 写成矩阵乘法：<span class="m">ω × v = [ω]<sub>×</sub> v</span>。</p>
+  <div class="eq">[ω]<sub>×</sub> = <span class="mat" style="--c:3"><span>0</span><span>−ω<sub>z</sub></span><span>ω<sub>y</sub></span><span>ω<sub>z</sub></span><span>0</span><span>−ω<sub>x</sub></span><span>−ω<sub>y</sub></span><span>ω<sub>x</sub></span><span>0</span></span>        [ω]<sub>×</sub>ᵀ = −[ω]<sub>×</sub></div>
+  <p>所有 3×3 skew-symmetric matrix 组成 <strong>so(3)</strong>（小写），是 SO(3) 的 Lie algebra，可以理解成“所有可能的 angular velocity”。它是一个普通的 3 维 vector space，可以相加、缩放。</p>
+  <h3>Rodrigues 公式（axis-angle → R）</h3>
+  <div class="eq">R = I + sin θ · K + (1 − cos θ) · K²        其中 K = [ω̂]<sub>×</sub></div>
+  <p>它其实是 matrix exponential 的闭式解：<span class="m">R = exp(θ·[ω̂]<sub>×</sub>)</span>。直觉：以恒定 angular velocity <span class="m">ω̂</span> 转 <span class="m">θ</span> 秒，解微分方程 <span class="m">Ṙ = [ω̂]<sub>×</sub>R</span> 得到的就是它。这个从 so(3) 到 SO(3) 的映射叫 <strong>exponential map</strong>。</p>
+  <h3>Log map（R → axis-angle）</h3>
+  <div class="eq">θ = acos( (trace(R) − 1) / 2 )
+ω̂ = 1/(2 sin θ) · ( R₃₂ − R₂₃,  R₁₃ − R₃₁,  R₂₁ − R₁₂ )ᵀ</div>
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><strong>θ ≈ 0</strong>：转轴没有定义，公式里除以 <span class="m">sin θ ≈ 0</span>。实现里用 Taylor 展开，或者直接返回 <span class="m">r = 0</span>。</li>
+    <li><strong>θ ≈ π</strong>：<span class="m">R − Rᵀ ≈ 0</span>，上面的公式同样失效。改从 <span class="m">(R + I)/2 = ω̂ω̂ᵀ</span> 的对角线里取转轴，或者先转成 quaternion 再取。</li>
+    <li><strong>不唯一</strong>：<span class="m">(ω̂, θ)</span>、<span class="m">(−ω̂, −θ)</span>、<span class="m">(ω̂, θ + 2π)</span> 是同一个 rotation。通常约定 <span class="m">θ ∈ [0, π]</span>。</li>
+    <li><strong>rotation vector 不能相加</strong>：<span class="m">exp(r₁)·exp(r₂) ≠ exp(r₁ + r₂)</span>，除非两根轴平行或者角度很小。</li>
+    <li><code>acos</code> 的输入先 clamp 到 [−1, 1]。</li>
+  </ul>
+  <h3>它在哪里最有用</h3>
+  <ul>
+    <li><strong>Orientation error</strong>：控制和 IK 里需要一个 3 维的“朝向误差”。<span class="m">e = log(R<sub>d</sub> · Rᵀ)</span> 给出“从当前转到目标”的 rotation vector，方向是转轴、长度是角度，可以直接乘 gain。</li>
+    <li><strong>在 manifold 上做优化</strong>：不直接优化 R 的 9 个数，而是优化一个 3 维的小增量 <span class="m">δ</span>，每步更新 <span class="m">R ← R · exp([δ]<sub>×</sub>)</span>。没有约束，也没有 singularity（因为 δ 始终很小）。bundle adjustment、SLAM、hand-eye 的非线性 refinement 都这么做。</li>
+    <li><strong>积分 angular velocity</strong>：<span class="m">R(t+Δt) = R(t) · exp([ω<sub>body</sub>Δt]<sub>×</sub>)</span>。</li>
+    <li><strong>hand-eye calibration</strong>：§11 的解法直接用到 log map。</li>
+  </ul>
+</section>
+
+<section id="quat">
+  <h2><span class="n">06</span>Quaternion 与 SLERP</h2>
+  <p>unit quaternion 用 4 个数表示 rotation，带一个约束 <span class="m">‖q‖ = 1</span>。可以把它看成 axis-angle 换了一种存法：</p>
+  <div class="eq">q = (w, x, y, z) = ( cos(θ/2),  ω̂ · sin(θ/2) )</div>
+  <p>注意是 <strong>θ/2</strong>。这一个“半角”是 double cover 的来源，也是 quaternion 运算能写成乘法的原因。</p>
+  <h3>运算</h3>
+  <div class="eq">乘法（Hamilton product）  q₁ ⊗ q₂ = ( w₁w₂ − v₁·v₂,   w₁v₂ + w₂v₁ + v₁ × v₂ )
+组合                    q<sub>a_c</sub> = q<sub>a_b</sub> ⊗ q<sub>b_c</sub>          顺序和 rotation matrix 一样
+inverse                 q⁻¹ = q* = (w, −x, −y, −z)    仅对 unit quaternion 成立
+转一个向量              (0, p′) = q ⊗ (0, p) ⊗ q*
+两个 rotation 的夹角     θ = 2·acos( |q₁ · q₂| )</div>
+  <h3>Quaternion ↔ rotation matrix</h3>
+  <div class="eq">R = <span class="mat" style="--c:3"><span>1 − 2(y² + z²)</span><span>2(xy − wz)</span><span>2(xz + wy)</span><span>2(xy + wz)</span><span>1 − 2(x² + z²)</span><span>2(yz − wx)</span><span>2(xz − wy)</span><span>2(yz + wx)</span><span>1 − 2(x² + y²)</span></span></div>
+  <p>反方向（R → q）最朴素的写法是 <span class="m">w = ½√(1 + trace R)</span>，然后 <span class="m">x = (R₃₂ − R₂₃)/(4w)</span> 等等。但 θ 接近 180° 时 <span class="m">w ≈ 0</span>，除法数值上不稳定。标准做法（Shepperd’s method）是比较 <span class="m">trace, R₁₁, R₂₂, R₃₃</span> 哪个最大，先算出 <span class="m">w, x, y, z</span> 中最大的那个，再用它去除别的。实际中直接调库，但面试会问“θ = 180° 时怎么办”。</p>
+  <h3>Double cover：q 和 −q 是同一个 rotation</h3>
+  <p>绕 <span class="m">ω̂</span> 转 <span class="m">θ</span> 和绕 <span class="m">−ω̂</span> 转 <span class="m">2π − θ</span> 到达同一个姿态。代进定义，后者正好是 <span class="m">−q</span>。也可以直接看：<span class="m">q p q*</span> 里 q 出现两次，负号抵消。所以每个 rotation 对应 unit sphere S³ 上的<strong>两个</strong>对跖点。实际影响：</p>
+  <ul>
+    <li><strong>比较</strong>：判断两个 quaternion 是否表示同一姿态，要看 <span class="m">|q₁·q₂| ≈ 1</span>，不能逐分量比。</li>
+    <li><strong>插值</strong>：SLERP 之前检查 <span class="m">q₁·q₂ &lt; 0</span>，是的话把其中一个取反，否则会绕远路（下面的实验台可以关掉这个检查看效果）。</li>
+    <li><strong>连续性</strong>：从一串连续变化的 R 里逐帧提取 q，符号可能突然翻转。滤波、求导、画曲线之前要逐帧对齐符号。</li>
+    <li><strong>求平均、做 loss</strong>：直接对分量求平均或算 L2 loss 之前先把符号统一；神经网络回归 quaternion 时常用 <span class="m">1 − |q̂·q|</span> 这类对符号不敏感的 loss。</li>
+    <li><strong>控制误差</strong>：用 <span class="m">q<sub>e</sub> = q<sub>d</sub> ⊗ q*</span> 的向量部分做反馈时，若 <span class="m">w<sub>e</sub> &lt; 0</span> 要取反，否则机器人会朝大于 180° 的那一侧转（unwinding）。</li>
+  </ul>
+  <h3>其他 pitfalls</h3>
+  <ul>
+    <li><strong>存储顺序</strong>：数学书和 Eigen 的构造函数是 <span class="m">(w, x, y, z)</span>；ROS message、scipy、Eigen 的 <code>coeffs()</code> 是 <span class="m">(x, y, z, w)</span>。MuJoCo 是 <span class="m">(w, x, y, z)</span>。顺序搞错是最常见的 bug，而且结果“看起来像个 rotation”，不会报错。</li>
+    <li><strong>Hamilton vs JPL</strong>：两套乘法 convention（ij = k 还是 ij = −k）。机器人和 ROS 用 Hamilton；部分航天、VIO 文献（如 MSCKF）用 JPL。</li>
+    <li><strong>忘记 normalize</strong>：数值积分或优化后 <span class="m">‖q‖</span> 会漂。不是 unit 的 quaternion 转出来的 R 带缩放。每次更新后 normalize。</li>
+    <li>积分 angular velocity：<span class="m">q̇ = ½ · q ⊗ (0, ω<sub>body</sub>)</span>。</li>
+  </ul>
+  <h3>插值：SLERP</h3>
+  <p>spherical linear interpolation 沿 S³ 上的大圆弧走，对应<strong>绕一根固定轴、以恒定 angular velocity</strong> 从 q₀ 转到 q₁，是两个姿态之间最短、最均匀的路径。</p>
+  <div class="eq">slerp(q₀, q₁, t) = [ sin((1−t)Ω) · q₀ + sin(tΩ) · q₁ ] / sin Ω        cos Ω = q₀ · q₁</div>
+  <p><span class="m">Ω ≈ 0</span> 时分母接近 0，退化成普通线性插值再 normalize（NLERP）。NLERP 路径相同、速度不完全均匀、便宜，游戏和实时系统里很常用。</p>
+  <div class="lab">
+    <div class="lab-views">
+      <div>
+        <h4>从 identity 插值到目标姿态（按住拖动换视角）</h4>
+        <svg id="sl-svg" class="drag" viewBox="0 0 520 380" role="img" aria-label="SLERP 与 Euler angle 线性插值的轨迹对比"></svg>
+        <div class="legend">
+          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>SLERP：x 轴和 z 轴尖端的轨迹</span>
+          <span style="color:var(--ray)"><span class="sw dash"></span>Euler angles 线性插值的轨迹</span>
+        </div>
+      </div>
+      <div>
+        <h4>读数</h4>
+        <div class="kv" id="sl-out"></div>
+        <div class="opts"><label><input type="checkbox" id="sl-flip">不做 shortest-path 检查（把 q₁ 换成 −q₁）</label></div>
+        <p class="cap">粗的 frame 是 SLERP 在 t 时刻的姿态；细的半透明 frame 是 Euler 插值的姿态。两者起点终点相同，中间不同。</p>
+      </div>
+    </div>
+    <div class="ctl" id="sl-ctl"></div>
+    <p class="try"><b>试一试：</b>① 拖 t，SLERP 的轨迹是大圆弧，Euler 插值的轨迹是一条歪的曲线，而且速度不均匀。② 勾上“不做 shortest-path 检查”：终点姿态完全一样，但 SLERP 绕了 360° − θ 的远路。③ 把 pitch 调到接近 90°，Euler 插值的轨迹会明显扭曲。</p>
+  </div>
+  <div class="note"><span class="q">一句话总结 quaternion</span><p>优点：没有 gimbal lock，4 个数，组合便宜，normalize 一下就能修正数值漂移，插值简单正确。缺点：不直观，有 double cover，有 unit 约束（放进 optimizer 时仍然要用 §05 的 3 维增量）。</p></div>
+</section>
+
+<section id="convert">
+  <h2><span class="n">07</span>表示法对比与转换 pitfalls</h2>
+  <div class="tw"><table>
+    <tr><th>表示法</th><th>参数个数</th><th>问题出在哪</th><th>组合</th><th>适合做什么</th></tr>
+    <tr><td>Rotation matrix</td><td>9（6 个约束）</td><td>冗余；数值漂移后不再 orthonormal</td><td>矩阵乘法</td><td>计算、变换点、作为“中转站”</td></tr>
+    <tr><td>Euler angles</td><td>3</td><td>gimbal lock；12 种顺序 × intrinsic/extrinsic；±180° 跳变</td><td>不能直接组合，要先转成 R 或 q</td><td>给人看、输入、小角度</td></tr>
+    <tr><td>Axis-angle / rotation vector</td><td>3（或 3 + 1）</td><td>θ = 0 轴无定义；θ = π 附近数值敏感</td><td>不能直接组合</td><td>误差、优化的增量、angular velocity 积分</td></tr>
+    <tr><td>Unit quaternion</td><td>4（1 个约束）</td><td>double cover；存储顺序；要 normalize</td><td>Hamilton product</td><td>存储、传输、插值、滤波</td></tr>
+  </table></div>
+  <h3>转换路线</h3>
+  <p>不需要背 12 条两两互转的公式。记住以 rotation matrix（或 quaternion）为中心的 6 条就够了，其余的都先转到中心再转出去：</p>
+  <figure class="fig">
+    <svg viewBox="0 0 680 190" role="img" aria-label="四种 rotation 表示法之间的转换路线">
+      <rect x="270" y="66" width="140" height="56" rx="6" class="d-hbox"/><text x="340" y="90" text-anchor="middle" class="d-t">Rotation matrix</text><text x="340" y="110" text-anchor="middle" class="d-s">R</text>
+      <rect x="30" y="66" width="140" height="56" rx="6" class="d-box"/><text x="100" y="90" text-anchor="middle" class="d-t">Euler angles</text><text x="100" y="110" text-anchor="middle" class="d-s">yaw, pitch, roll</text>
+      <rect x="510" y="14" width="140" height="56" rx="6" class="d-box"/><text x="580" y="38" text-anchor="middle" class="d-t">Axis-angle</text><text x="580" y="58" text-anchor="middle" class="d-s">ω̂, θ</text>
+      <rect x="510" y="120" width="140" height="56" rx="6" class="d-box"/><text x="580" y="144" text-anchor="middle" class="d-t">Quaternion</text><text x="580" y="164" text-anchor="middle" class="d-s">w, x, y, z</text>
+      <line x1="176" y1="86" x2="264" y2="86" class="d-ln" marker-end="url(#arr2)"/><text x="220" y="78" text-anchor="middle" class="d-s">三个基本 R 相乘</text>
+      <line x1="264" y1="104" x2="176" y2="104" class="d-ln" marker-end="url(#arr2)"/><text x="220" y="122" text-anchor="middle" class="d-s">atan2 / asin</text>
+      <line x1="416" y1="80" x2="504" y2="46" class="d-ln" marker-end="url(#arr2)" marker-start="url(#arr2)"/><text x="446" y="50" text-anchor="middle" class="d-s">Rodrigues / log</text>
+      <line x1="416" y1="108" x2="504" y2="142" class="d-ln" marker-end="url(#arr2)" marker-start="url(#arr2)"/><text x="444" y="146" text-anchor="middle" class="d-s">公式 / Shepperd</text>
+      <line x1="580" y1="76" x2="580" y2="114" class="d-ln" marker-end="url(#arr2)" marker-start="url(#arr2)"/><text x="590" y="100" class="d-s">半角</text>
+    </svg>
+    <figcaption>axis-angle 和 quaternion 之间只差一个半角：<span class="m">q = (cos(θ/2), ω̂ sin(θ/2))</span>，<span class="m">θ = 2·atan2(‖v‖, w)</span>。</figcaption>
+  </figure>
+  <h3>转换时的检查清单</h3>
+  <ul>
+    <li>Euler：顺序是什么？intrinsic 还是 extrinsic？degree 还是 radian？</li>
+    <li>Quaternion：<span class="m">(w,x,y,z)</span> 还是 <span class="m">(x,y,z,w)</span>？normalize 了吗？和上一帧符号一致吗？</li>
+    <li>R：是 <span class="m">R<sub>a_b</sub></span> 还是 <span class="m">R<sub>b_a</sub></span>？（差一个 transpose，是最常见的错）</li>
+    <li>R 是测量或估计出来的吗？如果是，先用 SVD 投影回 SO(3) 再转。</li>
+    <li><code>acos</code> / <code>asin</code> 的输入 clamp 了吗？在 θ = 0、θ = π、pitch = ±90° 这三个特殊点测过吗？</li>
+    <li>两边的 frame convention 一致吗？camera optical frame 是 z 朝前、x 朝右、y 朝下；ROS 的 body frame 是 x 朝前、y 朝左、z 朝上。两者之间差一个固定的 rotation，漏掉它姿态会差 90°。</li>
+    <li>有没有混进 left-handed 的系统（Unity、部分图形引擎）？那不是 rotation 能解决的，需要一次 reflection。</li>
+  </ul>
+  <div class="note"><span class="q">万能的验证方法</span><p>拿一个不对称的已知姿态（比如 yaw 30°、pitch 20°、roll 40°，三个角都不同且不是 0 / 90°），转过去再转回来，看是否还原；再把它作用在 <span class="m">(1,0,0)</span> 上，看结果是否符合直觉。用 identity 或 90° 这种特殊值测不出 convention 错误。</p></div>
+</section>
+
+<section id="order">
+  <h2><span class="n">08</span>Composition order：左乘还是右乘</h2>
+  <p>3D rotation 不可交换，所以 <span class="m">A·B</span> 和 <span class="m">B·A</span> 是两个不同的姿态。面试里真正考的是：给你一个乘积，你能不能说出它在物理上是“先做什么、绕谁的轴做”。</p>
+  <div class="eq">R = A · B
+
+读法一（从左往右，绕 <strong>body</strong> 轴）：先做 A；再绕 <em>转过之后的新轴</em> 做 B
+读法二（从右往左，绕 <strong>fixed</strong> 轴）：先做 B；再绕 <em>固定不动的 world 轴</em> 做 A</div>
+  <p>两种读法描述的是同一个矩阵、同一个最终姿态。由此得到一条规则：</p>
+  <div class="note"><p><strong>右乘（post-multiply）</strong>：新的 rotation 是在<strong>当前 body frame</strong> 里描述的。<br><strong>左乘（pre-multiply）</strong>：新的 rotation 是在 <strong>fixed / world frame</strong> 里描述的。</p></div>
+  <p>对 4×4 的 transform 完全一样。两个实际例子：</p>
+  <ul>
+    <li>“夹爪沿自己的 z 轴（approach 方向）前进 5 cm”：<span class="m">T<sub>new</sub> = T<sub>base_ee</sub> · Trans(0, 0, 0.05)</span>，右乘。</li>
+    <li>“夹爪沿 base 的 z 轴竖直抬高 5 cm”：<span class="m">T<sub>new</sub> = Trans(0, 0, 0.05) · T<sub>base_ee</sub></span>，左乘。</li>
+  </ul>
+  <div class="lab">
+    <div class="lab-views two">
+      <div>
+        <h4><span class="ca">A · B</span>：先 A，再绕新的 body 轴做 B</h4>
+        <svg id="ord-l" class="drag" viewBox="0 0 320 290" role="img" aria-label="A 乘 B 的结果"></svg>
+      </div>
+      <div>
+        <h4><span class="ca">B · A</span>：先 B，再绕新的 body 轴做 A</h4>
+        <svg id="ord-r" class="drag" viewBox="0 0 320 290" role="img" aria-label="B 乘 A 的结果"></svg>
+      </div>
+    </div>
+    <div class="opts">
+      <label>A 绕 <select id="ord-a-ax"><option>X</option><option>Y</option><option selected>Z</option></select> 轴</label>
+      <label>B 绕 <select id="ord-b-ax"><option selected>X</option><option>Y</option><option>Z</option></select> 轴</label>
+      <button class="pre" id="ord-play">▶ 播放</button>
+      <span class="cm">虚线是当前这一步的转轴</span>
+    </div>
+    <div class="ctl" id="ord-ctl"></div>
+    <div class="out">
+      <div class="blk"><h4>A · B</h4><div class="live" id="ord-ab"></div></div>
+      <div class="blk"><h4>B · A</h4><div class="live" id="ord-ba"></div></div>
+      <div class="blk"><h4>两个结果相差</h4><div class="kv" id="ord-diff"></div></div>
+    </div>
+    <p class="try"><b>试一试：</b>① 默认是 A = R<sub>z</sub>(90°)、B = R<sub>x</sub>(90°)，点播放，两边最后差 120°。② 把两个轴选成同一根：绕同一根轴的 rotation 可以交换，差变成 0。③ 把两个角度都调到 5°：小角度时近似可交换，差接近 0。这就是为什么 angular velocity 可以当向量相加。</p>
+  </div>
+</section>
+
+<section id="se3">
+  <h2><span class="n">09</span>SE(3) 与 homogeneous transform</h2>
+  <p>rigid body 的 pose = orientation + position，共 6 个 degree of freedom。所有 rigid body transform 组成 <strong>SE(3)</strong>（special Euclidean group）。把 R 和 t 装进一个 4×4 矩阵，rotation 加 translation 就变成一次矩阵乘法：</p>
+  <div class="eq">T<sub>a_b</sub> = <span class="mat" style="--c:2"><span>R<sub>a_b</sub></span><span>t<sub>a_b</sub></span><span>0 0 0</span><span>1</span></span>        p<sub>a</sub> = R<sub>a_b</sub> · p<sub>b</sub> + t<sub>a_b</sub>     ⇔     <span class="mat" style="--c:1"><span>p<sub>a</sub></span><span>1</span></span> = T<sub>a_b</sub> <span class="mat" style="--c:1"><span>p<sub>b</sub></span><span>1</span></span></div>
+  <ul>
+    <li><span class="m">R<sub>a_b</sub></span>：b 的三个轴在 a 里的方向。</li>
+    <li><span class="m">t<sub>a_b</sub></span>：<strong>b 的原点在 a 里的坐标</strong>。（验证：把 b 的原点 <span class="m">p<sub>b</sub> = 0</span> 代进去，得到 <span class="m">p<sub>a</sub> = t</span>。）</li>
+  </ul>
+  <h3>组合与 inverse</h3>
+  <div class="eq">T<sub>a_c</sub> = T<sub>a_b</sub> · T<sub>b_c</sub> = <span class="mat" style="--c:2"><span>R₁R₂</span><span>R₁t₂ + t₁</span><span>0</span><span>1</span></span>
+
+T<sub>b_a</sub> = (T<sub>a_b</sub>)⁻¹ = <span class="mat" style="--c:2"><span>Rᵀ</span><span>−Rᵀt</span><span>0</span><span>1</span></span></div>
+  <div class="note warn"><span class="q">最常见的错误</span><p>inverse 的 translation 是 <span class="m">−Rᵀt</span>，不是 <span class="m">−t</span>。直觉：<span class="m">t</span> 是 b 的原点在 a 里的坐标；反过来要的是 a 的原点在 <em>b</em> 里的坐标，所以除了取反，还要用 <span class="m">Rᵀ</span> 把它换到 b 的轴上。</p></div>
+  <h3>点和方向</h3>
+  <p>homogeneous 坐标的最后一位区分两种东西：<strong>点</strong>写成 <span class="m">(x, y, z, 1)</span>，会被 translation 影响；<strong>方向 / 自由向量</strong>（速度、力、法向量、轴）写成 <span class="m">(x, y, z, 0)</span>，只被 R 转动。把 normal 或 velocity 当成点去乘 T，是另一个常见 bug。</p>
+  <h3>再往深一步（知道概念即可）</h3>
+  <ul>
+    <li><strong>存储</strong>：实际中 pose 常存成 <span class="m">(t, q)</span> 共 7 个数（ROS 的 <code>geometry_msgs/Pose</code>），计算时再转成 4×4。</li>
+    <li><strong>插值</strong>：position 做线性插值，orientation 做 SLERP，分开处理。</li>
+    <li><strong>Twist 与 se(3)</strong>：rigid body 的速度是一个 6 维向量 <span class="m">V = (ω, v)</span>，叫 twist。和 SO(3) 一样有 exponential map：<span class="m">T = exp([S]θ)</span>，表示绕一根空间中的 screw axis 边转边平移。Modern Robotics 的 product of exponentials（§12）就建立在它上面。</li>
+    <li><strong>Adjoint</strong>：点换 frame 用 T，twist 换 frame 要用 6×6 的 adjoint：<span class="m">V<sub>a</sub> = Ad(T<sub>a_b</sub>) · V<sub>b</sub></span>，其中 <span class="m">Ad(T) = [R, 0; [t]<sub>×</sub>R, R]</span>。wrench（力和力矩）用它的 transpose。直觉：平移一个 frame 之后，同一个转动在新原点处会多出一项线速度 <span class="m">t × ω</span>。</li>
+    <li><strong>Pose error</strong>：位置误差 <span class="m">p<sub>d</sub> − p</span> 加上朝向误差 <span class="m">log(R<sub>d</sub>Rᵀ)</span>，拼成 6 维。位置和朝向单位不同（米和 radian），加权时要小心。</li>
+  </ul>
+</section>
+
+<section id="chain">
+  <h2><span class="n">10</span>Frame transform chain</h2>
+  <p>机器人系统里有很多 frame：world、base、每个 link、end-effector、camera、tag、object。任意两个之间的关系，都靠把已知的 transform 连乘得到。用 <span class="m">T<sub>a_b</sub></span> 这种写法的好处是，<strong>下标自己会告诉你顺序对不对</strong>：</p>
+  <div class="eq">T<sub>base_tag</sub> = T<sub>base_<span class="ca">cam</span></sub> · T<sub><span class="ca">cam</span>_tag</sub>           相邻的下标必须相同，然后相消
+T<sub>cam_base</sub> = (T<sub>base_cam</sub>)⁻¹                  inverse 把下标对调</div>
+  <p>写出来之后如果相邻下标对不上，说明顺序错了或者少取了一个 inverse。这比任何口诀都可靠。</p>
+  <h3>几条常见的 chain</h3>
+  <div class="tw"><table>
+    <tr><th>场景</th><th>Chain</th><th>各项的来源</th></tr>
+    <tr><td>相机固定在外面（eye-to-hand）</td><td class="m">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></td><td>hand-eye calibration；AprilTag</td></tr>
+    <tr><td>相机装在末端（eye-in-hand）</td><td class="m">T<sub>base_tag</sub> = T<sub>base_ee</sub> · T<sub>ee_cam</sub> · T<sub>cam_tag</sub></td><td>FK；hand-eye calibration；AprilTag</td></tr>
+    <tr><td>求抓取时末端该去哪</td><td class="m">T<sub>base_ee</sub>* = T<sub>base_obj</sub> · T<sub>obj_grasp</sub> · (T<sub>ee_tcp</sub>)⁻¹</td><td>感知；grasp 定义；工具标定</td></tr>
+    <tr><td>反解中间的未知量</td><td class="m">A · X · B = C  ⇒  X = A⁻¹ · C · B⁻¹</td><td>左边的从左边消，右边的从右边消</td></tr>
+  </table></div>
+  <p>在 ROS 的 tf 里，<code>lookupTransform(target_frame="a", source_frame="b")</code> 返回的就是 <span class="m">T<sub>a_b</sub></span>：把 b 里的点换到 a 里。tf tree 里 parent → child 的那条边存的是 <span class="m">T<sub>parent_child</sub></span>。</p>
+  <div class="lab">
+    <div class="lab-views">
+      <div>
+        <h4>俯视图（2D）：拖动 cam 或 tag 的原点</h4>
+        <svg id="ch-svg" class="drag" viewBox="0 0 640 400" role="img" aria-label="base、cam、tag 三个 frame 的变换链"></svg>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--muted)"></span>T_base_cam（标定得到）</span>
+          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>T_cam_tag（相机测量）</span>
+          <span><span class="sw dash" style="color:var(--ink)"></span>T_base_tag（乘出来的）</span>
+        </div>
+      </div>
+      <div>
+        <h4>T<sub>base_cam</sub></h4><div class="live" id="ch-bc"></div>
+        <h4 style="margin-top:10px"><span class="ca">T<sub>cam_tag</sub></span></h4><div class="live" id="ch-ct"></div>
+        <h4 style="margin-top:10px">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></h4><div class="live" id="ch-bt"></div>
+        <h4 style="margin-top:10px">tag 上的一个点</h4><div class="kv" id="ch-pt"></div>
+      </div>
+    </div>
+    <div class="opts"><label><input type="checkbox" id="ch-wrong"><span>显示乘反了的结果 T<sub>cam_tag</sub> · T<sub>base_cam</sub></span></label></div>
+    <div class="ctl" id="ch-ctl"></div>
+    <p class="try"><b>试一试：</b>① 拖动 cam：T<sub>base_cam</sub> 和 T<sub>cam_tag</sub> 都在变，但乘出来的 T<sub>base_tag</sub> 一动不动，因为 tag 在世界里没动。这正是 transform chain 的意义。② 拖动 tag：只有 T<sub>cam_tag</sub> 和结果变。③ 勾上“乘反了的结果”，看它落在哪里：一个看起来合理、但完全错误的 pose。这里用 2D（SE(2)，3×3 矩阵）是为了看得清，规则和 3D 完全一样。</p>
+  </div>
+  <h3>Chain 出错时的排查顺序</h3>
+  <ol>
+    <li>把每个 transform 的下标写出来，检查相邻是否相消。</li>
+    <li>逐个看 translation 的大小和符号是否符合常识（相机在 base 前方 0.5 m，不是 500，也不是 −0.5）。单位是 m 还是 mm？</li>
+    <li>逐个看 R 的第三列（z 轴）指向哪里。camera optical frame 的 z 应该指向场景。</li>
+    <li>把其中一个换成 identity，看结果是否退化成预期的样子。</li>
+    <li>时间戳：机械臂在动的时候，<span class="m">T<sub>base_ee</sub></span> 和图像必须是同一时刻的。</li>
+  </ol>
+</section>
+
+<section id="handeye">
+  <h2><span class="n">11</span>Hand-eye calibration：AX = XB</h2>
+  <p>上面的 chain 里，<span class="m">T<sub>base_ee</sub></span> 来自 FK，<span class="m">T<sub>cam_tag</sub></span> 来自视觉，唯独相机和机器人之间的那个固定 transform 没有人直接告诉你。hand-eye calibration 就是求它。</p>
+  <h3>两种安装方式</h3>
+  <div class="tw"><table>
+    <tr><th></th><th>Eye-in-hand</th><th>Eye-to-hand</th></tr>
+    <tr><td>相机在哪</td><td>装在 end-effector 上，跟着动</td><td>固定在外面的支架上</td></tr>
+    <tr><td>未知量 X</td><td class="m">T<sub>ee_cam</sub></td><td class="m">T<sub>base_cam</sub></td></tr>
+    <tr><td>calibration target 放哪</td><td>固定在桌面上（相对 base 不动）</td><td>固定在 end-effector 上（跟着动）</td></tr>
+    <tr><td>不变的量</td><td class="m">T<sub>base_target</sub></td><td class="m">T<sub>ee_target</sub></td></tr>
+    <tr><td>特点</td><td>靠近物体时精度高，视野随手移动；手会挡不到自己</td><td>视野固定、全局；手臂可能遮挡物体</td></tr>
+  </table></div>
+  <h3>AX = XB 是怎么来的（eye-in-hand）</h3>
+  <p>把机械臂移到第 i 个姿态，记录两样东西：FK 给出的 <span class="m">E<sub>i</sub> = T<sub>base_ee</sub></span>，以及相机看 target 得到的 <span class="m">C<sub>i</sub> = T<sub>cam_target</sub></span>。target 固定在桌上，所以绕一圈 chain 得到的 <span class="m">T<sub>base_target</sub></span> 每次都一样：</p>
+  <div class="eq">T<sub>base_target</sub> = E<sub>i</sub> · X · C<sub>i</sub> = E<sub>j</sub> · X · C<sub>j</sub>              （对任意两个姿态 i、j）
+
+两边左乘 E<sub>j</sub>⁻¹、右乘 C<sub>i</sub>⁻¹：
+
+( E<sub>j</sub>⁻¹ E<sub>i</sub> ) · X = X · ( C<sub>j</sub> C<sub>i</sub>⁻¹ )
+        A      · X = X ·      B</div>
+  <figure class="fig">
+    <svg viewBox="0 0 680 230" role="img" aria-label="eye-in-hand 标定中两个姿态构成的闭环">
+      <rect x="20" y="88" width="90" height="50" rx="6" class="d-box"/><text x="65" y="118" text-anchor="middle" class="d-t">base</text>
+      <rect x="570" y="88" width="90" height="50" rx="6" class="d-box"/><text x="615" y="118" text-anchor="middle" class="d-t">target</text>
+      <rect x="200" y="18" width="90" height="46" rx="6" class="d-box"/><text x="245" y="46" text-anchor="middle" class="d-t">ee<tspan class="d-s" dx="4">i</tspan></text>
+      <rect x="390" y="18" width="90" height="46" rx="6" class="d-box"/><text x="435" y="46" text-anchor="middle" class="d-t">cam<tspan class="d-s" dx="4">i</tspan></text>
+      <rect x="200" y="164" width="90" height="46" rx="6" class="d-box"/><text x="245" y="192" text-anchor="middle" class="d-t">ee<tspan class="d-s" dx="4">j</tspan></text>
+      <rect x="390" y="164" width="90" height="46" rx="6" class="d-box"/><text x="435" y="192" text-anchor="middle" class="d-t">cam<tspan class="d-s" dx="4">j</tspan></text>
+      <line x1="112" y1="100" x2="196" y2="52" class="d-ln" marker-end="url(#arr2)"/><text x="138" y="62" text-anchor="middle" class="d-s">E_i（FK）</text>
+      <line x1="112" y1="126" x2="196" y2="176" class="d-ln" marker-end="url(#arr2)"/><text x="138" y="174" text-anchor="middle" class="d-s">E_j（FK）</text>
+      <line x1="294" y1="41" x2="386" y2="41" class="d-acc" marker-end="url(#arr3)"/><text x="340" y="32" text-anchor="middle" class="d-a">X</text>
+      <line x1="294" y1="187" x2="386" y2="187" class="d-acc" marker-end="url(#arr3)"/><text x="340" y="178" text-anchor="middle" class="d-a">X</text>
+      <line x1="484" y1="52" x2="566" y2="100" class="d-ln" marker-end="url(#arr2)"/><text x="548" y="62" text-anchor="middle" class="d-s">C_i（视觉）</text>
+      <line x1="484" y1="176" x2="566" y2="126" class="d-ln" marker-end="url(#arr2)"/><text x="548" y="174" text-anchor="middle" class="d-s">C_j（视觉）</text>
+      <line x1="245" y1="160" x2="245" y2="68" class="d-dash" marker-end="url(#arr2)"/><text x="236" y="118" text-anchor="end" class="d-s">A = E_j⁻¹E_i</text>
+      <line x1="435" y1="160" x2="435" y2="68" class="d-dash" marker-end="url(#arr2)"/><text x="444" y="118" class="d-s">B = C_jC_i⁻¹</text>
+    </svg>
+    <figcaption>从 base 到 target 有上下两条路，结果必须相同。A 是 end-effector 在两个姿态之间的相对运动，B 是 camera 在两个姿态之间的相对运动，X 是两者之间的固定关系。</figcaption>
+  </figure>
+  <p><strong>A 和 B 描述的是同一次刚体运动</strong>，只是一个在 ee frame 里看、一个在 cam frame 里看。X 就是这两个 frame 之间的换算。eye-to-hand 的推导完全一样，只是不变量换成 <span class="m">T<sub>ee_target</sub></span>，得到 <span class="m">A = E<sub>j</sub>E<sub>i</sub>⁻¹</span>、<span class="m">B = C<sub>j</sub>C<sub>i</sub>⁻¹</span>、<span class="m">X = T<sub>base_cam</sub></span>。</p>
+  <h3>怎么解</h3>
+  <p>把 4×4 的方程拆成 rotation 和 translation 两部分：</p>
+  <div class="eq">rotation      R<sub>A</sub> R<sub>X</sub> = R<sub>X</sub> R<sub>B</sub>
+translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</sub> − t<sub>A</sub></div>
+  <ol>
+    <li><strong>先解 R<sub>X</sub>。</strong>第一个式子改写成 <span class="m">R<sub>A</sub> = R<sub>X</sub> R<sub>B</sub> R<sub>X</sub>ᵀ</span>：A 和 B 是相似的，转角相同，转轴差一个 <span class="m">R<sub>X</sub></span>。取 log map，<span class="m">α = log(R<sub>A</sub>)</span>、<span class="m">β = log(R<sub>B</sub>)</span>，就有 <span class="m">α = R<sub>X</sub> β</span>。每一对运动给出一组对应的向量，求把所有 β 对齐到 α 的最佳 rotation。这是标准的 Kabsch / orthogonal Procrustes 问题，用 SVD 一步解出（Park &amp; Martin 的方法）。</li>
+    <li><strong>再解 t<sub>X</sub>。</strong>把 <span class="m">R<sub>X</sub></span> 代进第二个式子，对 <span class="m">t<sub>X</sub></span> 是线性的。把所有运动的方程摞起来，做 linear least squares。</li>
+    <li><strong>（可选）非线性 refinement。</strong>以上面的解为初值，直接最小化所有图像上的 reprojection error，同时优化 X 和 <span class="m">T<sub>base_target</sub></span>。</li>
+  </ol>
+  <p>其他经典解法：Tsai–Lenz（也是先 R 后 t，最常用的默认方法）、Horaud（quaternion）、Daniilidis（dual quaternion，R 和 t 同时解）。OpenCV 里是一个函数：</p>
+  <pre>R_cam2gripper, t_cam2gripper = cv2.calibrateHandEye(
+    R_gripper2base, t_gripper2base,   # 每个姿态的 T_base_ee（FK）
+    R_target2cam,   t_target2cam,     # 每个姿态的 T_cam_target（solvePnP）
+    method=cv2.CALIB_HAND_EYE_PARK)
+# eye-to-hand：把第一组输入换成 T_ee_base（即 FK 结果取 inverse），输出就是 T_base_cam</pre>
+  <h3>需要什么样的数据</h3>
+  <ul>
+    <li><strong>至少 2 次相对运动（3 个姿态），且两次运动的转轴不平行。</strong>一次运动只给出一对 <span class="m">(α, β)</span>：一个方向对齐了，但绕这个方向还可以任意转，<span class="m">R<sub>X</sub></span> 定不下来。同理 <span class="m">(R<sub>A</sub> − I)</span> 的 rank 只有 2，沿转轴方向的 <span class="m">t<sub>X</sub></span> 也定不下来。</li>
+    <li><strong>纯 translation 的运动对 t<sub>X</sub> 没有信息。</strong><span class="m">R<sub>A</sub> = I</span> 时 translation 方程的左边是 0。</li>
+    <li><strong>转角要大。</strong>转角越小，<span class="m">α, β</span> 越短，噪声占比越大。</li>
+    <li>实际操作：采 15 – 30 个姿态，绕至少两三根不同的轴各转 30° 以上，target 始终完整地在视野里，不要太远也不要太斜。</li>
+  </ul>
+  <div class="lab">
+    <div class="lab-views">
+      <div>
+        <h4>仿真（eye-in-hand，按住拖动换视角）</h4>
+        <svg id="he-svg" class="drag" viewBox="0 0 520 380" role="img" aria-label="hand-eye calibration 仿真"></svg>
+        <div class="legend">
+          <span>小 frame：各个姿态的 end-effector</span>
+          <span><span class="sw" style="background:var(--muted)"></span>真实的 camera 位置</span>
+          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>用估计出的 X 算的 camera 位置</span>
+        </div>
+      </div>
+      <div>
+        <h4>估计结果</h4>
+        <div class="kv" id="he-out"></div>
+        <h4 style="margin-top:14px">X 的真值与估计（translation，单位 mm）</h4>
+        <div class="kv" id="he-x"></div>
+      </div>
+    </div>
+    <div class="opts">
+      <label>运动的转轴 <select id="he-mode"><option value="gen">各不相同（正常采集）</option><option value="one">全部平行于 z（degenerate）</option></select></label>
+      <button class="pre" id="he-re">重新采样</button>
+    </div>
+    <div class="ctl" id="he-ctl"></div>
+    <p class="try"><b>试一试：</b>① 默认设置下误差很小。把“转角幅度”拉到 5°：同样的噪声，误差大了一个量级。② 把转轴改成“全部平行”：σ₂ 掉到接近 0，rotation 绕公共轴的那个角和沿轴方向的 translation 都定不下来，误差巨大，加再多姿态也没用。③ 把噪声调到 0：只要转轴不平行，3 个姿态就能精确解出。④ 把姿态数从 3 加到 20，看噪声的影响怎么被平均掉。</p>
+  </div>
+  <h3>标定不准时查什么</h3>
+  <ul>
+    <li><strong>camera intrinsics</strong> 先标准。<span class="m">C<sub>i</sub></span> 错了后面全错。target 的格子尺寸量准了吗（单位）？</li>
+    <li>输入的方向对吗？最常见的错是把 <span class="m">T<sub>ee_base</sub></span> 当成 <span class="m">T<sub>base_ee</sub></span> 传进去，或者 eye-in-hand / eye-to-hand 搞反。</li>
+    <li>采图时机械臂<strong>停稳</strong>了吗？pose 和图像时间对齐了吗？</li>
+    <li>姿态够不够多样？（上面实验台的第 ① ② 条）</li>
+    <li>机器人本身的 FK 准吗？便宜的手臂有 backlash 和 link 误差，会成为精度上限。</li>
+    <li><strong>验证方法</strong>：用求出的 X 对每个姿态算 <span class="m">T<sub>base_target</sub> = E<sub>i</sub> X C<sub>i</sub></span>，它们应该几乎重合，看 position 的标准差（好的结果在 1 – 2 mm 量级）。再做一次实物测试：让末端去碰 target 上的一个已知点。</li>
+  </ul>
+  <p>相关问题 <strong>AX = ZB</strong>（robot-world / hand-eye）：同时求两个未知量，比如 <span class="m">T<sub>ee_cam</sub></span> 和 <span class="m">T<sub>base_world</sub></span>。OpenCV 里是 <code>calibrateRobotWorldHandEye</code>。</p>
+</section>
+
+<div class="part" id="part-b">
+  <span class="tag">PART B</span>
+  <h2>Manipulation 基础</h2>
+  <p>知道了目标 pose 之后：关节该转到多少（kinematics），怎么不碰撞地过去（motion planning），电机怎么跟上（control）。</p>
+</div>
+
+<section id="fk">
+  <h2><span class="n">12</span>Forward kinematics</h2>
+  <p>机械臂有两个描述它的空间：</p>
+  <ul>
+    <li><strong>Joint space</strong>（configuration space）：关节角向量 <span class="m">q = (q₁, …, q<sub>n</sub>)</span>。电机直接控制的是它。</li>
+    <li><strong>Task space</strong>（Cartesian / operational space）：end-effector 的 pose <span class="m">x ∈ SE(3)</span>。任务是用它描述的。</li>
+  </ul>
+  <p><strong>Forward kinematics（FK）</strong>：已知 q，求 end-effector 的 pose。它就是 §10 的 transform chain，只不过每一环是一个关节：</p>
+  <div class="eq">T<sub>base_ee</sub>(q) = T<sub>0_1</sub>(q₁) · T<sub>1_2</sub>(q₂) · … · T<sub>n−1_n</sub>(q<sub>n</sub>) · T<sub>n_ee</sub></div>
+  <p>FK 永远有解、解唯一、有闭式表达，直接乘就行。难的是反过来（§14）。</p>
+  <h3>Planar arm 的例子</h3>
+  <p>平面上的 2-link arm，link 长度 <span class="m">l₁, l₂</span>，关节角 <span class="m">q₁, q₂</span>（<span class="m">q₂</span> 是相对上一个 link 的角度）：</p>
+  <div class="eq">x = l₁c₁ + l₂c₁₂
+y = l₁s₁ + l₂s₁₂
+φ = q₁ + q₂                    （末端朝向）</div>
+  <p>3-link 再加一项 <span class="m">l₃c₁₂₃</span>、<span class="m">l₃s₁₂₃</span>。规律：每个 link 的方向角是它之前所有关节角的和。</p>
+  <h3>怎么系统地写出每个 T<sub>i−1_i</sub></h3>
+  <div class="tw"><table>
+    <tr><th>方法</th><th>做法</th><th>注意</th></tr>
+    <tr><td><strong>DH parameters</strong></td><td>按规则给每个 link 放 frame，每个关节用 4 个数 <span class="m">(a, α, d, θ)</span> 描述：<br><span class="m">T<sub>i−1_i</sub> = Rot<sub>z</sub>(θ) · Trans<sub>z</sub>(d) · Trans<sub>x</sub>(a) · Rot<sub>x</sub>(α)</span></td><td>有 standard（上式）和 modified（Craig，顺序是 <span class="m">Rot<sub>x</sub> Trans<sub>x</sub> Rot<sub>z</sub> Trans<sub>z</sub></span>）两套 convention，参数表不能混用。revolute joint 的变量是 θ，prismatic 是 d</td></tr>
+    <tr><td><strong>Product of exponentials（PoE）</strong></td><td>不放中间 frame。只需要 zero configuration 时的末端 pose <span class="m">M</span> 和每个关节的 screw axis <span class="m">S<sub>i</sub></span>：<br><span class="m">T(q) = e<sup>[S₁]q₁</sup> ··· e<sup>[S<sub>n</sub>]q<sub>n</sub></sup> · M</span></td><td>Modern Robotics 的写法，没有 DH 的 frame 摆放规则要记</td></tr>
+    <tr><td><strong>URDF</strong></td><td>每个 joint 记录 parent → child 的固定 transform（<code>xyz</code> + <code>rpy</code>）和转轴 <code>axis</code>。FK = 固定 transform × 绕 axis 转 q，逐级相乘</td><td>实际工程里最常见；KDL、Pinocchio、MuJoCo 都是读模型文件自动算</td></tr>
+  </table></div>
+  <h3>几个术语</h3>
+  <ul>
+    <li><strong>Degree of freedom（DOF）</strong>：独立关节数。空间中任意 pose 需要 6 个，所以通用机械臂是 6-DOF。</li>
+    <li><strong>Redundant</strong>：DOF 比任务需要的多（7-DOF 的 Franka、iiwa）。同一个末端 pose 对应无穷多组 q，多出来的自由度可以用来避障、避 singularity。</li>
+    <li><strong>Workspace</strong>：末端能到达的所有位置是 reachable workspace；能以任意朝向到达的是 dexterous workspace，后者小得多。</li>
+  </ul>
+</section>
+
+<section id="armlab">
+  <h2><span class="n">13</span>实验台：planar arm</h2>
+  <p>这个实验台后面三节（IK、Jacobian、singularity）都要用。拖关节角滑块是 FK；直接拖图上的橙色目标点是 IK，arm 会用你选的方法一步步迭代过去。</p>
+  <div class="lab">
+    <div class="lab-views">
+      <div>
+        <h4>Workspace（拖动橙色目标点做 IK）</h4>
+        <svg id="arm-svg" class="drag" viewBox="0 0 520 430" role="img" aria-label="平面机械臂"></svg>
+        <div class="legend">
+          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>manipulability ellipse</span>
+          <span>箭头：Jacobian 的各列（<span class="cx">joint 1</span> <span class="cy">joint 2</span> <span class="cz">joint 3</span>）</span>
+          <span><span class="sw dash" style="color:var(--line-strong)"></span>workspace 边界</span>
+        </div>
+      </div>
+      <div>
+        <h4>FK</h4>
+        <div class="kv" id="arm-fk"></div>
+        <h4 style="margin-top:12px">Jacobian（position 部分）</h4>
+        <div class="live" id="arm-J"></div>
+        <h4 style="margin-top:12px">离 singularity 有多远</h4>
+        <div class="kv" id="arm-sv"></div>
+        <h4 style="margin-top:12px">IK 迭代</h4>
+        <div class="kv" id="arm-ik"></div>
+      </div>
+    </div>
+    <div class="opts">
+      <label>Arm <select id="arm-n"><option value="2">2-link</option><option value="3" selected>3-link（redundant）</option></select></label>
+      <label>IK 方法 <select id="arm-m"><option value="dls" selected>damped least squares</option><option value="pinv">pseudoinverse</option><option value="jt">Jacobian transpose</option></select></label>
+      <label><input type="checkbox" id="arm-ns">null-space：让各关节靠近 0（仅 3-link）</label>
+      <label><input type="checkbox" id="arm-el" checked>ellipse 和列向量</label>
+    </div>
+    <div class="presets">预设：
+      <button class="pre" data-arm="40,60,-50">一般姿态</button>
+      <button class="pre" data-arm="30,0,0">完全伸直（boundary singularity）</button>
+      <button class="pre" data-arm="20,180,0">折叠（2-link 的内部 singularity）</button>
+      <button class="pre" data-arm="60,-90,-40">elbow 90°</button>
+    </div>
+    <div class="ctl" id="arm-ctl"></div>
+    <p class="try"><b>试一试：</b>① 点“完全伸直”：Jacobian 的各列（箭头）变成平行，ellipse 塌成一条线，σ<sub>min</sub> = 0。末端此刻无法沿 arm 的方向运动。② 选 pseudoinverse，把目标拖到 workspace 外面：arm 伸直后开始抖，‖Δq‖ 的原始值暴涨。换成 damped least squares 再拖出去：稳稳地停在边界上。③ 选 2-link，看两条半透明的 arm：同一个目标有 elbow-up 和 elbow-down 两个解析解。④ 3-link 下勾上 null-space：末端不动，arm 的形状在变。</p>
+  </div>
+</section>
+
+<section id="ik">
+  <h2><span class="n">14</span>Inverse kinematics</h2>
+  <p><strong>Inverse kinematics（IK）</strong>：已知目标 pose <span class="m">x<sub>d</sub></span>，求 q 使得 <span class="m">FK(q) = x<sub>d</sub></span>。FK 是代入求值，IK 是解一组非线性方程，所以难：</p>
+  <div class="tw"><table>
+    <tr><th>情况</th><th>例子</th></tr>
+    <tr><td><strong>无解</strong></td><td>目标在 workspace 外面；或者位置够得着但朝向做不到；或者解超出 joint limit</td></tr>
+    <tr><td><strong>多个解</strong></td><td>2-link：elbow-up / elbow-down 两个。带 spherical wrist 的 6R arm（PUMA、多数工业臂）最多 8 个（shoulder 左右 × elbow 上下 × wrist 翻转）；一般的 6R 最多 16 个</td></tr>
+    <tr><td><strong>无穷多个解</strong></td><td>redundant arm（7-DOF），或者正好在 singularity 上</td></tr>
+    <tr><td><strong>没有闭式解</strong></td><td>一般结构的 arm 只能数值求解。有闭式解的充分条件（Pieper）：有三根相邻的关节轴交于一点（spherical wrist）或互相平行。这也是工业臂都这么设计的原因</td></tr>
+  </table></div>
+  <h3>Analytical IK：2-link 的推导</h3>
+  <p>目标 <span class="m">(x, y)</span>。base、elbow、末端构成一个三角形，三条边是 <span class="m">l₁</span>、<span class="m">l₂</span> 和 <span class="m">r = √(x² + y²)</span>。对 elbow 处的角用 law of cosines：</p>
+  <div class="eq">cos q₂ = (x² + y² − l₁² − l₂²) / (2 l₁ l₂)
+q₂ = ± acos(…)                                 正负号对应 elbow-down / elbow-up
+q₁ = atan2(y, x) − atan2( l₂ sin q₂,  l₁ + l₂ cos q₂ )</div>
+  <p><span class="m">|cos q₂| &gt; 1</span> 说明够不着。<span class="m">cos q₂ = ±1</span> 时两个解合并成一个，正好是 singularity。6-DOF 的解析解思路类似：spherical wrist 把问题拆成“前三个关节定 wrist center 的位置，后三个关节定朝向”（kinematic decoupling）。工具：IKFast 可以自动生成解析解的代码。</p>
+  <h3>Numerical IK：用 Jacobian 迭代</h3>
+  <p>在当前 q 附近把 FK 线性化：<span class="m">Δx ≈ J(q) · Δq</span>。每一步算误差 <span class="m">e = x<sub>d</sub> − FK(q)</span>，求一个 <span class="m">Δq</span> 让误差变小，更新 <span class="m">q ← q + Δq</span>，重复到收敛。三种求 <span class="m">Δq</span> 的方法：</p>
+  <div class="tw"><table>
+    <tr><th>方法</th><th>Δq =</th><th>本质</th><th>特点</th></tr>
+    <tr><td>Jacobian transpose</td><td class="m">α · Jᵀ e</td><td>对 <span class="m">½‖e‖²</span> 做 gradient descent</td><td>不用求逆，永远不会爆；收敛慢，各方向速度不均匀</td></tr>
+    <tr><td>Pseudoinverse</td><td class="m">J⁺ e,　J⁺ = Jᵀ(JJᵀ)⁻¹</td><td>Newton–Raphson / Gauss–Newton</td><td>收敛快；redundant 时给出 <span class="m">‖Δq‖</span> 最小的解；singularity 附近 <span class="m">(JJᵀ)⁻¹</span> 爆掉</td></tr>
+    <tr><td>Damped least squares（DLS）</td><td class="m">Jᵀ(JJᵀ + λ²I)⁻¹ e</td><td>Levenberg–Marquardt：最小化 <span class="m">‖JΔq − e‖² + λ²‖Δq‖²</span></td><td>λ 小时接近 pseudoinverse，λ 大时接近 transpose。singularity 附近稳定，代价是那里精度略降。实际中的默认选择</td></tr>
+  </table></div>
+  <p>完整的 6-DOF 误差是位置加朝向：<span class="m">e = [ p<sub>d</sub> − p ;  log(R<sub>d</sub>Rᵀ) ]</span>，朝向误差用 §05 的 rotation vector。</p>
+  <h3>Numerical IK 的 pitfalls</h3>
+  <ul>
+    <li><strong>只找到一个解</strong>，而且是离初值最近的那个。初值不同，结果不同。连续运动时用当前 q 做初值，保证解连续不跳变；全局求解时用多个随机初值重启（TRAC-IK 的做法）。</li>
+    <li><strong>Local minima</strong>：特别是加了 joint limit 之后会卡住。</li>
+    <li><strong>Joint limit</strong>：纯 pseudoinverse 不管 limit。做法是 clamp、在 null-space 里推离 limit，或者直接写成带约束的优化问题（SQP）。</li>
+    <li><strong>解的选择</strong>：多个解里选哪个？一般选离当前 q 最近的、离 joint limit 和 singularity 最远的、不碰撞的。</li>
+  </ul>
+  <h3>Redundancy 与 null-space</h3>
+  <p>redundant arm 的 J 是“扁”的（行少列多），存在一些关节速度不会让末端动，它们构成 J 的 <strong>null-space</strong>。<span class="m">(I − J⁺J)</span> 把任意向量投影到 null-space 里：</p>
+  <div class="eq">q̇ = J⁺ ẋ  +  (I − J⁺J) · q̇₀
+     主任务     次要任务：不影响末端</div>
+  <p><span class="m">q̇₀</span> 常取某个目标函数的 gradient：远离 joint limit、增大 manipulability、远离障碍物、保持舒服的姿势。实验台里勾上 null-space 看到的就是这一项。</p>
+</section>
+
+<section id="jacobian">
+  <h2><span class="n">15</span>Jacobian</h2>
+  <p>Jacobian 是 FK 对关节角的导数，把<strong>关节速度</strong>映射成<strong>末端速度</strong>：</p>
+  <div class="eq">ẋ = J(q) · q̇            J = ∂FK/∂q ,   完整形式是 6 × n： <span class="mat" style="--c:1"><span>v</span><span>ω</span></span> = J q̇</div>
+  <p>它是 q 的函数：arm 的形状变了，J 就变了。它是 manipulation 里出现频率最高的一个矩阵。</p>
+  <h3>每一列的含义</h3>
+  <p><strong>第 i 列 = 只有关节 i 以单位速度转动时，末端的速度。</strong>对 revolute joint，末端绕关节轴 <span class="m">ẑ<sub>i</sub></span> 做圆周运动：</p>
+  <div class="eq">revolute:    J<sub>i</sub> = <span class="mat" style="--c:1"><span>ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>)</span><span>ẑ<sub>i</sub></span></span>        prismatic:    J<sub>i</sub> = <span class="mat" style="--c:1"><span>ẑ<sub>i</sub></span><span>0</span></span></div>
+  <p>线速度是 <span class="m">ω × r</span>：垂直于“关节到末端的连线”，大小正比于这段距离。实验台里的彩色箭头就是这些列，可以验证每个箭头都垂直于对应关节到末端的连线。这样逐列写出来的叫 <strong>geometric Jacobian</strong>。</p>
+  <p>2-link planar arm 直接对 FK 求偏导也能得到：</p>
+  <div class="eq">J = <span class="mat" style="--c:2"><span>−l₁s₁ − l₂s₁₂</span><span>−l₂s₁₂</span><span>l₁c₁ + l₂c₁₂</span><span>l₂c₁₂</span></span>          det(J) = l₁ l₂ sin q₂</div>
+  <p>补充：如果朝向用 Euler angles 之类的参数表示，对参数求导得到的是 <strong>analytic Jacobian</strong>，它和 geometric Jacobian 差一个把 Euler rate 换成 ω 的矩阵（§04 那个），并且继承了 Euler angles 的 singularity。</p>
+  <h3>Jacobian 的六个用途</h3>
+  <ol>
+    <li><strong>速度映射</strong>：<span class="m">ẋ = J q̇</span>。反过来 <span class="m">q̇ = J⁺ ẋ</span> 叫 resolved-rate control，用来让末端走直线、做 visual servoing、teleoperation。</li>
+    <li><strong>Numerical IK</strong>：§14 的三种迭代都靠它。</li>
+    <li><strong>力的映射（statics）</strong>：<span class="m">τ = Jᵀ F</span>。末端要对外施加力 F，各关节需要出的 torque 是 <span class="m">JᵀF</span>。推导用 virtual work：关节做的功等于末端做的功，<span class="m">τᵀq̇ = Fᵀẋ = FᵀJq̇</span> 对任意 <span class="m">q̇</span> 成立。这是 impedance control（§22）的基础，也可以反过来用关节 torque 估计外力。</li>
+    <li><strong>Singularity 分析</strong>：J 掉 rank 的地方（§16）。</li>
+    <li><strong>Manipulability</strong>：对 J 做 SVD，<span class="m">J = UΣVᵀ</span>。所有满足 <span class="m">‖q̇‖ = 1</span> 的关节速度，映射到 task space 是一个椭球，主轴方向是 U 的列，半轴长是 singular value <span class="m">σ<sub>i</sub></span>。长轴方向末端容易动，短轴方向难动。力的椭球正好相反（半轴 <span class="m">1/σ<sub>i</sub></span>）：<strong>容易动的方向不容易出力，难动的方向能出大力</strong>。</li>
+    <li><strong>误差传播</strong>：关节的小误差 <span class="m">δq</span> 造成末端误差 <span class="m">J δq</span>；covariance 传播是 <span class="m">JΣJᵀ</span>。</li>
+  </ol>
+  <div class="note"><span class="q">一个细节</span><p>J 是在哪个 frame 里表达的要说清楚：末端速度写在 base frame 里（space Jacobian）还是 ee frame 里（body Jacobian），两者差一个 rotation / adjoint。算误差 e 用的 frame 必须和 J 一致。检查 J 实现对不对的最简单方法：和 finite difference <span class="m">(FK(q + εe<sub>i</sub>) − FK(q))/ε</span> 对比。</p></div>
+</section>
+
+<section id="singularity">
+  <h2><span class="n">16</span>Singularity</h2>
+  <p><strong>Singularity</strong> 是 J 掉 rank 的 configuration：J 的列不再张满 task space，末端在某个方向上<strong>瞬时无法运动</strong>，不管关节怎么转。</p>
+  <h3>会发生什么</h3>
+  <ul>
+    <li><strong>丢失一个方向的运动能力。</strong>例如 arm 完全伸直时，末端无法沿 arm 的方向再向外或向内动（一阶近似下）。</li>
+    <li><strong>附近关节速度爆炸。</strong><span class="m">q̇ = J⁻¹ẋ</span>，J 接近 singular 时 <span class="m">J⁻¹</span> 的元素趋于无穷。让末端以正常速度走一条经过 singularity 附近的直线，某些关节需要转得极快。真机上表现为突然甩动、超速报警停机。</li>
+    <li><strong>IK 的解分支在这里汇合。</strong>elbow-up 和 elbow-down 在伸直时变成同一个解；有的 singularity 上有无穷多解。</li>
+    <li><strong>力的一面</strong>：在 singular 方向上，<span class="m">τ = JᵀF = 0</span>。结构本身就能扛住这个方向的力，电机不用出力。人伸直手臂推墙、锁住膝盖站立，利用的就是这一点。</li>
+  </ul>
+  <h3>分类</h3>
+  <div class="tw"><table>
+    <tr><th>类型</th><th>什么时候</th><th>6R 工业臂上的名字</th></tr>
+    <tr><td>Boundary singularity</td><td>arm 完全伸直或完全折叠，末端在 workspace 边界上</td><td><strong>Elbow singularity</strong>：elbow 伸直，wrist center 到了最远处</td></tr>
+    <tr><td rowspan="2">Interior singularity</td><td rowspan="2">在 workspace 内部，两根或多根关节轴共线，它们的作用重复了</td><td><strong>Wrist singularity</strong>：joint 5 转到 0，joint 4 和 joint 6 的轴共线。最常遇到的一种</td></tr>
+    <tr><td><strong>Shoulder singularity</strong>：wrist center 正好落在 joint 1 的轴线上</td></tr>
+  </table></div>
+  <p>wrist singularity 和 §04 的 gimbal lock 是同一个现象：三轴交于一点的 wrist 就是一组机械的 Euler angles，中间那根轴转到特定角度时，第一和第三根轴共线。</p>
+  <h3>怎么检测</h3>
+  <div class="eq">det(J) = 0                         只适用于方阵
+σ<sub>min</sub>(J) → 0                       最小的 singular value，最直接
+w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipulability，椭球的体积
+κ = σ<sub>max</sub> / σ<sub>min</sub>                 condition number，越大越接近 singular</div>
+  <p>实际中不是判断“等于 0”，而是给 <span class="m">σ<sub>min</sub></span> 或 w 设一个阈值，低于它就认为太近了。</p>
+  <h3>怎么处理</h3>
+  <ul>
+    <li><strong>Damped least squares</strong>：给求逆加阻尼，singularity 附近牺牲一点跟踪精度换取有界的关节速度。λ 可以随 <span class="m">σ<sub>min</sub></span> 变小而自动加大。</li>
+    <li><strong>在 joint space 里规划和插值</strong>：singularity 只在 Cartesian → joint 的换算里出问题。直接插值 q 可以平稳穿过。</li>
+    <li><strong>规划时避开</strong>：把 manipulability 低于阈值的区域当作障碍，或者放进 cost。</li>
+    <li><strong>用 redundancy</strong>：7-DOF arm 在 null-space 里调整姿势，保持 manipulability。</li>
+    <li><strong>布局上避开</strong>：让工作区域落在 workspace 的中部，不要让任务贴着边界或者正好在 base 的正上方。</li>
+  </ul>
+</section>
+
+<section id="cspace">
+  <h2><span class="n">17</span>Configuration space</h2>
+  <p>Motion planning 的问题：从 <span class="m">q<sub>start</sub></span> 到 <span class="m">q<sub>goal</sub></span>，找一条连续的、不碰撞、不超 joint limit 的 path。关键的抽象是 <strong>configuration space（C-space）</strong>：以关节角为坐标轴的空间。</p>
+  <ul>
+    <li>arm 的一个完整姿态，在 C-space 里只是<strong>一个点</strong>。</li>
+    <li>workspace 里的障碍物，映射成 C-space 里的一片区域 <strong>C<sub>obs</sub></strong>：所有会让 arm 的任何部分撞上障碍的 q。其余部分是 <strong>C<sub>free</sub></strong>。</li>
+    <li>于是“给一个有形状的 arm 找路”变成了“在 C<sub>free</sub> 里给一个<strong>点</strong>找路”。</li>
+  </ul>
+  <p>代价是 C<sub>obs</sub> 的形状很怪，而且维度等于 DOF（6 或 7 维），没法显式画出来。下面用 2-link arm 把它画出来看一眼，因为只有 2 维的时候能画：</p>
+  <div class="lab">
+    <div class="lab-views two">
+      <div>
+        <h4>Workspace（拖动圆形障碍物）</h4>
+        <svg id="cs-svg" class="drag" viewBox="0 0 340 340" role="img" aria-label="2-link arm 和障碍物"></svg>
+      </div>
+      <div>
+        <h4>C-space：横轴 q₁，纵轴 q₂（点击或拖动来改变 arm 的姿态）</h4>
+        <canvas id="cs-cv" class="drag" width="720" height="720" role="img" aria-label="C-space 图"></canvas>
+      </div>
+    </div>
+    <div class="opts">
+      <button class="pre" id="cs-ss">把当前姿态设为 start</button>
+      <button class="pre" id="cs-sg">把当前姿态设为 goal</button>
+      <button class="pre" id="cs-plan">在 C-space 里跑 RRT</button>
+      <button class="pre" id="cs-play">▶ 沿 path 播放</button>
+      <span class="live" id="cs-out"></span>
+    </div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--line-strong);height:10px"></span>C<sub>obs</sub>：会碰撞的 configuration</span>
+      <span style="color:var(--ok)">● start</span><span style="color:var(--x)">● goal</span>
+      <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>RRT 找到的 path</span>
+    </div>
+    <p class="try"><b>试一试：</b>① 在右图里拖动：每个点对应左边 arm 的一个姿态，拖进灰色区域 arm 就撞了。② 拖动左边的一个圆，看右边对应的灰色区域怎么变：一个简单的圆在 C-space 里是一块形状奇怪的区域。③ 点“在 C-space 里跑 RRT”，再点播放：planner 只是在右图里给一个点找路，左边的 arm 就绕开了障碍。④ 把障碍物摆到让灰色区域把 start 和 goal 隔开，RRT 就找不到路。</p>
+  </div>
+  <p>注意 2-link arm 的两个角都是周期的（−180° 和 180° 是同一个姿态），所以这张图的左右边、上下边其实是粘在一起的，C-space 是一个 torus。这里的 RRT 为了简单没有处理这一点。</p>
+  <h3>Planner 的分类</h3>
+  <div class="tw"><table>
+    <tr><th>类别</th><th>代表</th><th>思路</th><th>适用</th></tr>
+    <tr><td>Grid / graph search</td><td>A*、Dijkstra</td><td>把 C-space 切成格子再搜索</td><td>低维（移动机器人的 2D / 3D）。格子数随维度指数增长，6 维以上不可行</td></tr>
+    <tr><td>Sampling-based</td><td>RRT、RRT-Connect、PRM、RRT*</td><td>不显式构造 C<sub>obs</sub>，只随机采样并调用 collision checker</td><td>高维 arm 的主流方法（§18）</td></tr>
+    <tr><td>Optimization-based</td><td>CHOMP、STOMP、TrajOpt</td><td>把一条初始 trajectory 当作优化变量，往低 cost 的方向推</td><td>要平滑、要快、障碍不太复杂（§19）</td></tr>
+  </table></div>
+  <p>描述 planner 好坏的术语：<strong>complete</strong>（有解就一定能找到，无解能报告无解）；<strong>resolution complete</strong>（在给定分辨率下 complete，如 A*）；<strong>probabilistically complete</strong>（有解的话，采样数趋于无穷时找到的概率趋于 1，如 RRT，但无解时不会停）；<strong>asymptotically optimal</strong>（采样数趋于无穷时收敛到最优解，如 RRT*）。</p>
+  <h3>Arm 的完整规划流程</h3>
+  <ol>
+    <li>目标 pose 用 IK 换成 goal configuration（可能有多个，都可以当 goal）。</li>
+    <li>在 joint space 里用 planner 找一条无碰撞的 <strong>path</strong>：只有几何，没有时间。</li>
+    <li>后处理：shortcut、smoothing。</li>
+    <li><strong>Time parameterization</strong>：在 velocity、acceleration 限制下给 path 配上时间，变成 <strong>trajectory</strong>。</li>
+    <li>controller 跟踪这条 trajectory（§20 – §22）。</li>
+  </ol>
+  <p>MoveIt 做的就是这一整套，其中第 2 步默认调用 OMPL 的 RRT-Connect。</p>
+</section>
+
+<section id="rrt">
+  <h2><span class="n">18</span>RRT 家族</h2>
+  <p><strong>Rapidly-exploring Random Tree</strong>：从 start 长一棵树，每次朝一个随机点的方向长一小步，直到碰到 goal。</p>
+  <pre>tree = {q_start}
+loop:
+    q_rand = 以概率 p 取 q_goal，否则在 C-space 里均匀随机采样      # goal bias
+    q_near = tree 里离 q_rand 最近的节点                        # nearest neighbor
+    q_new  = 从 q_near 朝 q_rand 走一步，步长不超过 step_size      # steer
+    if q_near → q_new 这一段不碰撞:                             # collision check
+        把 q_new 加进 tree，parent 设为 q_near
+        if q_new 离 q_goal 足够近: 沿 parent 指针回溯，得到 path，结束</pre>
+  <h3>为什么它探索得快</h3>
+  <p>树上每个节点“负责”C-space 里离它最近的那片区域（Voronoi region）。树边缘的节点面对着大片空白，Voronoi region 最大，随机点落进去的概率也最大，所以它们最常被选中去延伸。结果是树天然地被拉向还没探索过的地方，这叫 <strong>Voronoi bias</strong>。下面实验台刚开始的几十步可以清楚看到树先伸向四面八方。</p>
+  <div class="lab">
+    <div class="lab-views one">
+      <div>
+        <h4>拖动 <span style="color:var(--ok)">start</span> 和 <span style="color:var(--x)">goal</span>；点“运行”看树生长</h4>
+        <svg id="rrt-svg" class="drag" viewBox="0 0 600 380" role="img" aria-label="RRT 生长过程"></svg>
+      </div>
+    </div>
+    <div class="opts">
+      <label>算法 <select id="rrt-algo"><option value="rrt" selected>RRT</option><option value="star">RRT*</option></select></label>
+      <label>地图 <select id="rrt-map"><option value="clutter" selected>散布的障碍</option><option value="narrow">narrow passage</option><option value="trap">bug trap</option><option value="empty">空场地</option></select></label>
+      <button class="pre" id="rrt-run">▶ 运行</button>
+      <button class="pre" id="rrt-one">单步</button>
+      <button class="pre" id="rrt-reset">重置</button>
+      <button class="pre" id="rrt-short">shortcut smoothing</button>
+    </div>
+    <div class="ctl" id="rrt-ctl"></div>
+    <div class="out">
+      <div class="blk"><div class="kv" id="rrt-out"></div></div>
+      <div class="blk"><div class="legend" style="margin-top:0">
+        <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>当前 path</span>
+        <span style="color:var(--ok)"><span class="sw" style="background:var(--ok)"></span>shortcut 之后</span>
+        <span style="color:var(--ray)">○ 最近一次的随机采样点</span>
+      </div></div>
+    </div>
+    <p class="try"><b>试一试：</b>① 用“单步”点十几下，看每一步：橙色圈是采样点，树上离它最近的节点朝它长一段。② RRT 跑完后 path 是歪歪扭扭的，点 shortcut smoothing 看长度变化。③ 换成 RRT* 重新跑：找到第一条 path 后它不停，继续采样并 rewire，path 越来越直，长度读数持续下降。④ 选 narrow passage：左边很快铺满，但要很多次采样才能碰巧穿过窄缝，有时到节点上限都穿不过去。这是 sampling-based planner 的经典弱点。⑤ 选 bug trap，把 goal bias 拉到 60%：树一直往墙上撞，反而更慢。把 step size 调大调小各试一次。</p>
+  </div>
+  <h3>三个参数</h3>
+  <ul>
+    <li><strong>Step size</strong>：太大，在障碍多的地方每次延伸都撞，树长不动；太小，要很多节点才能铺开。</li>
+    <li><strong>Goal bias</strong>：通常 5% – 10%。为 0 时只能靠运气碰到 goal；太大时树被障碍挡住仍一味朝 goal 长，失去探索能力。</li>
+    <li><strong>Collision check 的分辨率</strong>：一条 edge 是按固定间隔采点检查的。间隔太大可能“穿过”薄的障碍。它也是整个算法最耗时的部分，通常占 90% 以上的时间。</li>
+  </ul>
+  <h3>性质</h3>
+  <ul>
+    <li>probabilistically complete；<strong>不 optimal</strong>，path 通常绕远而且有很多折角，必须后处理。</li>
+    <li>single-query：每次规划从头建树。不需要预先构造 C-space。对高维有效。</li>
+    <li>narrow passage 是弱点：窄缝的体积在整个 C-space 里占比很小，采样很难落进去。</li>
+    <li>无解时不会停，只能设超时。</li>
+  </ul>
+  <h3>变体</h3>
+  <div class="tw"><table>
+    <tr><th>名字</th><th>改了什么</th><th>效果</th></tr>
+    <tr><td><strong>RRT-Connect</strong></td><td>从 start 和 goal 各长一棵树；每次一棵树延伸后，另一棵树贪心地一直朝新节点长（connect），直到连上或撞到障碍</td><td>实际中比单棵树快很多。MoveIt / OMPL 的默认 planner</td></tr>
+    <tr><td><strong>RRT*</strong></td><td>加入新节点时多做两步：① <em>choose parent</em>：在附近半径 r 内找一个让 cost-to-come 最小的节点当 parent；② <em>rewire</em>：看附近的节点改成经过新节点会不会更短，会就改 parent。r 随节点数 n 按 <span class="m">(log n / n)<sup>1/d</sup></span> 缩小</td><td>asymptotically optimal；每步更贵，收敛慢</td></tr>
+    <tr><td><strong>Informed RRT*</strong></td><td>找到第一条 path 后，只在“可能让 path 变短”的椭球区域里采样（以 start、goal 为焦点）</td><td>收敛快得多</td></tr>
+    <tr><td><strong>Kinodynamic RRT</strong></td><td>不采样位置而是采样 control input，用动力学前向积分来延伸</td><td>能处理不能随意转向的系统（车、无人机）</td></tr>
+    <tr><td><strong>PRM</strong></td><td>不是树。先随机撒很多点，把相邻且无碰撞的点连成一张 graph（roadmap），之后每次查询在 graph 上跑 A*</td><td>multi-query：环境不变、要规划很多次时划算</td></tr>
+  </table></div>
+  <h3>后处理：shortcut smoothing</h3>
+  <p>在 path 上随机挑两个点，如果它们之间的直线段不碰撞，就把中间的部分全部换成这条直线段。重复几百次。简单、有效，几乎所有 sampling-based planner 的输出都会过这一步。之后还可以再用 spline 拟合或者交给 §19 的 trajectory optimization 进一步打磨。</p>
+</section>
+
+<section id="trajopt">
+  <h2><span class="n">19</span>Trajectory optimization</h2>
+  <p>换一个思路：不去“搜索”一条路，而是先随便给一条 trajectory（比如从 start 到 goal 的直线，哪怕它穿过障碍），然后把它当成<strong>优化变量</strong>，一点点往好的方向推。</p>
+  <div class="eq">ξ = (q₁, q₂, …, q<sub>N</sub>)                         trajectory 离散成 N 个 waypoint
+
+min<sub>ξ</sub>   U(ξ) = w<sub>smooth</sub> · Σ ‖q<sub>k+1</sub> − q<sub>k</sub>‖²  +  w<sub>obs</sub> · Σ c( d(q<sub>k</sub>) )
+          └──── smoothness ────┘       └── obstacle ──┘
+s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</div>
+  <ul>
+    <li><strong>Smoothness cost</strong>：相邻 waypoint 的差的平方和，相当于把 trajectory 当成一根橡皮筋，自然状态是拉直的。也可以用 acceleration 或 jerk 的平方。</li>
+    <li><strong>Obstacle cost</strong>：<span class="m">d</span> 是到最近障碍的 signed distance（通常预先算成一张 signed distance field）。<span class="m">c(d)</span> 在离障碍超过安全距离 ε 时为 0，越近越大。它的 gradient 指向远离障碍的方向。</li>
+  </ul>
+  <p>优化的过程就是这两股力的平衡：obstacle cost 把 trajectory 推离障碍，smoothness cost 把它拉直。</p>
+  <div class="lab">
+    <div class="lab-views one">
+      <div>
+        <h4>拖动障碍物；trajectory 会一边被你拖着的障碍推开一边重新收紧</h4>
+        <svg id="to-svg" class="drag" viewBox="0 0 600 340" role="img" aria-label="trajectory optimization 演示"></svg>
+      </div>
+    </div>
+    <div class="opts">
+      <label>初始 trajectory <select id="to-init"><option value="line" selected>直线</option><option value="up">向上弯</option><option value="down">向下弯</option></select></label>
+      <button class="pre" id="to-run">▶ 运行</button>
+      <button class="pre" id="to-reset">重置</button>
+      <button class="pre" id="to-kick">加一点随机扰动</button>
+    </div>
+    <div class="ctl" id="to-ctl"></div>
+    <div class="out">
+      <div class="blk"><div class="kv" id="to-out"></div></div>
+      <div class="blk"><h4>total cost 随迭代的变化</h4><svg id="to-plot" viewBox="0 0 300 90" style="width:100%;height:auto;display:block"></svg></div>
+    </div>
+    <p class="try"><b>试一试：</b>① 点运行，看直线被推出障碍。② 运行中拖动障碍物，trajectory 实时跟着变形：这就是 optimization-based 方法适合做 replanning 的原因。③ 把初始 trajectory 换成“向上弯”和“向下弯”分别运行：最后停在障碍的不同侧。gradient descent 只能找到离初值最近的 local minimum，不会自己翻过障碍去试另一边。④ 把 w<sub>obs</sub> 拉到很小：trajectory 宁可擦着障碍也要直。⑤ 把一个障碍的圆心正好拖到直线上再重置运行：两侧的推力对称，可能卡住。点“加一点随机扰动”帮它跳出来，这是 STOMP 的思路。</p>
+  </div>
+  <h3>三个代表算法</h3>
+  <div class="tw"><table>
+    <tr><th>算法</th><th>怎么优化</th><th>要点</th></tr>
+    <tr><td><strong>CHOMP</strong></td><td>covariant gradient descent：<span class="m">ξ ← ξ − η · A⁻¹ ∇U</span></td><td>A 是 smoothness cost 的 Hessian。乘 <span class="m">A⁻¹</span> 的效果是：某一个 waypoint 受到的推力会平滑地分摊到整条 trajectory 上，而不是只把那一个点顶出去。上面的实验台用的就是这个更新</td></tr>
+    <tr><td><strong>STOMP</strong></td><td>不用 gradient。每轮在当前 trajectory 周围采样一批带噪声的 trajectory，按 cost 加权平均</td><td>cost 可以不可导（比如直接用 collision checker 的 0/1 结果）；随机性有助于跳出 local minimum</td></tr>
+    <tr><td><strong>TrajOpt</strong></td><td>sequential convex optimization（SQP）：每轮把问题在当前点附近近似成 QP 来解</td><td>碰撞写成约束（带 hinge penalty），不是 cost；用 convex shape 之间的 signed distance；检查相邻 waypoint 之间扫过的体积，不容易漏掉薄障碍</td></tr>
+  </table></div>
+  <p>带动力学的版本（iLQR、DDP、direct collocation）和把它在线滚动执行的 MPC，是同一个思路的延伸。</p>
+  <h3>Sampling-based 和 optimization-based 的对比</h3>
+  <div class="tw"><table>
+    <tr><th></th><th>Sampling-based（RRT 等）</th><th>Optimization-based（CHOMP 等）</th></tr>
+    <tr><td>找到解的保证</td><td>probabilistically complete</td><td>没有保证，可能卡在 local minimum，甚至停在碰撞状态</td></tr>
+    <tr><td>解的质量</td><td>折线，要后处理</td><td>直接就是平滑的</td></tr>
+    <tr><td>对初值的依赖</td><td>无</td><td>强</td></tr>
+    <tr><td>速度</td><td>复杂环境里可靠但慢</td><td>简单环境里很快（几十毫秒）</td></tr>
+    <tr><td>复杂约束、narrow passage</td><td>narrow passage 慢，但最终能过</td><td>可以自然地加各种 cost 和约束；narrow passage 容易失败</td></tr>
+  </table></div>
+  <p>实际系统经常两者结合：先用 RRT-Connect 找一条可行的 path，再用它做初值交给 trajectory optimization 打磨。</p>
+  <h3>Path 和 trajectory</h3>
+  <p><strong>Path</strong> 只有几何：<span class="m">q(s), s ∈ [0, 1]</span>。<strong>Trajectory</strong> 带时间：<span class="m">q(t)</span>，于是有 velocity 和 acceleration。从 path 到 trajectory 的那一步叫 time parameterization，常见的做法：</p>
+  <ul>
+    <li><strong>Trapezoidal velocity profile</strong>：匀加速 → 匀速 → 匀减速。最简单，acceleration 不连续。</li>
+    <li><strong>Cubic polynomial</strong>：4 个系数，满足两端的 position 和 velocity。acceleration 连续但两端不为 0。</li>
+    <li><strong>Quintic polynomial</strong>：6 个系数，满足两端的 position、velocity、acceleration。jerk 有界，运动更柔和。</li>
+    <li><strong>Time-optimal parameterization</strong>（TOPP-RA、MoveIt 的 TOTG）：沿给定 path，在每个关节的 velocity / acceleration 限制内尽可能快。</li>
+  </ul>
+</section>
+
+<section id="pid">
+  <h2><span class="n">20</span>PID control</h2>
+  <p>有了 trajectory <span class="m">q<sub>d</sub>(t)</span>，还需要让电机真的跟上它。最基本的 feedback controller 是 PID：根据误差 <span class="m">e = q<sub>d</sub> − q</span> 算控制量 u。</p>
+  <div class="eq">u(t) = K<sub>p</sub> · e(t)  +  K<sub>i</sub> · ∫e(τ)dτ  +  K<sub>d</sub> · ė(t)
+        现在         过去          未来</div>
+  <figure class="fig">
+    <svg viewBox="0 0 680 150" role="img" aria-label="PID feedback loop 框图">
+      <text x="14" y="64" class="d-s">reference r</text>
+      <line x1="84" y1="60" x2="118" y2="60" class="d-ln" marker-end="url(#arr2)"/>
+      <circle cx="132" cy="60" r="12" class="d-box"/><text x="132" y="65" text-anchor="middle" class="d-t">Σ</text><text x="114" y="50" class="d-s">+</text><text x="140" y="88" class="d-s">−</text>
+      <line x1="146" y1="60" x2="196" y2="60" class="d-ln" marker-end="url(#arr2)"/><text x="170" y="52" text-anchor="middle" class="d-s">e</text>
+      <rect x="200" y="32" width="120" height="56" rx="6" class="d-hbox"/><text x="260" y="56" text-anchor="middle" class="d-t">PID</text><text x="260" y="76" text-anchor="middle" class="d-s">Kp, Ki, Kd</text>
+      <line x1="322" y1="60" x2="376" y2="60" class="d-ln" marker-end="url(#arr2)"/><text x="348" y="52" text-anchor="middle" class="d-s">u</text>
+      <rect x="380" y="32" width="100" height="56" rx="6" class="d-box"/><text x="430" y="56" text-anchor="middle" class="d-t">saturation</text><text x="430" y="76" text-anchor="middle" class="d-s">±u_max</text>
+      <line x1="482" y1="60" x2="526" y2="60" class="d-ln" marker-end="url(#arr2)"/>
+      <rect x="530" y="32" width="90" height="56" rx="6" class="d-box"/><text x="575" y="56" text-anchor="middle" class="d-t">plant</text><text x="575" y="76" text-anchor="middle" class="d-s">电机 + link</text>
+      <line x1="575" y1="6" x2="575" y2="28" class="d-ln" marker-end="url(#arr2)"/><text x="584" y="18" class="d-s">disturbance d</text>
+      <line x1="622" y1="60" x2="668" y2="60" class="d-ln" marker-end="url(#arr2)"/><text x="646" y="52" text-anchor="middle" class="d-s">y</text>
+      <polyline points="646,60 646,124 132,124 132,76" class="d-ln" marker-end="url(#arr2)"/><text x="390" y="140" text-anchor="middle" class="d-s">measurement（encoder）</text>
+    </svg>
+  </figure>
+  <h3>三项各自干什么</h3>
+  <div class="tw"><table>
+    <tr><th>项</th><th>作用</th><th>单独用的问题</th></tr>
+    <tr><td><strong>P</strong>（proportional）</td><td>误差越大推得越用力。像一根连着目标的弹簧</td><td>只有弹簧没有阻尼，会 overshoot 和振荡；有恒定 disturbance（重力、摩擦）时停在 <span class="m">e = d / K<sub>p</sub></span> 处，有 steady-state error</td></tr>
+    <tr><td><strong>I</strong>（integral）</td><td>把误差累加起来。只要误差不为 0 它就一直增长，直到把误差推到 0。消除 steady-state error</td><td>反应慢；加大 overshoot；会 windup</td></tr>
+    <tr><td><strong>D</strong>（derivative）</td><td>看误差的变化趋势，快到目标时提前刹车。像 damper，增加阻尼、减小 overshoot</td><td>放大 measurement noise；对恒定误差没有作用</td></tr>
+  </table></div>
+  <p>把 PD 控制用在一个质量 m 上：<span class="m">m ẍ = K<sub>p</sub>(x<sub>d</sub> − x) − K<sub>d</sub> ẋ</span>，这就是一个 mass–spring–damper，<span class="m">K<sub>p</sub></span> 是 spring stiffness，<span class="m">K<sub>d</sub></span> 是 damping：</p>
+  <div class="eq">natural frequency  ω<sub>n</sub> = √(K<sub>p</sub> / m)          damping ratio  ζ = K<sub>d</sub> / (2√(K<sub>p</sub> m))
+
+ζ &lt; 1 underdamped（振荡）      ζ = 1 critically damped（最快且不 overshoot）      ζ &gt; 1 overdamped（慢）</div>
+  <p>这个“虚拟弹簧 + 阻尼”的图像在 §22 的 impedance control 里会再次出现。</p>
+  <div class="lab">
+    <div class="lab-views one">
+      <div>
+        <h4>Step response：plant 是 m ẍ + b ẋ = u − d（m = 1，b = 1）。t = 0 时 reference 从 0 跳到 1；t = 3 s 时加上恒定 disturbance d</h4>
+        <svg id="pid-svg" viewBox="0 0 680 400" role="img" aria-label="PID step response"></svg>
+      </div>
+    </div>
+    <div class="presets">预设：
+      <button class="pre" data-pid="20,0,0,2,50,0,0,0">只有 P</button>
+      <button class="pre" data-pid="40,0,12,2,50,0,0,0">PD</button>
+      <button class="pre" data-pid="80,60,16,2,50,0,0,0">PID</button>
+      <button class="pre" data-pid="200,0,2,2,50,0,0,0">K<sub>p</sub> 太大</button>
+      <button class="pre" data-pid="30,60,8,2,6,0,0,0">windup（u<sub>max</sub> 很小）</button>
+      <button class="pre" data-pid="80,60,16,2,50,0.001,0,0">有 sensor noise</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="pid-aw">anti-windup（saturate 时停止积分）</label>
+    </div>
+    <div class="ctl" id="pid-ctl"></div>
+    <div class="out">
+      <div class="blk"><h4>前 3 s（step response）</h4><div class="kv" id="pid-m1"></div></div>
+      <div class="blk"><h4>后 3 s（disturbance rejection）</h4><div class="kv" id="pid-m2"></div></div>
+    </div>
+    <p class="try"><b>试一试：</b>按顺序点预设。① “只有 P”：振荡，而且 3 s 之后被 disturbance 推开回不来，steady-state error = d / K<sub>p</sub> = 0.1。② “PD”：振荡没了，但 steady-state error 还在。③ “PID”：3 s 之后被推开，然后 I 项把它拉回 1，steady-state error 消除；代价是 step response 又有了一点 overshoot。④ “windup”：u 被卡在 u<sub>max</sub>，期间 I 项一直在累加，到了目标也刹不住，大幅 overshoot。勾上 anti-windup 再看。⑤ “有 sensor noise”：看下面 u 的曲线，D 项把 noise 放大了。把 D filter 的时间常数调到 0.02 s 再看。</p>
+  </div>
+  <h3>调参</h3>
+  <div class="tw"><table>
+    <tr><th>把它调大</th><th>Rise time</th><th>Overshoot</th><th>Settling time</th><th>Steady-state error</th></tr>
+    <tr><td class="m">K<sub>p</sub></td><td>变短</td><td>变大</td><td>变化不大</td><td>变小</td></tr>
+    <tr><td class="m">K<sub>i</sub></td><td>变短</td><td>变大</td><td>变长</td><td>消除</td></tr>
+    <tr><td class="m">K<sub>d</sub></td><td>变化不大</td><td>变小</td><td>变短</td><td>无影响</td></tr>
+  </table></div>
+  <ul>
+    <li><strong>手动调</strong>：先全设为 0。加 <span class="m">K<sub>p</sub></span> 到响应够快、开始振荡；加 <span class="m">K<sub>d</sub></span> 把振荡压下去；最后加一点 <span class="m">K<sub>i</sub></span> 消除 steady-state error。</li>
+    <li><strong>Ziegler–Nichols</strong>：只用 P，加大到等幅振荡，记下此时的 gain <span class="m">K<sub>u</sub></span> 和振荡周期 <span class="m">T<sub>u</sub></span>，取 <span class="m">K<sub>p</sub> = 0.6K<sub>u</sub></span>、<span class="m">K<sub>i</sub> = 1.2K<sub>u</sub>/T<sub>u</sub></span>、<span class="m">K<sub>d</sub> = 0.075K<sub>u</sub>T<sub>u</sub></span>。结果偏激进，当作起点。</li>
+  </ul>
+  <h3>实际实现里必须处理的事</h3>
+  <ul>
+    <li><strong>Integral windup</strong>：actuator saturate 时误差消不掉，积分项越积越大；等误差反向后要很久才能“放完”，造成大 overshoot。Anti-windup：saturate 时停止积分（clamping / conditional integration），或者把超出部分反馈回去减小积分（back-calculation），或者直接给积分项设上下限。</li>
+    <li><strong>Derivative kick</strong>：reference 突变时 <span class="m">ė</span> 是一个尖峰。改成只对 measurement 求导：用 <span class="m">−K<sub>d</sub> ẏ</span> 代替 <span class="m">K<sub>d</sub> ė</span>。</li>
+    <li><strong>Noise</strong>：求导放大高频 noise。给 D 项加 low-pass filter，或者直接用 velocity sensor / encoder 差分后滤波的速度。</li>
+    <li><strong>Feedforward</strong>：已知的东西不要等误差出现再纠正。<span class="m">u = u<sub>ff</sub> + PID(e)</span>，比如 gravity compensation、按期望 acceleration 算出的 torque。feedback 只负责处理模型没覆盖的部分。</li>
+    <li><strong>Sampling rate</strong>：离散实现里 loop 频率要远高于系统带宽，<span class="m">dt</span> 要稳定。关节层的 loop 通常是 1 kHz 或更高。</li>
+    <li><strong>Cascaded loops</strong>：电机驱动里通常是 position loop → velocity loop → current（torque）loop 三层嵌套，内层比外层快一个量级。</li>
+  </ul>
+  <pre>integral, prev_y = 0.0, y0
+def pid_step(r, y, dt):
+    global integral, prev_y
+    e = r - y
+    d = -(y - prev_y) / dt                 # derivative on measurement，避免 derivative kick
+    u = Kp * e + Ki * integral + Kd * d
+    u_sat = clip(u, -u_max, u_max)
+    if u == u_sat or e * u < 0:            # anti-windup：saturate 且还在往同方向推时不再积分
+        integral += e * dt
+    prev_y = y
+    return u_sat</pre>
+</section>
+
+<section id="armctl">
+  <h2><span class="n">21</span>从 PID 到 arm control</h2>
+  <p>单个关节可以当成一个独立的 plant 来调 PID，但 arm 是多个关节耦合在一起的。它的 dynamics：</p>
+  <div class="eq">M(q) q̈  +  C(q, q̇) q̇  +  g(q)  =  τ  +  Jᵀ F<sub>ext</sub>
+inertia    Coriolis/centrifugal  gravity   电机    外力</div>
+  <ul>
+    <li><span class="m">M(q)</span>：inertia matrix，随姿态变化。arm 伸直时 shoulder 感受到的 inertia 比收拢时大得多。非对角元素表示关节之间的耦合：一个关节加速会在别的关节上产生 torque。</li>
+    <li><span class="m">g(q)</span>：重力在各关节上产生的 torque，也随姿态变化。</li>
+  </ul>
+  <p>从简单到复杂的几种控制方案：</p>
+  <div class="tw"><table>
+    <tr><th>方案</th><th>Control law</th><th>说明</th></tr>
+    <tr><td>Independent joint PID</td><td class="m">τ<sub>i</sub> = PID(q<sub>d,i</sub> − q<sub>i</sub>)</td><td>把耦合和重力都当成 disturbance。减速比大的工业臂上很好用：减速器把 link 侧的动力学缩小了减速比的平方倍，电机几乎只看到自己的 rotor</td></tr>
+    <tr><td>PD + gravity compensation</td><td class="m">τ = K<sub>p</sub>e + K<sub>d</sub>ė + g(q)</td><td>用模型直接抵消重力，不需要 I 项。对定点控制可以证明全局稳定。torque-controlled arm 上最常用的基础 controller</td></tr>
+    <tr><td>Computed torque control（inverse dynamics control）</td><td class="m">τ = M(q)·(q̈<sub>d</sub> + K<sub>d</sub>ė + K<sub>p</sub>e) + C q̇ + g</td><td>用完整模型抵消所有非线性，剩下的误差动力学是线性、解耦的：<span class="m">ë + K<sub>d</sub>ė + K<sub>p</sub>e = 0</span>。高速跟踪性能好，但依赖准确的模型</td></tr>
+    <tr><td>Operational space control</td><td class="m">τ = Jᵀ F + …</td><td>直接在 task space 里设计 control law，再用 <span class="m">Jᵀ</span> 映射成关节 torque。impedance control 属于这一类</td></tr>
+  </table></div>
+  <p>一个硬件上的区分：<strong>position-controlled</strong> 的机器人（多数工业臂、UR 的常规接口）对外只接受 position / velocity 指令，内部的高增益 loop 你碰不到；<strong>torque-controlled</strong> 的机器人（Franka、iiwa）带 joint torque sensor，允许以 1 kHz 直接发 torque 指令。后三种方案和下一节的 impedance control 需要后者。</p>
+</section>
+
+<section id="impedance">
+  <h2><span class="n">22</span>Impedance control</h2>
+  <h3>为什么接触任务不能只用 position control</h3>
+  <p>position controller 的目标是不惜代价消除位置误差，gain 很高，等效于一根很硬的弹簧。在自由空间里这很好。但一旦要接触环境（插孔、擦桌子、拧螺丝、开门），环境也很硬：目标位置只要比实际表面深 1 mm，高 stiffness 乘上这 1 mm 就是很大的力；如果还有 I 项，力会一直累加到电机饱和。结果是损坏零件、触发保护停机，或者把东西推飞。而位置误差 1 mm 是很正常的（标定、感知误差都在这个量级）。</p>
+  <p>反过来，pure force control 在没有接触时没有东西可以“推”，会一直加速。</p>
+  <h3>思路：控制力和运动之间的关系</h3>
+  <p>impedance control 不去单独控制位置或者力，而是规定<strong>末端被推离目标时应该怎样回应</strong>。让末端表现得像一个连在目标位置上的 mass–spring–damper：</p>
+  <div class="eq">F = K · (x<sub>d</sub> − x) + D · (ẋ<sub>d</sub> − ẋ)                  想要的末端行为：虚拟 spring + damper
+τ = Jᵀ F + g(q)                                映射成关节 torque，并补偿重力</div>
+  <figure class="fig">
+    <svg viewBox="0 0 680 120" role="img" aria-label="虚拟 spring 和 damper 把末端连到目标位置">
+      <line x1="40" y1="20" x2="40" y2="100" class="d-ln"/>
+      <text x="40" y="114" text-anchor="middle" class="d-s">x_d（目标）</text>
+      <polyline points="40,42 70,42 80,30 100,54 120,30 140,54 160,30 180,54 190,42 250,42" class="d-acc"/><text x="130" y="22" text-anchor="middle" class="d-a">K（stiffness）</text>
+      <polyline points="40,78 120,78" class="d-acc"/><polyline points="120,66 120,90 170,90" class="d-acc"/><polyline points="120,66 170,66" class="d-acc"/><polyline points="145,70 145,86" class="d-acc"/><polyline points="145,78 250,78" class="d-acc"/><text x="150" y="108" text-anchor="middle" class="d-a">D（damping）</text>
+      <rect x="250" y="30" width="90" height="60" rx="6" class="d-box"/><text x="295" y="58" text-anchor="middle" class="d-t">末端</text><text x="295" y="76" text-anchor="middle" class="d-s">x</text>
+      <line x1="430" y1="60" x2="346" y2="60" class="d-ln" marker-end="url(#arr2)"/><text x="392" y="50" text-anchor="middle" class="d-s">F_ext</text>
+      <rect x="440" y="20" width="14" height="80" class="d-box"/><text x="520" y="64" text-anchor="middle" class="d-s">环境 / 人的手</text>
+    </svg>
+    <figcaption>K 小：软，被推就让，接触力小，位置精度差。K 大：硬，接近 position control。K 和 D 不是为了“调到误差最小”，而是任务对交互行为的规定。</figcaption>
+  </figure>
+  <ul>
+    <li><strong>不需要 force sensor</strong>：力是通过 <span class="m">Jᵀ</span> 和电机 torque 实现的。但需要 torque-controlled 的机器人，而且关节摩擦要小或者有 joint torque sensor 做补偿。</li>
+    <li><strong>稳态接触力可以预测</strong>：末端被表面挡住时，<span class="m">F = K · (x<sub>d</sub> − x<sub>surface</sub>)</span>。想用 5 N 的力压住桌面，就把目标设在桌面以下 <span class="m">5/K</span> 米处。</li>
+    <li><strong>各方向可以不同</strong>：K 是一个矩阵。插孔时，沿孔的方向硬一点（要推进去），横向软一点（让孔壁把 peg 自然导正）。</li>
+    <li><strong>D 的选择</strong>：按 critical damping，<span class="m">D = 2ζ√(K·m)</span>，ζ 取 0.7 – 1。</li>
+    <li><strong>没有 I 项</strong>：I 项会把“被挡住的位置误差”一直累加成越来越大的力，正好破坏了 compliance。</li>
+  </ul>
+  <div class="lab">
+    <div class="lab-views one">
+      <div>
+        <h4>1-D 仿真：质量 m = 1 kg 的末端从 x = 0 出发，目标在 2.5 s 内匀速移到 x<sub>d</sub>；途中有一面很硬的墙（stiffness 20 000 N/m）</h4>
+        <svg id="imp-svg" viewBox="0 0 680 430" role="img" aria-label="impedance control 接触仿真"></svg>
+      </div>
+    </div>
+    <div class="presets">预设：
+      <button class="pre" data-imp="200,1,0.6,0.5,0">compliant（K = 200）</button>
+      <button class="pre" data-imp="3000,1,0.6,0.5,0">stiff（K = 3000）</button>
+      <button class="pre" data-imp="3000,1,0.6,0.5,3000">stiff + I 项（像 position controller）</button>
+      <button class="pre" data-imp="200,0.2,0.6,0.5,0">damping 太小</button>
+      <button class="pre" data-imp="200,1,0.4,0.5,0">目标在墙前面（不接触）</button>
+    </div>
+    <div class="ctl" id="imp-ctl"></div>
+    <div class="out">
+      <div class="blk"><div class="kv" id="imp-out"></div></div>
+    </div>
+    <p class="try"><b>试一试：</b>① “compliant”：目标在墙后 10 cm，撞上时有一个约 30 N 的峰值，随后稳定在 K × 0.1 ≈ 20 N。② “stiff”：同样的 10 cm 误差，稳态接触力约 260 N。③ “stiff + I 项”：力不停地涨，直到 actuator 饱和（上限 400 N）。这就是 position controller 顶到障碍物时发生的事。④ “damping 太小”：撞墙后反复弹跳。⑤ 拖 x<sub>d</sub> 滑块，验证稳态力 ≈ K·(x<sub>d</sub> − x<sub>wall</sub>)。</p>
+  </div>
+  <h3>Impedance 与 admittance</h3>
+  <p>两者追求同一个目标行为（让末端像 mass–spring–damper），因果方向相反：</p>
+  <div class="tw"><table>
+    <tr><th></th><th>Impedance control</th><th>Admittance control</th></tr>
+    <tr><td>输入 → 输出</td><td>测量<strong>运动</strong>（位置偏差）→ 输出<strong>力</strong></td><td>测量<strong>力</strong>（force/torque sensor）→ 输出<strong>运动</strong>（位置指令）</td></tr>
+    <tr><td>需要的硬件</td><td>torque-controlled arm（Franka、iiwa）</td><td>position-controlled arm + wrist F/T sensor（UR、多数工业臂）</td></tr>
+    <tr><td>擅长</td><td>和硬的环境接触时稳定</td><td>自由空间里位置准（底层还是高增益 position loop）</td></tr>
+    <tr><td>弱点</td><td>自由空间里受摩擦和模型误差影响，位置精度差；很难渲染出很大的 stiffness</td><td>和很硬的环境接触时容易不稳定（振荡）；受 sensor noise 和 delay 影响</td></tr>
+  </table></div>
+  <h3>相关概念</h3>
+  <ul>
+    <li><strong>Hybrid position / force control</strong>：把 task space 的方向分成两组。被环境约束住的方向（如垂直于桌面）做 force control，自由的方向（沿桌面）做 position control，用一个 selection matrix 切换。需要知道接触的几何。</li>
+    <li><strong>Joint impedance</strong>：同样的想法用在 joint space：<span class="m">τ = K(q<sub>d</sub> − q) + D(q̇<sub>d</sub> − q̇) + g(q)</span>。形式上就是低增益的 PD + gravity compensation。</li>
+    <li><strong>Variable impedance</strong>：K 随任务阶段变化：自由运动时硬，接近接触时变软。也可以让 learning policy 输出 K。</li>
+    <li>和 PD 的关系：公式几乎一样。区别在出发点：PD 调 gain 是为了让 tracking error 尽量小；impedance control 的 K、D 是对交互行为的规定，会故意取小，并且依靠模型补偿（重力、惯性）而不是高增益来保证自由空间里的精度。</li>
+  </ul>
+</section>
+
+<div class="part" id="part-c">
+  <span class="tag">REVIEW</span>
+  <h2>面试题与速查</h2>
+  <p>先遮住答案自己说一遍，再展开对照。答案写成面试时能直接说出口的长度。</p>
+</div>
+
+<section id="qa">
+  <h2><span class="n">23</span>面试题与答案</h2>
+  <div class="qa-tools"><button class="pre" id="qa-open">全部展开</button><button class="pre" id="qa-close">全部折叠</button></div>
+
+  <h3>Rotation 与 transform</h3>
+  <details class="qa"><summary>1. Rotation matrix 的三列代表什么？为什么它的 inverse 等于 transpose？</summary><div class="a">
+    <p><span class="m">R<sub>a_b</sub></span> 的三列是 frame b 的 x、y、z 轴在 frame a 里的坐标。三根轴互相垂直且长度为 1，所以 <span class="m">RᵀR</span> 的每个元素是两列的内积：对角线是 1，其余是 0，即 <span class="m">RᵀR = I</span>，于是 <span class="m">R⁻¹ = Rᵀ</span>。几何上，transpose 之后行变成列，得到的是 a 的轴在 b 里的坐标，正好是反方向的 rotation。</p>
+  </div></details>
+  <details class="qa"><summary>2. 一个 3×3 矩阵满足什么条件才是 rotation matrix？测量得到的 R 不满足怎么办？</summary><div class="a">
+    <p><span class="m">RᵀR = I</span> 且 <span class="m">det(R) = +1</span>。det 为 −1 的是 reflection。带噪声的估计值通常不严格满足，做 SVD <span class="m">R = UΣVᵀ</span>，取 <span class="m">UVᵀ</span>；如果它的 det 是 −1，把 U 的最后一列取反再乘。这给出 Frobenius norm 意义下最近的 rotation。</p>
+  </div></details>
+  <details class="qa"><summary>3. Gimbal lock 是什么？怎么避免？</summary><div class="a">
+    <p>用 Euler angles 时，中间那个角转到特定值（ZYX 顺序下是 pitch = ±90°），第一根和第三根转轴变得共线，三个角只能表达两个方向的转动，丢了一个自由度。表现为同一姿态对应无穷多组角度、反解时角度突变、Euler rate 到 angular velocity 的矩阵不可逆。</p>
+    <p>它是参数化的 singularity，不是物体真的卡住。任何 3 参数表示都有。避免方法：内部计算、存储、插值用 quaternion 或 rotation matrix，只在显示给人看时转成 Euler angles；或者选一个让 singularity 落在工作范围之外的轴顺序。</p>
+  </div></details>
+  <details class="qa"><summary>4. 为什么大家用 quaternion？它有什么缺点？</summary><div class="a">
+    <p>优点：没有 gimbal lock；只有 4 个数；组合是一次 quaternion 乘法，比矩阵便宜；数值漂移后 normalize 一下就修正了，而修正 rotation matrix 要做 SVD；插值（SLERP）简单且走最短路径。</p>
+    <p>缺点：不直观；有 double cover（q 和 −q 是同一个 rotation）；有 unit norm 约束，放进 optimizer 时要用 3 维的 local 增量；存储顺序（wxyz / xyzw）和 Hamilton / JPL convention 容易混。</p>
+  </div></details>
+  <details class="qa"><summary>5. q 和 −q 表示同一个 rotation，实际中会带来什么问题？</summary><div class="a">
+    <ul>
+      <li>插值：不检查符号会绕远路。SLERP 前若 <span class="m">q₀·q₁ &lt; 0</span>，把一个取反。</li>
+      <li>比较和 loss：要用 <span class="m">|q₁·q₂|</span>，不能逐分量相减。</li>
+      <li>时间序列：逐帧从 R 提取的 q 可能突然变号，滤波或求导前要对齐符号。</li>
+      <li>平均：先统一符号再平均并 normalize（或者用基于特征向量的方法）。</li>
+      <li>反馈控制：误差 quaternion 的 w 为负时取反，否则会朝大于 180° 的方向转。</li>
+    </ul>
+  </div></details>
+  <details class="qa"><summary>6. 怎么在两个 orientation 之间插值？为什么不直接对 Euler angles 做线性插值？</summary><div class="a">
+    <p>用 SLERP：<span class="m">[sin((1−t)Ω)q₀ + sin(tΩ)q₁] / sin Ω</span>，其中 <span class="m">cos Ω = q₀·q₁</span>。它等价于绕一根固定轴匀速转过去，是最短路径，angular velocity 恒定。先做 shortest-path 检查；Ω 很小时退化为 lerp 再 normalize。等价的写法是 <span class="m">R(t) = R₀ · exp(t · log(R₀ᵀR₁))</span>。</p>
+    <p>Euler angles 线性插值的问题：路径不是最短的，转速不均匀，结果依赖轴顺序，经过 gimbal lock 附近时会乱转，还有 ±180° 的跳变。</p>
+  </div></details>
+  <details class="qa"><summary>7. 怎么衡量两个 rotation 差多少？控制里的 orientation error 怎么算？</summary><div class="a">
+    <p>相对 rotation <span class="m">R<sub>e</sub> = R<sub>d</sub>Rᵀ</span>，它的转角 <span class="m">θ = acos((trace(R<sub>e</sub>) − 1)/2)</span> 就是两者的“距离”（geodesic distance）。用 quaternion 是 <span class="m">θ = 2·acos(|q₁·q₂|)</span>。</p>
+    <p>控制里需要一个 3 维向量：取 <span class="m">e = log(R<sub>d</sub>Rᵀ)</span>，即转轴乘转角；或者用误差 quaternion 的向量部分（小角度时约等于前者的一半）。不能把两组 Euler angles 相减。</p>
+  </div></details>
+  <details class="qa"><summary>8. A·B 和 B·A 有什么区别？左乘和右乘分别是什么意思？</summary><div class="a">
+    <p>3D rotation 不可交换。<span class="m">R·ΔR</span>（右乘）表示在<strong>当前 body frame</strong> 里再做一个 <span class="m">ΔR</span>；<span class="m">ΔR·R</span>（左乘）表示在 <strong>fixed / world frame</strong> 里做 <span class="m">ΔR</span>。例子：夹爪沿自己的 z 轴前进用右乘 <span class="m">T·Trans(0,0,d)</span>；沿 world 的 z 轴上升用左乘 <span class="m">Trans(0,0,d)·T</span>。</p>
+    <p>由此也得到：intrinsic ZYX 和 extrinsic XYZ 是同一个矩阵 <span class="m">R<sub>z</sub>R<sub>y</sub>R<sub>x</sub></span>。</p>
+  </div></details>
+  <details class="qa"><summary>9. 写出 SE(3) 的 inverse。为什么 translation 不是简单取负？</summary><div class="a">
+    <p><span class="m">T⁻¹ = [Rᵀ, −Rᵀt; 0, 1]</span>。从 <span class="m">p<sub>a</sub> = R p<sub>b</sub> + t</span> 解出 <span class="m">p<sub>b</sub> = Rᵀ(p<sub>a</sub> − t) = Rᵀp<sub>a</sub> − Rᵀt</span>。<span class="m">t</span> 是 b 的原点在 a 里的坐标；inverse 需要的是 a 的原点在 b 里的坐标，方向相反并且要换到 b 的轴上表达，所以多一个 <span class="m">Rᵀ</span>。</p>
+  </div></details>
+  <details class="qa"><summary>10. 已知 T_base_cam 和 T_cam_tag，求 T_base_tag。如果已知的是 T_base_tag 和 T_base_cam，求 T_cam_tag 呢？</summary><div class="a">
+    <p><span class="m">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></span>，相邻的 cam 相消。</p>
+    <p><span class="m">T<sub>cam_tag</sub> = (T<sub>base_cam</sub>)⁻¹ · T<sub>base_tag</sub> = T<sub>cam_base</sub> · T<sub>base_tag</sub></span>。左边的已知量从左边乘 inverse 消掉。检查方法永远是看下标能不能连起来。</p>
+  </div></details>
+  <details class="qa"><summary>11. 相机测到的物体 pose 换到 base frame 之后，位置差了几厘米。你怎么排查？</summary><div class="a">
+    <ol>
+      <li>把 chain 上每个 transform 的下标写出来，确认顺序和 inverse。</li>
+      <li>逐项检查：camera intrinsics（重新标定或看 reprojection error）；tag / 物体的尺寸参数；hand-eye 结果（用它算多个姿态下固定 target 的位置，看散布）；FK（关节零位）。</li>
+      <li>看误差的规律：是固定的 offset（多半是 translation 标定或 TCP 定义），还是随距离变大（intrinsics、tag size 或 rotation 标定），还是随机械臂姿态变化（hand-eye 的 rotation 部分或时间同步）。</li>
+      <li>frame convention：optical frame 和 body frame 是否混用，单位是 m 还是 mm。</li>
+    </ol>
+  </div></details>
+  <details class="qa"><summary>12. Axis-angle 和 rotation vector 是什么？exponential map 用在哪？</summary><div class="a">
+    <p>任何 rotation 等价于绕一根单位轴 <span class="m">ω̂</span> 转角度 <span class="m">θ</span>。<span class="m">r = θω̂</span> 是 rotation vector，3 个数、没有约束。Rodrigues 公式 <span class="m">R = I + sinθ·K + (1−cosθ)·K²</span> 就是 <span class="m">exp([r]<sub>×</sub>)</span>。</p>
+    <p>用途：① 表示 orientation error；② 优化时作为 R 的 3 维增量，<span class="m">R ← R·exp([δ]<sub>×</sub>)</span>，避免约束和 singularity；③ 积分 angular velocity。缺点：θ = 0 时轴无定义，θ 接近 π 时提取轴的数值不稳定，不能直接相加来组合。</p>
+  </div></details>
+
+  <h3>Hand-eye calibration</h3>
+  <details class="qa"><summary>13. AX = XB 是怎么来的？A、B、X 各是什么？</summary><div class="a">
+    <p>以 eye-in-hand 为例：target 固定在桌上，所以对每个姿态 <span class="m">T<sub>base_target</sub> = T<sub>base_ee,i</sub> · X · T<sub>cam_target,i</sub></span> 都相同，<span class="m">X = T<sub>ee_cam</sub></span>。取两个姿态令其相等并整理，得 <span class="m">A X = X B</span>，其中 <span class="m">A = T<sub>base_ee,j</sub>⁻¹T<sub>base_ee,i</sub></span> 是 end-effector 的相对运动（来自 FK），<span class="m">B = T<sub>cam_target,j</sub>T<sub>cam_target,i</sub>⁻¹</span> 是 camera 的相对运动（来自视觉）。直觉：A 和 B 是同一次刚体运动在两个 frame 里的表达，X 是这两个 frame 之间的固定关系。</p>
+  </div></details>
+  <details class="qa"><summary>14. Hand-eye calibration 至少需要几组数据？对运动有什么要求？</summary><div class="a">
+    <p>至少 2 次相对运动，也就是 3 个姿态，并且两次运动的转轴不能平行。原因：rotation 部分等价于 <span class="m">α = R<sub>X</sub>β</span>（α、β 是 A、B 的转轴乘转角）。一对向量只能确定 <span class="m">R<sub>X</sub></span> 到“绕这根轴任意转”的程度，需要两对不平行的向量才能唯一确定。translation 方程 <span class="m">(R<sub>A</sub> − I)t<sub>X</sub> = …</span> 的系数矩阵 rank 为 2，同样需要两根不同的轴。纯 translation 的运动对 <span class="m">t<sub>X</sub></span> 没有约束。</p>
+    <p>实际中采 15 – 30 个姿态，绕多根轴、转角尽量大，用 least squares 平均掉噪声。</p>
+  </div></details>
+  <details class="qa"><summary>15. Eye-in-hand 和 eye-to-hand 有什么区别？各自标定的是什么？</summary><div class="a">
+    <p>Eye-in-hand：相机装在末端，求 <span class="m">T<sub>ee_cam</sub></span>，标定时 target 固定在环境里。优点是可以凑近看、精度高、没有手臂遮挡问题；缺点是视野随手动，抓取的最后阶段可能看不到物体。</p>
+    <p>Eye-to-hand：相机固定在外面，求 <span class="m">T<sub>base_cam</sub></span>，标定时 target 装在末端。优点是视野固定、能看全局；缺点是手臂可能挡住物体，离得远精度低。两者都是 AX = XB，只是 A 的构造方式不同。</p>
+  </div></details>
+
+  <h3>Kinematics</h3>
+  <details class="qa"><summary>16. FK 和 IK 的区别？IK 为什么难？</summary><div class="a">
+    <p>FK：关节角 → 末端 pose，把每个关节的 transform 连乘，解唯一、有闭式。IK：末端 pose → 关节角，是解非线性方程组：可能无解（workspace 外、超 joint limit），可能有多个解（6R 最多 8 或 16 个），redundant 时有无穷多个，一般结构没有闭式解，数值解依赖初值、可能卡在 local minimum，在 singularity 附近不稳定。</p>
+  </div></details>
+  <details class="qa"><summary>17. 推一下 2-link planar arm 的 IK。</summary><div class="a">
+    <p>目标 <span class="m">(x, y)</span>。由 law of cosines：<span class="m">cos q₂ = (x² + y² − l₁² − l₂²)/(2l₁l₂)</span>，<span class="m">q₂ = ±acos(·)</span>，两个符号对应 elbow-up 和 elbow-down。然后 <span class="m">q₁ = atan2(y, x) − atan2(l₂ sin q₂, l₁ + l₂ cos q₂)</span>：第一项是目标的方位角，第二项是 link 1 和“base 到目标连线”之间的夹角。<span class="m">|cos q₂| &gt; 1</span> 时无解。</p>
+  </div></details>
+  <details class="qa"><summary>18. Analytical IK 和 numerical IK 怎么选？</summary><div class="a">
+    <p>Analytical：快（微秒级）、给出全部解、没有收敛问题；但只适用于特定结构（如 spherical wrist），每种 arm 要单独推导（或用 IKFast 生成）。Numerical：通用，容易加约束和次要目标，能处理 redundant arm；但只给一个解、依赖初值、可能不收敛、慢一些。能用 analytical 的场合（工业 6R、需要枚举所有解来选最优）优先用它；7-DOF 或非标准结构用 numerical。</p>
+  </div></details>
+  <details class="qa"><summary>19. Jacobian 是什么？怎么得到某一列？它有哪些用途？</summary><div class="a">
+    <p><span class="m">ẋ = J(q)q̇</span>，是 FK 对 q 的偏导，6×n。第 i 列是关节 i 单独以单位速度运动时末端的 twist：revolute joint 是 <span class="m">[ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>); ẑ<sub>i</sub>]</span>，prismatic 是 <span class="m">[ẑ<sub>i</sub>; 0]</span>。</p>
+    <p>用途：速度映射和 resolved-rate control；numerical IK；力映射 <span class="m">τ = JᵀF</span>；判断 singularity；manipulability 分析；误差和 covariance 传播。</p>
+  </div></details>
+  <details class="qa"><summary>20. τ = Jᵀ F 是怎么来的？</summary><div class="a">
+    <p>Virtual work / 功率守恒：关节输出的功率等于末端对外输出的功率，<span class="m">τᵀq̇ = Fᵀẋ</span>。代入 <span class="m">ẋ = Jq̇</span> 得 <span class="m">τᵀq̇ = FᵀJq̇</span>，对任意 <span class="m">q̇</span> 成立，所以 <span class="m">τ = JᵀF</span>。它说明：想在末端施加某个力，不需要 force sensor，直接算出关节 torque 即可；在 singularity 处某些方向的 F 对应 <span class="m">τ = 0</span>，结构自己扛着。</p>
+  </div></details>
+  <details class="qa"><summary>21. Singularity 是什么？物理上会发生什么？怎么检测和处理？</summary><div class="a">
+    <p>J 掉 rank 的 configuration。末端在某个方向上瞬时不能动；在附近，要让末端沿那个方向以有限速度运动，关节速度趋于无穷；IK 的不同解分支在这里汇合。典型的有 elbow 伸直（boundary）、wrist 的 joint 4 和 6 共线、wrist center 落在 joint 1 轴线上。</p>
+    <p>检测：<span class="m">σ<sub>min</sub>(J)</span>、manipulability <span class="m">√det(JJᵀ)</span>、condition number。处理：damped least squares；在 joint space 里规划；规划时避开低 manipulability 区域；redundant arm 用 null-space 调姿势；把工作区域安排在 workspace 中部。</p>
+  </div></details>
+  <details class="qa"><summary>22. Pseudoinverse、damped least squares、Jacobian transpose 三种 IK 有什么区别？</summary><div class="a">
+    <p>Pseudoinverse <span class="m">J⁺e</span>：最小二乘意义下的精确解，收敛快（Newton 型），redundant 时取 norm 最小的 <span class="m">Δq</span>；但 singularity 附近 <span class="m">1/σ<sub>min</sub></span> 爆炸。</p>
+    <p>DLS <span class="m">Jᵀ(JJᵀ + λ²I)⁻¹e</span>：每个 singular value 方向上的增益从 <span class="m">1/σ</span> 变成 <span class="m">σ/(σ² + λ²)</span>，σ 大时几乎不变，σ → 0 时趋于 0 而不是无穷。稳定，代价是 singular 方向上收敛慢。</p>
+    <p>Transpose <span class="m">αJᵀe</span>：gradient descent，不求逆，绝不会爆，计算最便宜；收敛慢。它能用是因为 <span class="m">Jᵀe</span> 是 <span class="m">½‖e‖²</span> 的负 gradient 方向。</p>
+  </div></details>
+  <details class="qa"><summary>23. Redundant arm 的 null-space 是什么？能用来干什么？</summary><div class="a">
+    <p>当关节数多于 task 维度时，存在不改变末端的关节运动，即满足 <span class="m">Jq̇ = 0</span> 的 <span class="m">q̇</span>，构成 J 的 null-space。<span class="m">q̇ = J⁺ẋ + (I − J⁺J)q̇₀</span>，第二项把任意的 <span class="m">q̇₀</span> 投影进 null-space，用来在不影响主任务的前提下做次要任务：避开 joint limit、避开障碍、远离 singularity、保持某个偏好的姿势（像人的 elbow 可以在手不动时摆动）。</p>
+  </div></details>
+
+  <h3>Motion planning</h3>
+  <details class="qa"><summary>24. 什么是 configuration space？为什么要在里面规划？</summary><div class="a">
+    <p>以所有关节变量为坐标的空间，arm 的一个完整姿态是其中一个点。障碍物映射成 C<sub>obs</sub>（所有会碰撞的 configuration）。这样，带形状的机器人的规划问题变成点在 C<sub>free</sub> 里的规划问题，可以用统一的算法处理。难点是 C-space 维度高、C<sub>obs</sub> 无法显式表示，所以用 sampling-based 方法，只把 collision checker 当黑盒调用。</p>
+  </div></details>
+  <details class="qa"><summary>25. 讲一下 RRT 的流程。它为什么能快速探索？</summary><div class="a">
+    <p>从 start 建树。循环：随机采样 <span class="m">q<sub>rand</sub></span>（以小概率直接取 goal）；找树上最近的节点 <span class="m">q<sub>near</sub></span>；从它朝 <span class="m">q<sub>rand</sub></span> 走一个 step size 得到 <span class="m">q<sub>new</sub></span>；如果这段无碰撞就加入树；<span class="m">q<sub>new</sub></span> 够近 goal 就回溯出 path。</p>
+    <p>快速探索来自 Voronoi bias：树外围节点的 Voronoi region 大，被随机点选中的概率高，所以树优先向未探索区域延伸。性质：probabilistically complete，不 optimal，single-query。</p>
+  </div></details>
+  <details class="qa"><summary>26. RRT、RRT*、RRT-Connect、PRM 怎么区分？</summary><div class="a">
+    <ul>
+      <li><strong>RRT</strong>：单棵树，可行但不最优。</li>
+      <li><strong>RRT-Connect</strong>：start 和 goal 各一棵树，互相贪心地连接，实际中快很多，是 arm 规划的默认选择。</li>
+      <li><strong>RRT*</strong>：加 choose-parent 和 rewire，asymptotically optimal，更慢。Informed RRT* 在找到初解后只在椭球内采样来加速。</li>
+      <li><strong>PRM</strong>：预先建 roadmap（graph），multi-query，适合静态环境里反复规划。</li>
+    </ul>
+  </div></details>
+  <details class="qa"><summary>27. RRT 出来的 path 又绕又抖，怎么办？</summary><div class="a">
+    <p>① Shortcut：随机取 path 上两点，直线段无碰撞就替换中间部分，重复多次。② 用 spline 拟合或者做 trajectory optimization，以 RRT 的结果为初值。③ 直接用 RRT* / Informed RRT* 多跑一会儿。④ 最后做 time parameterization，满足 velocity 和 acceleration 限制，才能交给 controller。</p>
+  </div></details>
+  <details class="qa"><summary>28. Sampling-based planner 和 optimization-based planner 各有什么优缺点？</summary><div class="a">
+    <p>Sampling-based：probabilistically complete，不依赖初值，复杂环境里可靠；但 path 质量差需要后处理，narrow passage 慢，不容易加入 smoothness 之类的目标。</p>
+    <p>Optimization-based：输出直接平滑，简单环境里很快，容易加各种 cost 和约束；但只做 local 优化，依赖初值，会卡在 local minimum，没有找到解的保证。常见的组合是先 sampling 找可行解，再 optimization 打磨。</p>
+  </div></details>
+  <details class="qa"><summary>29. Path 和 trajectory 有什么区别？</summary><div class="a">
+    <p>Path 是纯几何的一串 configuration，没有时间。Trajectory 是时间的函数 <span class="m">q(t)</span>，包含 velocity 和 acceleration。planner 通常输出 path，再经过 time parameterization（trapezoidal profile、polynomial、TOPP-RA）得到满足动力学限制的 trajectory，controller 跟踪的是 trajectory。</p>
+  </div></details>
+  <details class="qa"><summary>30. Cubic 和 quintic polynomial trajectory 的区别？</summary><div class="a">
+    <p>Cubic 有 4 个系数，可以满足起点和终点的 position、velocity 共 4 个边界条件，acceleration 在端点处不为 0，多段拼接时 acceleration 会跳变。Quintic 有 6 个系数，还能指定两端的 acceleration（通常为 0），acceleration 连续、jerk 有界，运动更平滑，对机械的冲击小。</p>
+  </div></details>
+
+  <h3>Control</h3>
+  <details class="qa"><summary>31. PID 三项各自的作用？怎么调？</summary><div class="a">
+    <p>P 按当前误差出力，决定响应速度，太大振荡；I 累积误差，消除恒定 disturbance 造成的 steady-state error，太大会 overshoot 和 windup；D 按误差变化率出力，提供阻尼、抑制 overshoot，但放大 noise。</p>
+    <p>手动调：先 P 到快而略振荡，加 D 压住，最后加 I 消除残差。或者 Ziegler–Nichols 找临界 gain 和周期作为起点。有模型时按期望的 natural frequency 和 damping ratio 直接算。</p>
+  </div></details>
+  <details class="qa"><summary>32. Integral windup 是什么？怎么解决？</summary><div class="a">
+    <p>actuator saturate 时，实际输出小于 controller 要求的值，误差迟迟消不掉，积分项持续增长到很大。等到达目标后，积分项还要靠反向误差慢慢“放掉”，期间输出一直偏大，造成大幅 overshoot 和很长的恢复时间。</p>
+    <p>解决：saturate 时停止积分（clamping）；back-calculation（把 saturate 前后的差值反馈回去减积分）；给积分项设上下限；误差很大时不启用 I 项。</p>
+  </div></details>
+  <details class="qa"><summary>33. D 项在实际中有什么问题？</summary><div class="a">
+    <p>① 放大高频 measurement noise，让控制量抖动、电机发热：加 low-pass filter 或用滤波后的速度信号。② Derivative kick：reference 阶跃时误差的导数是尖峰：改成只对 measurement 求导。③ 离散求导对采样周期的抖动敏感。</p>
+  </div></details>
+  <details class="qa"><summary>34. 只用 PD 控制一个受重力的关节，会有什么现象？怎么改进？</summary><div class="a">
+    <p>会有 steady-state error：平衡时 <span class="m">K<sub>p</sub>e = g(q)</span>，所以 <span class="m">e = g(q)/K<sub>p</sub></span>，手臂“垂”一点。改进：加 I 项；或者更好的是加 gravity compensation feedforward，<span class="m">τ = K<sub>p</sub>e + K<sub>d</sub>ė + g(q)</span>，直接用模型抵消重力，没有 I 项的副作用。</p>
+  </div></details>
+  <details class="qa"><summary>35. 为什么接触任务不用纯 position control？讲一下 impedance control，以及它和 admittance control 的区别。</summary><div class="a">
+    <p>Position control 等效于很硬的弹簧，环境也硬，毫米级的位置误差就会产生很大的接触力，带 I 项还会一直加到饱和。Impedance control 不单独控制位置或力，而是让末端表现得像连在目标上的 spring–damper：<span class="m">F = K(x<sub>d</sub> − x) + D(ẋ<sub>d</sub> − ẋ)</span>，<span class="m">τ = JᵀF + g(q)</span>。K 小就 compliant，接触力 ≈ K × 位置偏差，是可预测、有界的。</p>
+    <p>Impedance：测运动、输出力，用在 torque-controlled arm 上，硬接触时稳定。Admittance：测力（F/T sensor）、输出位置指令，用在 position-controlled arm 上，自由空间精度高但硬接触时容易不稳定。</p>
+  </div></details>
+  <details class="qa"><summary>36. 完整讲一遍：相机看到桌上一个带 AprilTag 的方块，机械臂把它抓起来。</summary><div class="a">
+    <ol>
+      <li><strong>感知</strong>：检测 tag 角点，用 intrinsics 解出 <span class="m">T<sub>cam_tag</sub></span>。</li>
+      <li><strong>Transform chain</strong>：<span class="m">T<sub>base_obj</sub> = T<sub>base_ee</sub>·T<sub>ee_cam</sub>·T<sub>cam_tag</sub>·T<sub>tag_obj</sub></span>，其中 <span class="m">T<sub>ee_cam</sub></span> 来自 hand-eye calibration，<span class="m">T<sub>base_ee</sub></span> 来自 FK。</li>
+      <li><strong>Grasp pose</strong>：<span class="m">T<sub>base_ee</sub>* = T<sub>base_obj</sub>·T<sub>obj_grasp</sub></span>，再沿 approach 方向后退一段得到 pre-grasp pose。</li>
+      <li><strong>IK</strong>：把 pre-grasp 和 grasp pose 解成关节角，选离当前姿态近、离 joint limit 和 singularity 远、无碰撞的解。</li>
+      <li><strong>Motion planning</strong>：joint space 里 RRT-Connect 规划到 pre-grasp，shortcut + time parameterization；pre-grasp 到 grasp 走 Cartesian 直线。</li>
+      <li><strong>Control</strong>：关节 controller 跟踪 trajectory；接近和闭合夹爪阶段用 impedance control 或者降低 stiffness，容忍几毫米的位置误差。</li>
+      <li><strong>闭环与检查</strong>：抓取后确认夹爪开度或力，失败则重新感知。</li>
+    </ol>
+    <p>能主动指出每一步的误差来源（标定、tag 检测、FK、时间同步）会加分。</p>
+  </div></details>
+</section>
+
+<section id="cheatsheet">
+  <h2><span class="n">24</span>公式速查表</h2>
+  <div class="tw"><table>
+    <tr><th>主题</th><th>公式</th><th>备注</th></tr>
+    <tr><td>SO(3)</td><td class="m">RᵀR = I, det R = +1, R⁻¹ = Rᵀ</td><td>列 = 子 frame 的轴</td></tr>
+    <tr><td>换坐标</td><td class="m">p<sub>a</sub> = R<sub>a_b</sub> p<sub>b</sub> + t<sub>a_b</sub></td><td>t = b 的原点在 a 里的坐标</td></tr>
+    <tr><td>组合</td><td class="m">T<sub>a_c</sub> = T<sub>a_b</sub> T<sub>b_c</sub></td><td>相邻下标相消</td></tr>
+    <tr><td>SE(3) inverse</td><td class="m">T⁻¹ = [Rᵀ, −Rᵀt; 0, 1]</td><td>不是 −t</td></tr>
+    <tr><td>左乘 / 右乘</td><td class="m">ΔT·T / T·ΔT</td><td>world frame / body frame</td></tr>
+    <tr><td>ZYX Euler</td><td class="m">R = R<sub>z</sub>(yaw) R<sub>y</sub>(pitch) R<sub>x</sub>(roll)</td><td>pitch = ±90° 时 gimbal lock</td></tr>
+    <tr><td>反解 Euler</td><td class="m">pitch = −asin R₃₁, yaw = atan2(R₂₁, R₁₁), roll = atan2(R₃₂, R₃₃)</td><td></td></tr>
+    <tr><td>Rodrigues</td><td class="m">R = I + sinθ·K + (1 − cosθ)·K², K = [ω̂]<sub>×</sub></td><td>= exp(θK)</td></tr>
+    <tr><td>Log map</td><td class="m">θ = acos((tr R − 1)/2)</td><td>θ = 0, π 要特殊处理</td></tr>
+    <tr><td>Quaternion</td><td class="m">q = (cos(θ/2), ω̂ sin(θ/2)),　p′ = q p q*</td><td>q 与 −q 等价</td></tr>
+    <tr><td>Quaternion 乘法</td><td class="m">(w₁w₂ − v₁·v₂,　w₁v₂ + w₂v₁ + v₁×v₂)</td><td>Hamilton</td></tr>
+    <tr><td>SLERP</td><td class="m">[sin((1−t)Ω)q₀ + sin(tΩ)q₁]/sin Ω</td><td>先保证 q₀·q₁ ≥ 0</td></tr>
+    <tr><td>Rotation 的距离</td><td class="m">θ = 2 acos|q₁·q₂| = acos((tr(R₁ᵀR₂) − 1)/2)</td><td></td></tr>
+    <tr><td>Hand-eye</td><td class="m">AX = XB;　R<sub>A</sub>R<sub>X</sub> = R<sub>X</sub>R<sub>B</sub>,　(R<sub>A</sub> − I)t<sub>X</sub> = R<sub>X</sub>t<sub>B</sub> − t<sub>A</sub></td><td>≥ 2 次运动，转轴不平行</td></tr>
+    <tr><td>2-link FK</td><td class="m">x = l₁c₁ + l₂c₁₂,　y = l₁s₁ + l₂s₁₂</td><td></td></tr>
+    <tr><td>2-link IK</td><td class="m">c₂ = (x² + y² − l₁² − l₂²)/(2l₁l₂),　q₁ = atan2(y,x) − atan2(l₂s₂, l₁ + l₂c₂)</td><td>q₂ 取 ± 两个解</td></tr>
+    <tr><td>Jacobian</td><td class="m">ẋ = Jq̇,　J<sub>i</sub> = [ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>); ẑ<sub>i</sub>]</td><td>revolute joint</td></tr>
+    <tr><td>2-link det</td><td class="m">det J = l₁l₂ sin q₂</td><td>q₂ = 0, π 时 singular</td></tr>
+    <tr><td>Statics</td><td class="m">τ = JᵀF</td><td>virtual work</td></tr>
+    <tr><td>Pseudoinverse</td><td class="m">J⁺ = Jᵀ(JJᵀ)⁻¹</td><td>行满 rank 时</td></tr>
+    <tr><td>DLS</td><td class="m">Δq = Jᵀ(JJᵀ + λ²I)⁻¹e</td><td>增益 σ/(σ² + λ²)</td></tr>
+    <tr><td>Null-space</td><td class="m">q̇ = J⁺ẋ + (I − J⁺J)q̇₀</td><td>redundant arm</td></tr>
+    <tr><td>Manipulability</td><td class="m">w = √det(JJᵀ) = Πσ<sub>i</sub></td><td>→ 0 即 singular</td></tr>
+    <tr><td>PID</td><td class="m">u = K<sub>p</sub>e + K<sub>i</sub>∫e + K<sub>d</sub>ė</td><td></td></tr>
+    <tr><td>二阶系统</td><td class="m">ω<sub>n</sub> = √(K<sub>p</sub>/m),　ζ = K<sub>d</sub>/(2√(K<sub>p</sub>m))</td><td>ζ = 1 critically damped</td></tr>
+    <tr><td>Arm dynamics</td><td class="m">M(q)q̈ + C(q,q̇)q̇ + g(q) = τ + JᵀF<sub>ext</sub></td><td></td></tr>
+    <tr><td>Computed torque</td><td class="m">τ = M(q̈<sub>d</sub> + K<sub>d</sub>ė + K<sub>p</sub>e) + Cq̇ + g</td><td>误差动力学线性解耦</td></tr>
+    <tr><td>Impedance</td><td class="m">τ = Jᵀ[K(x<sub>d</sub> − x) + D(ẋ<sub>d</sub> − ẋ)] + g(q)</td><td>接触力 ≈ K·Δx</td></tr>
+  </table></div>
+  <p class="cap">相关笔记：<a href="apriltag-pose-estimation.html"><code>apriltag-pose-estimation.html</code></a>（camera model、homography、从 H 恢复 pose，以及这一页开头用到的那条 transform chain）。</p>
+</section>
+</main>
+</div>
+
+<script id="core">
+/* 纯数学部分，不碰 DOM。rotation matrix 是 3×3 的嵌套数组；quaternion 是 [w, x, y, z]；SE(3) 存成 {R, t} */
+const DEG=Math.PI/180;
+function matmul(A,B){return A.map(r=>B[0].map((_,j)=>r.reduce((s,v,k)=>s+v*B[k][j],0)));}
+function tr(A){return A[0].map((_,j)=>A.map(r=>r[j]));}
+function mv(A,v){return A.map(r=>r.reduce((s,x,k)=>s+x*v[k],0));}
+function col(M,j){return M.map(r=>r[j]);}
+function I3(){return [[1,0,0],[0,1,0],[0,0,1]];}
+function add(a,b){return a.map((v,i)=>v+b[i]);}
+function sub(a,b){return a.map((v,i)=>v-b[i]);}
+function sc(a,s){return a.map(v=>v*s);}
+function dot(a,b){return a.reduce((s,v,i)=>s+v*b[i],0);}
+function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function norm(a){return Math.hypot(...a);}
+function unit(a){const n=norm(a)||1;return a.map(v=>v/n);}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function rotX(a){const c=Math.cos(a),s=Math.sin(a);return [[1,0,0],[0,c,-s],[0,s,c]];}
+function rotY(a){const c=Math.cos(a),s=Math.sin(a);return [[c,0,s],[0,1,0],[-s,0,c]];}
+function rotZ(a){const c=Math.cos(a),s=Math.sin(a);return [[c,-s,0],[s,c,0],[0,0,1]];}
+/* ZYX Euler：R = Rz(yaw)·Ry(pitch)·Rx(roll) */
+function eulerZYX(yaw,pitch,roll){return matmul(matmul(rotZ(yaw),rotY(pitch)),rotX(roll));}
+function toEulerZYX(R){
+  const sp=-R[2][0];
+  if(Math.abs(sp)>1-1e-9)return {lock:true,pitch:sp>0?Math.PI/2:-Math.PI/2,yaw:Math.atan2(-R[0][1],R[1][1]),roll:0};
+  return {lock:false,pitch:Math.asin(sp),yaw:Math.atan2(R[1][0],R[0][0]),roll:Math.atan2(R[2][1],R[2][2])};
+}
+/* Shepperd's method：先算 w x y z 里最大的那个，避免除以接近 0 的数 */
+function quatFromR(R){
+  const t=R[0][0]+R[1][1]+R[2][2];
+  if(t>0){const s=Math.sqrt(t+1)*2;return [s/4,(R[2][1]-R[1][2])/s,(R[0][2]-R[2][0])/s,(R[1][0]-R[0][1])/s];}
+  if(R[0][0]>R[1][1]&&R[0][0]>R[2][2]){const s=Math.sqrt(1+R[0][0]-R[1][1]-R[2][2])*2;return [(R[2][1]-R[1][2])/s,s/4,(R[0][1]+R[1][0])/s,(R[0][2]+R[2][0])/s];}
+  if(R[1][1]>R[2][2]){const s=Math.sqrt(1+R[1][1]-R[0][0]-R[2][2])*2;return [(R[0][2]-R[2][0])/s,(R[0][1]+R[1][0])/s,s/4,(R[1][2]+R[2][1])/s];}
+  const s=Math.sqrt(1+R[2][2]-R[0][0]-R[1][1])*2;return [(R[1][0]-R[0][1])/s,(R[0][2]+R[2][0])/s,(R[1][2]+R[2][1])/s,s/4];
+}
+function quatToR(q){const w=q[0],x=q[1],y=q[2],z=q[3];
+  return [[1-2*(y*y+z*z),2*(x*y-w*z),2*(x*z+w*y)],[2*(x*y+w*z),1-2*(x*x+z*z),2*(y*z-w*x)],[2*(x*z-w*y),2*(y*z+w*x),1-2*(x*x+y*y)]];}
+function qmul(a,b){return [a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3],a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1],a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];}
+/* 不在内部做 shortest-path 检查，调用者决定要不要先把 b 取反 */
+function slerp(a,b,t){const d=clamp(dot(a,b),-1,1),th=Math.acos(d);if(th<1e-6)return a.slice();const s=Math.sin(th);return a.map((v,i)=>(Math.sin((1-t)*th)*v+Math.sin(t*th)*b[i])/s);}
+function rodrigues(axis,th){const u=unit(axis),x=u[0],y=u[1],z=u[2],c=Math.cos(th),s=Math.sin(th),C=1-c;
+  return [[c+x*x*C,x*y*C-z*s,x*z*C+y*s],[y*x*C+z*s,c+y*y*C,y*z*C-x*s],[z*x*C-y*s,z*y*C+x*s,c+z*z*C]];}
+/* log map，经由 quaternion，θ 接近 0 和 π 时都稳定 */
+function logSO3(R){let q=quatFromR(R);if(q[0]<0)q=q.map(v=>-v);const v=q.slice(1),n=norm(v),th=2*Math.atan2(n,q[0]);
+  if(n<1e-9)return {theta:0,axis:[0,0,1],vec:[0,0,0]};const ax=v.map(x=>x/n);return {theta:th,axis:ax,vec:sc(ax,th)};}
+function tmul(a,b){return {R:matmul(a.R,b.R),t:add(mv(a.R,b.t),a.t)};}
+function tinv(a){const Rt=tr(a.R);return {R:Rt,t:sc(mv(Rt,a.t),-1)};}
+function tpt(a,p){return add(mv(a.R,p),a.t);}
+/* 单边 Jacobi SVD（和 AprilTag 那一页相同）。返回 W = A·V、S（奇异值）和 V */
+function svd(A){
+  const m=A.length,n=A[0].length,W=A.map(r=>r.slice()),V=[];
+  for(let i=0;i<n;i++){V.push(new Array(n).fill(0));V[i][i]=1;}
+  for(let sweep=0;sweep<80;sweep++){
+    let off=0;
+    for(let p=0;p<n-1;p++)for(let q=p+1;q<n;q++){
+      let al=0,be=0,ga=0;
+      for(let i=0;i<m;i++){al+=W[i][p]*W[i][p];be+=W[i][q]*W[i][q];ga+=W[i][p]*W[i][q];}
+      const den=Math.sqrt(al*be);
+      if(den<1e-300||Math.abs(ga)<=1e-15*den)continue;
+      off=Math.max(off,Math.abs(ga)/den);
+      const ze=(be-al)/(2*ga),tt=(ze>=0?1:-1)/(Math.abs(ze)+Math.sqrt(1+ze*ze)),c=1/Math.sqrt(1+tt*tt),s=c*tt;
+      for(let i=0;i<m;i++){const a=W[i][p],b=W[i][q];W[i][p]=c*a-s*b;W[i][q]=s*a+c*b;}
+      for(let i=0;i<n;i++){const a=V[i][p],b=V[i][q];V[i][p]=c*a-s*b;V[i][q]=s*a+c*b;}
+    }
+    if(off<1e-13)break;
+  }
+  const S=[];for(let j=0;j<n;j++)S.push(norm(col(W,j)));
+  return {W,S,V};
+}
+/* Kabsch：给 M = Σ αβᵀ，求让 Σ‖α − Rβ‖² 最小的 rotation。奇异值为 0 的方向用 cross product 补齐，保证 det = +1 */
+function kabsch(M){
+  const d=svd(M),idx=[0,1,2].sort((a,b)=>d.S[b]-d.S[a]),s=idx.map(j=>d.S[j]);
+  const perp=u=>{const a=Math.abs(u[0])<0.8?[1,0,0]:[0,1,0];return unit(cross(u,a));};
+  const u0=s[0]>1e-12?sc(col(d.W,idx[0]),1/s[0]):[1,0,0];
+  let u1;
+  if(s[1]>1e-9*Math.max(s[0],1e-12)){const w=col(d.W,idx[1]);u1=unit(sub(w,sc(u0,dot(w,u0))));}else u1=perp(u0);
+  const u2=cross(u0,u1),v0=col(d.V,idx[0]),v1=col(d.V,idx[1]),v2=cross(v0,v1);
+  const R=[0,1,2].map(i=>[0,1,2].map(j=>u0[i]*v0[j]+u1[i]*v1[j]+u2[i]*v2[j]));
+  return {R,sigma:s};
+}
+/* 高斯消元解 Ax = b（小矩阵） */
+function solve(A,b){
+  const n=b.length,M=A.map((r,i)=>r.concat([b[i]]));
+  for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    const t=M[c];M[c]=M[p];M[p]=t;const d=M[c][c]||1e-300;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/d;for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}}
+  return M.map((r,i)=>r[n]/(r[i]||1e-300));
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function gaussian(rng){const u=Math.max(rng(),1e-12),v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 三对角方程 tridiag(−1, 2, −1)·x = g（Thomas algorithm），trajectory optimization 里的 A⁻¹ */
+function triSolve(g){const n=g.length,c=new Array(n),d=new Array(n),x=new Array(n);c[0]=-0.5;d[0]=g[0]/2;
+  for(let i=1;i<n;i++){const m=2+c[i-1];c[i]=-1/m;d[i]=(g[i]+d[i-1])/m;}
+  x[n-1]=d[n-1];for(let i=n-2;i>=0;i--)x[i]=d[i]-c[i]*x[i+1];return x;}
+/* RRT / RRT*，在任意 2D 空间里用。o: {lo, hi, start, goal, step, bias, goalTol, star, radius, free(p), edgeFree(a,b)} */
+function makeRRT(o){
+  const nodes=[{p:o.start,parent:-1,cost:0,ch:[]}],D=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]),cands=[];
+  let iters=0;
+  function bump(i,delta){const st=[i];while(st.length){const k=st.pop();nodes[k].cost+=delta;for(const c of nodes[k].ch)st.push(c);}}
+  function best(){let b=-1,bc=Infinity;for(const i of cands){const c=nodes[i].cost+D(nodes[i].p,o.goal);if(c<bc){bc=c;b=i;}}return {i:b,cost:bc};}
+  return {nodes,iters:()=>iters,found:()=>cands.length>0,pathCost:()=>best().cost,
+    path(){const b=best();if(b.i<0)return null;const pts=[o.goal];for(let k=b.i;k>=0;k=nodes[k].parent)pts.push(nodes[k].p);return pts.reverse();},
+    iterate(){
+      iters++;
+      const s=Math.random()<o.bias?o.goal.slice():[o.lo[0]+Math.random()*(o.hi[0]-o.lo[0]),o.lo[1]+Math.random()*(o.hi[1]-o.lo[1])];
+      let ni=0,nd=Infinity;for(let i=0;i<nodes.length;i++){const dd=D(nodes[i].p,s);if(dd<nd){nd=dd;ni=i;}}
+      if(nd<1e-9)return {sample:s};
+      const k=Math.min(1,o.step/nd),np=[nodes[ni].p[0]+(s[0]-nodes[ni].p[0])*k,nodes[ni].p[1]+(s[1]-nodes[ni].p[1])*k];
+      if(!o.free(np)||!o.edgeFree(nodes[ni].p,np))return {sample:s};
+      let parent=ni,cost=nodes[ni].cost+D(nodes[ni].p,np);const near=[],rew=[];
+      if(o.star){
+        for(let i=0;i<nodes.length;i++)if(D(nodes[i].p,np)<o.radius)near.push(i);
+        for(const i of near){const c=nodes[i].cost+D(nodes[i].p,np);if(c<cost-1e-9&&o.edgeFree(nodes[i].p,np)){parent=i;cost=c;}}
+      }
+      const idx=nodes.length;nodes.push({p:np,parent,cost,ch:[]});nodes[parent].ch.push(idx);
+      if(o.star)for(const i of near){
+        if(i===parent)continue;const c=cost+D(np,nodes[i].p);
+        if(c<nodes[i].cost-1e-9&&o.edgeFree(np,nodes[i].p)){
+          const old=nodes[nodes[i].parent].ch;old.splice(old.indexOf(i),1);
+          nodes[i].parent=idx;nodes[idx].ch.push(i);bump(i,c-nodes[i].cost);rew.push(i);
+        }
+      }
+      if(D(np,o.goal)<=o.goalTol&&o.edgeFree(np,o.goal))cands.push(idx);
+      return {sample:s,idx,rew};
+    }};
+}
+function shortcut(path,edgeFree,iters){const p=path.slice();
+  for(let k=0;k<iters&&p.length>2;k++){const i=Math.floor(Math.random()*(p.length-2)),j=i+2+Math.floor(Math.random()*(p.length-i-2));if(edgeFree(p[i],p[j]))p.splice(i+1,j-i-1);}
+  return p;}
+function pathLen(p){let s=0;for(let i=1;i<p.length;i++)s+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return s;}
+</script>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const f1=v=>(Math.abs(v)<5e-5?0:v);
+const fx=(v,d)=>f1(v).toFixed(d).replace('-','−');
+const vec=(a,d)=>'('+a.map(v=>fx(v,d)).join(', ')+')';
+const mat=(rows,fmt,cls)=>'<span class="mat" style="--c:'+rows[0].length+'">'+rows.map((r,i)=>r.map((v,j)=>'<span'+(cls?' class="'+cls(i,j)+'"':'')+'>'+fmt(v,i,j)+'</span>').join('')).join('')+'</span>';
+const kv=rows=>rows.map(r=>'<span>'+r[0]+'</span><span>'+r[1]+'</span>').join('');
+const pill=(cls,txt)=>'<span class="pill '+cls+'">'+txt+'</span>';
+const P2=a=>a.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+const L=(a,b,st)=>'<line x1="'+a[0].toFixed(1)+'" y1="'+a[1].toFixed(1)+'" x2="'+b[0].toFixed(1)+'" y2="'+b[1].toFixed(1)+'" style="'+st+'"/>';
+const C=(p,r,st)=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+r+'" style="'+st+'"/>';
+const PL=(pts,st)=>'<polyline points="'+P2(pts)+'" style="fill:none;'+st+'"/>';
+const PG=(pts,st)=>'<polygon points="'+P2(pts)+'" style="'+st+'"/>';
+const TX=(p,s,st,anchor)=>'<text x="'+p[0].toFixed(1)+'" y="'+p[1].toFixed(1)+'" text-anchor="'+(anchor||'middle')+'" class="d-s"'+(st?' style="'+st+'"':'')+'>'+s+'</text>';
+const COLS=['--x','--y','--z'],CCLS=['cx','cy','cz'];
+function arrow(a,b,color,w,dash){
+  const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy);if(l<2)return '';
+  const ux=dx/l,uy=dy/l,h=Math.min(9,l*0.5),e=[b[0]-ux*h*0.9,b[1]-uy*h*0.9];
+  return L(a,e,'stroke:'+color+';stroke-width:'+w+';stroke-linecap:round'+(dash?';stroke-dasharray:'+dash:''))+PG([b,[b[0]-h*ux-h*0.45*uy,b[1]-h*uy+h*0.45*ux],[b[0]-h*ux+h*0.45*uy,b[1]-h*uy-h*0.45*ux]],'fill:'+color);
+}
+function svgPt(el,e){const r=el.getBoundingClientRect();const vb=el.viewBox?el.viewBox.baseVal:{x:0,y:0,width:el.width,height:el.height};return [(e.clientX-r.left)/r.width*vb.width+vb.x,(e.clientY-r.top)/r.height*vb.height+vb.y];}
+/* 通用拖拽：down(pt) 返回是否开始拖；move(pt)；up() */
+function onDrag(el,down,move,up){
+  let on=false;
+  el.addEventListener('pointerdown',e=>{if(down(svgPt(el,e),e)===false)return;on=true;try{el.setPointerCapture(e.pointerId);}catch(_){ }e.preventDefault();});
+  el.addEventListener('pointermove',e=>{if(on)move(svgPt(el,e),e);});
+  const end=()=>{if(on){on=false;if(up)up();}};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+}
+/* 滑块组。groups: [[标题, [[key, label, min, max, step, value, 小数位, 单位], …]], …] */
+function mkCtl(el,pre,groups,cb){
+  const META={};let h='';
+  groups.forEach(g=>{h+='<fieldset><legend>'+g[0]+'</legend>';
+    g[1].forEach(c=>{META[c[0]]=c;const id=pre+'-'+c[0];h+='<div class="row"><label for="'+id+'">'+c[1]+'</label><input type="range" id="'+id+'" min="'+c[2]+'" max="'+c[3]+'" step="'+c[4]+'" value="'+c[5]+'"><output id="'+id+'-o" for="'+id+'"></output></div>';});
+    h+='</fieldset>';});
+  el.innerHTML=h;
+  const api={
+    val:k=>+$(pre+'-'+k).value,
+    set:(k,v)=>{$(pre+'-'+k).value=v;},
+    row:k=>$(pre+'-'+k).parentElement,
+    show:()=>{Object.keys(META).forEach(k=>{const c=META[k];$(pre+'-'+k+'-o').textContent=fx(api.val(k),c[6])+c[7];});}
+  };
+  el.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{api.show();cb(i.id.slice(pre.length+1));}));
+  api.show();return api;
+}
+/* 简单的正交投影 3D 视图。world 的 z 朝上；按住拖动改变 azimuth / elevation。st 可以在多个视图之间共享 */
+function View3D(svg,st,g,redraw){
+  const c0=g.c||[0,0,0],v={};
+  v.p=P=>{const x=P[0]-c0[0],y=P[1]-c0[1],z=P[2]-c0[2],ca=Math.cos(st.az),sa=Math.sin(st.az),ce=Math.cos(st.el),se=Math.sin(st.el);
+    return [g.cx+g.sc*(-x*sa+y*ca),g.cy-g.sc*(-se*ca*x-se*sa*y+ce*z)];};
+  v.line=(a,b,style)=>L(v.p(a),v.p(b),style);
+  v.frame=(R,t,len,w,op,lab)=>{let s='';
+    for(let j=0;j<3;j++){const d=col(R,j),tip=add(t,sc(d,len));
+      s+=L(v.p(t),v.p(tip),'stroke:var('+COLS[j]+');stroke-width:'+w+';stroke-linecap:round;opacity:'+op);
+      if(lab){const q=v.p(add(t,sc(d,len*1.1+0.04/g.sc*100)));s+='<text x="'+q[0].toFixed(1)+'" y="'+(q[1]+4).toFixed(1)+'" text-anchor="middle" style="fill:var('+COLS[j]+');font-size:12px;font-family:var(--mono);opacity:'+Math.min(1,op+0.25)+'">'+lab[j]+'</text>';}}
+    return s;};
+  let last=null;
+  svg.addEventListener('pointerdown',e=>{last=[e.clientX,e.clientY];try{svg.setPointerCapture(e.pointerId);}catch(_){ }e.preventDefault();});
+  svg.addEventListener('pointermove',e=>{if(!last)return;st.az-=(e.clientX-last[0])*0.01;st.el=clamp(st.el+(e.clientY-last[1])*0.01,-1.5,1.5);last=[e.clientX,e.clientY];redraw();});
+  const end=()=>{last=null;};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  return v;
+}
+/* 一个扁盒子，用来看清 orientation */
+function boxSVG(view,R,h){
+  const cs=[];for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])cs.push(mv(R,[sx*h[0],sy*h[1],sz*h[2]]));
+  let s=PG([cs[1],cs[3],cs[7],cs[5]].map(view.p),'fill:var(--accent);fill-opacity:.13;stroke:none');
+  for(let i=0;i<8;i++)for(const b of[1,2,4])if(!(i&b))s+=view.line(cs[i],cs[i|b],'stroke:var(--muted);stroke-width:1');
+  return s;
+}
+function safe(name,fn){try{fn();}catch(err){console.error('lab '+name+' failed',err);}}
+
+/* ---------- §03 四种表示法 ---------- */
+function labRot(){
+  const svg=$('rot-svg'),st={az:0.65,el:0.42},geo={cx:260,cy:212,sc:122};
+  const ctl=mkCtl($('rot-ctl'),'rot',[['ZYX Euler angles：R = Rz(yaw) · Ry(pitch) · Rx(roll)',[['yaw','yaw（绕 z）',-180,180,1,30,0,'°'],['pitch','pitch（绕 y）',-90,90,1,20,0,'°'],['roll','roll（绕 x）',-180,180,1,40,0,'°']]]],draw);
+  const view=View3D(svg,st,geo,draw);
+  function draw(){
+    const yaw=ctl.val('yaw')*DEG,pitch=ctl.val('pitch')*DEG,roll=ctl.val('roll')*DEG;
+    const R=eulerZYX(yaw,pitch,roll),aa=logSO3(R),eu=toEulerZYX(R);
+    let q=quatFromR(R);if(q[0]<0)q=q.map(v=>-v);
+    let s=C([geo.cx,geo.cy],geo.sc,'fill:none;stroke:var(--line);stroke-width:1');
+    s+=view.frame(I3(),[0,0,0],1.32,1.2,0.6,['X','Y','Z']);
+    if($('rot-ea').checked){
+      [[[0,0,1],'--z'],[mv(rotZ(yaw),[0,1,0]),'--y'],[col(R,0),'--x']].forEach(a=>{s+=view.line(sc(a[0],-1.5),sc(a[0],1.5),'stroke:var('+a[1]+');stroke-width:1.3;stroke-dasharray:5 4;opacity:.8');});
+    }
+    s+=boxSVG(view,R,[0.6,0.36,0.09]);
+    s+=view.frame(R,[0,0,0],1,3.2,1,['x','y','z']);
+    if($('rot-ax').checked&&aa.theta>1e-3){
+      s+=view.line(sc(aa.axis,-1.25),sc(aa.axis,1.25),'stroke:var(--ray);stroke-width:2.2;stroke-dasharray:8 4');
+      s+=TX(view.p(sc(aa.axis,1.38)),'ω̂','fill:var(--ray);font-size:14px');
+    }
+    svg.innerHTML=s;
+    $('rot-R').innerHTML=mat(R,v=>fx(v,3),(i,j)=>CCLS[j]);
+    $('rot-q').innerHTML=kv([['q',vec(q,4)],['−q（同一个 rotation）',vec(q.map(v=>-v),4)],['‖q‖',fx(norm(q),4)]]);
+    $('rot-aa').innerHTML=kv([['转轴 ω̂',aa.theta<1e-3?'无定义（θ = 0）':vec(aa.axis,3)],['转角 θ',fx(aa.theta/DEG,1)+'°'],['rotation vector',vec(aa.vec,3)+' rad']]);
+    const rows=[];
+    if(eu.lock){
+      rows.push(['状态',pill('bad','gimbal lock')]);
+      rows.push(['只能确定',(eu.pitch>0?'roll − yaw = '+fx(-eu.yaw/DEG,1):'roll + yaw = '+fx(eu.yaw/DEG,1))+'°']);
+      rows.push(['反解的结果','yaw '+fx(eu.yaw/DEG,1)+'°, pitch '+fx(eu.pitch/DEG,1)+'°, roll 0°（人为取 0）']);
+    }else{
+      const gap=90-Math.abs(eu.pitch/DEG);
+      rows.push(['yaw, pitch, roll',fx(eu.yaw/DEG,1)+'°, '+fx(eu.pitch/DEG,1)+'°, '+fx(eu.roll/DEG,1)+'°']);
+      rows.push(['roll 轴与 yaw 轴夹角',fx(gap,1)+'° '+(gap<8?pill('mid','接近 gimbal lock'):pill('ok','正常'))]);
+      rows.push(['|det| = cos(pitch)',fx(Math.cos(eu.pitch),3)]);
+    }
+    $('rot-eu').innerHTML=kv(rows);
+  }
+  document.querySelectorAll('button[data-rot]').forEach(b=>b.addEventListener('click',()=>{const p=b.dataset.rot.split(',');ctl.set('yaw',p[0]);ctl.set('pitch',p[1]);ctl.set('roll',p[2]);ctl.show();draw();}));
+  $('rot-ea').addEventListener('change',draw);$('rot-ax').addEventListener('change',draw);
+  draw();
+}
+
+/* ---------- §06 SLERP ---------- */
+function labSlerp(){
+  const svg=$('sl-svg'),st={az:0.65,el:0.42},geo={cx:260,cy:192,sc:118};
+  const ctl=mkCtl($('sl-ctl'),'sl',[['目标姿态 q₁（用 ZYX Euler angles 设定）',[['yaw','yaw',-180,180,1,120,0,'°'],['pitch','pitch',-90,90,1,50,0,'°'],['roll','roll',-180,180,1,70,0,'°']]],['插值参数',[['t','t',0,1,0.01,0.5,2,'']]]],draw);
+  const view=View3D(svg,st,geo,draw);
+  function draw(){
+    const e=[ctl.val('yaw')*DEG,ctl.val('pitch')*DEG,ctl.val('roll')*DEG],t=ctl.val('t'),q0=[1,0,0,0];
+    let q1=quatFromR(eulerZYX(e[0],e[1],e[2]));if(q1[0]<0)q1=q1.map(v=>-v);
+    const qb=$('sl-flip').checked?q1.map(v=>-v):q1,N=72,sx=[],sz=[],ex=[],ez=[];
+    for(let k=0;k<=N;k++){const u=k/N,Rs=quatToR(slerp(q0,qb,u)),Re=eulerZYX(e[0]*u,e[1]*u,e[2]*u);
+      sx.push(view.p(col(Rs,0)));sz.push(view.p(col(Rs,2)));ex.push(view.p(col(Re,0)));ez.push(view.p(col(Re,2)));}
+    const qt=slerp(q0,qb,t),Rs=quatToR(qt),Re=eulerZYX(e[0]*t,e[1]*t,e[2]*t);
+    let s=C([geo.cx,geo.cy],geo.sc,'fill:none;stroke:var(--line);stroke-width:1');
+    s+=view.frame(I3(),[0,0,0],1.3,1.1,0.45,['X','Y','Z']);
+    s+=PL(ex,'stroke:var(--ray);stroke-width:1.8;stroke-dasharray:5 4')+PL(ez,'stroke:var(--ray);stroke-width:1.8;stroke-dasharray:5 4');
+    s+=PL(sx,'stroke:var(--accent);stroke-width:2.2')+PL(sz,'stroke:var(--accent);stroke-width:2.2');
+    s+=view.frame(Re,[0,0,0],1,1.6,0.5,null);
+    s+=view.frame(Rs,[0,0,0],1,3.2,1,['x','y','z']);
+    svg.innerHTML=s;
+    const total=2*Math.acos(clamp(dot(q0,qb),-1,1))/DEG,dev=logSO3(matmul(tr(Rs),Re)).theta/DEG;
+    $('sl-out').innerHTML=kv([['SLERP 总共转过',fx(total,1)+'°'+(total>180.05?' '+pill('bad','绕了远路'):'')],['t 时刻已转过',fx(total*t,1)+'°（匀速）'],['q(t)',vec(qt,3)],['Euler 插值此刻偏离 SLERP',fx(dev,1)+'°']]);
+  }
+  $('sl-flip').addEventListener('change',draw);
+  draw();
+}
+
+/* ---------- §08 composition order ---------- */
+function labOrd(){
+  const st={az:0.65,el:0.42},geo={cx:160,cy:150,sc:84};
+  const AX={X:[rotX,[1,0,0]],Y:[rotY,[0,1,0]],Z:[rotZ,[0,0,1]]};
+  const ctl=mkCtl($('ord-ctl'),'ord',[['角度',[['a','A 的角度',-180,180,5,90,0,'°'],['b','B 的角度',-180,180,5,90,0,'°']]],['动画进度：0 – 1 做第一个 rotation，1 – 2 做第二个',[['s','进度',0,2,0.01,2,2,'']]]],draw);
+  const vl=View3D($('ord-l'),st,geo,draw),vr=View3D($('ord-r'),st,geo,draw);
+  function scene(view,first,second,a1,a2,s){
+    const s1=Math.min(s,1),s2=Math.max(s-1,0),R1=first[0](a1*s1),R=matmul(R1,second[0](a2*s2));
+    const axis=s<=1?first[1]:mv(R1,second[1]);
+    let h=C([geo.cx,geo.cy],geo.sc,'fill:none;stroke:var(--line);stroke-width:1');
+    h+=view.frame(I3(),[0,0,0],1.3,1.1,0.5,['X','Y','Z']);
+    if(s<2)h+=view.line(sc(axis,-1.45),sc(axis,1.45),'stroke:var(--ink);stroke-width:1.4;stroke-dasharray:5 4');
+    h+=boxSVG(view,R,[0.6,0.36,0.09]);
+    h+=view.frame(R,[0,0,0],1,3,1,['x','y','z']);
+    return h;
+  }
+  function draw(){
+    const A=AX[$('ord-a-ax').value],B=AX[$('ord-b-ax').value],a=ctl.val('a')*DEG,b=ctl.val('b')*DEG,s=ctl.val('s');
+    $('ord-l').innerHTML=scene(vl,A,B,a,b,s);
+    $('ord-r').innerHTML=scene(vr,B,A,b,a,s);
+    const AB=matmul(A[0](a),B[0](b)),BA=matmul(B[0](b),A[0](a)),d=logSO3(matmul(tr(AB),BA)).theta/DEG;
+    $('ord-ab').innerHTML=mat(AB,v=>fx(v,2),(i,j)=>CCLS[j]);
+    $('ord-ba').innerHTML=mat(BA,v=>fx(v,2),(i,j)=>CCLS[j]);
+    $('ord-diff').innerHTML=kv([['两个最终姿态的夹角',fx(d,1)+'°'],['是否可交换',d<0.05?pill('ok','这一组可以'):pill('bad','不可以')]]);
+  }
+  let raf=0;
+  $('ord-play').addEventListener('click',()=>{cancelAnimationFrame(raf);const t0=performance.now();
+    const tick=now=>{const s=Math.min(2,(now-t0)/1400);ctl.set('s',s.toFixed(2));ctl.show();draw();if(s<2)raf=requestAnimationFrame(tick);};raf=requestAnimationFrame(tick);});
+  $('ord-a-ax').addEventListener('change',draw);$('ord-b-ax').addEventListener('change',draw);
+  draw();
+}
+
+/* ---------- §10 frame chain（2D） ---------- */
+function labChain(){
+  const svg=$('ch-svg'),S=175,O=[100,345],P={cam:[0.3,1.3],tag:[2.25,0.85]};
+  const ctl=mkCtl($('ch-ctl'),'ch',[['朝向（位置用鼠标拖）',[['ca','cam 的朝向',-180,180,1,-15,0,'°'],['ta','tag 的朝向',-180,180,1,60,0,'°']]]],draw);
+  const w=p=>[O[0]+S*p[0],O[1]-S*p[1]],wi=p=>[(p[0]-O[0])/S,(O[1]-p[1])/S];
+  const se2=(x,y,a)=>{const c=Math.cos(a),s=Math.sin(a);return [[c,-s,x],[s,c,y],[0,0,1]];};
+  const inv2=T=>{const c=T[0][0],s=T[1][0],x=T[0][2],y=T[1][2];return [[c,s,-(c*x+s*y)],[-s,c,s*x-c*y],[0,0,1]];};
+  const org=T=>[T[0][2],T[1][2]];
+  function frame2(T,len,wd,op,name,dash){
+    const o=org(T),ox=w(o),xt=w([o[0]+len*T[0][0],o[1]+len*T[1][0]]),yt=w([o[0]+len*T[0][1],o[1]+len*T[1][1]]);
+    let s='<g style="opacity:'+op+'">'+arrow(ox,xt,'var(--x)',wd,dash)+arrow(ox,yt,'var(--y)',wd,dash)+C(ox,4,'fill:var(--ink)')+'</g>';
+    if(name){const d=w([o[0]-0.16*(T[0][0]+T[0][1]),o[1]-0.16*(T[1][0]+T[1][1])]);s+=TX([d[0],d[1]+4],name,'fill:var(--ink);font-weight:500;opacity:'+op);}
+    return s;
+  }
+  const m3=T=>mat(T,(v,i,j)=>i===2?String(v):fx(v,2));
+  function draw(){
+    const Tbc=se2(P.cam[0],P.cam[1],ctl.val('ca')*DEG),Tbt0=se2(P.tag[0],P.tag[1],ctl.val('ta')*DEG);
+    const Tct=matmul(inv2(Tbc),Tbt0),Tbt=matmul(Tbc,Tct);
+    let s='';
+    for(let x=-0.5;x<=3.01;x+=0.5)s+=L(w([x,-0.5]),w([x,2]),'stroke:var(--line);stroke-width:1');
+    for(let y=-0.5;y<=2.01;y+=0.5)s+=L(w([-0.5,y]),w([3.1,y]),'stroke:var(--line);stroke-width:1');
+    /* camera 的视野示意：沿 cam 的 x 轴 */
+    const fov=[[0,0],[0.75,0.33],[0.75,-0.33]].map(p=>w([Tbc[0][0]*p[0]+Tbc[0][1]*p[1]+Tbc[0][2],Tbc[1][0]*p[0]+Tbc[1][1]*p[1]+Tbc[1][2]]));
+    s+=PG(fov,'fill:var(--accent);fill-opacity:.08;stroke:none');
+    const sq=[[-0.09,-0.09],[0.09,-0.09],[0.09,0.09],[-0.09,0.09]].map(p=>w([Tbt[0][0]*p[0]+Tbt[0][1]*p[1]+Tbt[0][2],Tbt[1][0]*p[0]+Tbt[1][1]*p[1]+Tbt[1][2]]));
+    s+=PG(sq,'fill:var(--line-strong);fill-opacity:.6;stroke:var(--muted);stroke-width:1');
+    const ob=w([0,0]),oc=w(org(Tbc)),ot=w(org(Tbt));
+    s+=arrow(ob,oc,'var(--muted)',1.6)+arrow(oc,ot,'var(--accent)',2)+arrow(ob,ot,'var(--ink)',1.4,'6 4');
+    if($('ch-wrong').checked){const Tw=matmul(Tct,Tbc);s+=frame2(Tw,0.32,2,0.9,'乘反了','4 3');s+=arrow(ob,w(org(Tw)),'var(--x)',1.2,'3 3');}
+    s+=frame2(se2(0,0,0),0.4,2.6,1,'base')+frame2(Tbc,0.36,2.6,1,'cam')+frame2(Tbt,0.36,2.6,1,'tag');
+    const pt=[0.3,0.2,1],pc=mv(Tct,pt),pb=mv(Tbt,pt);
+    s+=C(w(pb),4.5,'fill:var(--ray);stroke:var(--surface);stroke-width:1')+TX([w(pb)[0]+10,w(pb)[1]+4],'p','fill:var(--ray)','start');
+    svg.innerHTML=s;
+    $('ch-bc').innerHTML=m3(Tbc);$('ch-ct').innerHTML=m3(Tct);$('ch-bt').innerHTML=m3(Tbt);
+    $('ch-pt').innerHTML=kv([['p 在 tag 里','(0.30, 0.20)'],['p 在 cam 里',vec(pc.slice(0,2),2)],['p 在 base 里',vec(pb.slice(0,2),2)]]);
+  }
+  let grab=null;
+  onDrag(svg,pt=>{const d=k=>Math.hypot(w(P[k])[0]-pt[0],w(P[k])[1]-pt[1]);grab=d('cam')<d('tag')?'cam':'tag';if(d(grab)>70){grab=null;return false;}},
+    pt=>{const q=wi(pt);P[grab]=[clamp(q[0],-0.4,2.95),clamp(q[1],-0.3,1.85)];draw();});
+  $('ch-wrong').addEventListener('change',draw);
+  draw();
+}
+
+/* ---------- §11 hand-eye calibration ---------- */
+function labHE(){
+  const svg=$('he-svg'),st={az:-1.0,el:0.5},geo={cx:262,cy:205,sc:560,c:[0.33,0,0.17]};
+  const ctl=mkCtl($('he-ctl'),'he',[['采集',[['n','姿态数',3,20,1,10,0,''],['amp','转角幅度',2,60,1,35,0,'°']]],['Camera 测量噪声',[['nr','rotation noise',0,2,0.05,0.3,2,'°'],['nt','translation noise',0,5,0.1,1,1,' mm']]]],draw);
+  const view=View3D(svg,st,geo,draw);
+  const X={R:eulerZYX(90*DEG,0,10*DEG),t:[0.06,-0.02,0.05]},Wt={R:I3(),t:[0.45,0,0]};
+  let seed=11;
+  function sim(){
+    const rng=mulberry32(seed),g=()=>gaussian(rng),N=ctl.val('n'),amp=ctl.val('amp')*DEG,nr=ctl.val('nr')*DEG,nt=ctl.val('nt')/1000,one=$('he-mode').value==='one';
+    const E=[],Cs=[];
+    for(let i=0;i<N;i++){
+      const ax=one?[0,0,1]:unit([g(),g(),g()]),ang=amp*(0.5+0.5*rng())*(rng()<0.5?-1:1);
+      const Ei={R:matmul(rodrigues(ax,ang),rotX(Math.PI)),t:[0.45+0.1*(2*rng()-1),0.1*(2*rng()-1),0.3+0.05*(2*rng()-1)]};
+      const Ci=tmul(tmul(tinv(X),tinv(Ei)),Wt);
+      Ci.R=matmul(Ci.R,rodrigues([g(),g(),g()],nr*g()));Ci.t=add(Ci.t,[nt*g(),nt*g(),nt*g()]);
+      E.push(Ei);Cs.push(Ci);
+    }
+    /* 所有姿态两两配对：A = E_j⁻¹E_i，B = C_j C_i⁻¹ */
+    const pairs=[];for(let i=0;i<N;i++)for(let j=i+1;j<N;j++)pairs.push([tmul(tinv(E[j]),E[i]),tmul(Cs[j],tinv(Cs[i]))]);
+    const M=[[0,0,0],[0,0,0],[0,0,0]];
+    pairs.forEach(p=>{const al=logSO3(p[0].R).vec,be=logSO3(p[1].R).vec;for(let i=0;i<3;i++)for(let j=0;j<3;j++)M[i][j]+=al[i]*be[j];});
+    const kb=kabsch(M),Rx=kb.R;
+    const NtN=[[1e-12,0,0],[0,1e-12,0],[0,0,1e-12]],Ntd=[0,0,0];
+    pairs.forEach(p=>{const Cm=p[0].R.map((r,i)=>r.map((v,j)=>v-(i===j?1:0))),d=sub(mv(Rx,p[1].t),p[0].t);
+      for(let i=0;i<3;i++){for(let j=0;j<3;j++)for(let k=0;k<3;k++)NtN[i][j]+=Cm[k][i]*Cm[k][j];for(let k=0;k<3;k++)Ntd[i]+=Cm[k][i]*d[k];}});
+    const Xe={R:Rx,t:solve(NtN,Ntd)};
+    const tg=E.map((e,i)=>tmul(tmul(e,Xe),Cs[i]).t),mean=sc(tg.reduce((a,b)=>add(a,b),[0,0,0]),1/N);
+    const spread=Math.sqrt(tg.reduce((s,p)=>s+Math.pow(norm(sub(p,mean)),2),0)/N);
+    return {E,Xe,sig:kb.sigma,errR:logSO3(matmul(tr(X.R),Rx)).theta/DEG,errT:norm(sub(Xe.t,X.t))*1000,spread:spread*1000,np:pairs.length};
+  }
+  function draw(){
+    const r=sim();let s='';
+    const b=[[-0.08,-0.08],[0.08,-0.08],[0.08,0.08],[-0.08,0.08]].map(p=>view.p([Wt.t[0]+p[0],Wt.t[1]+p[1],0]));
+    s+=PG(b,'fill:var(--line-strong);fill-opacity:.45;stroke:var(--muted);stroke-width:1');
+    s+=TX([view.p(Wt.t)[0],view.p(Wt.t)[1]+34],'target');
+    s+=view.frame(I3(),[0,0,0],0.09,2.4,1,['x','y','z'])+TX([view.p([0,0,0])[0],view.p([0,0,0])[1]+18],'base');
+    r.E.forEach(e=>{
+      const ct=tpt(e,X.t),ce=tpt(e,r.Xe.t);
+      s+=view.frame(e.R,e.t,0.03,1.4,0.9,null);
+      s+=view.line(e.t,ct,'stroke:var(--muted);stroke-width:1')+C(view.p(ct),2.6,'fill:var(--muted)');
+      s+=view.line(e.t,ce,'stroke:var(--accent);stroke-width:1;stroke-dasharray:3 2')+C(view.p(ce),3.6,'fill:none;stroke:var(--accent);stroke-width:1.6');
+    });
+    svg.innerHTML=s;
+    const ratio=r.sig[1]/Math.max(r.sig[0],1e-12),okR=r.errR<1,okT=r.errT<5;
+    $('he-out').innerHTML=kv([
+      ['rotation 误差',fx(r.errR,2)+'° '+(okR?pill('ok','好'):pill('bad','差'))],
+      ['translation 误差',fx(r.errT,1)+' mm '+(okT?pill('ok','好'):pill('bad','差'))],
+      ['转轴多样性 σ₂ / σ₁',fx(ratio,3)+' '+(ratio<0.02?pill('bad','degenerate'):ratio<0.15?pill('mid','偏弱'):pill('ok','足够'))],
+      ['用到的相对运动',r.np+' 对'],
+      ['T_base_target 的散布',fx(r.spread,1)+' mm']]);
+    const rx=logSO3(X.R).vec.map(v=>v/DEG),re=logSO3(r.Xe.R).vec.map(v=>v/DEG);
+    $('he-x').innerHTML=kv([['t 真值',vec(sc(X.t,1000),1)],['t 估计',vec(sc(r.Xe.t,1000),1)],['R 真值（rotation vector, °）',vec(rx,1)],['R 估计',vec(re,1)]]);
+  }
+  $('he-mode').addEventListener('change',draw);
+  $('he-re').addEventListener('click',()=>{seed=(seed*7+13)%9973;draw();});
+  draw();
+}
+
+/* ---------- §13 planar arm：FK / IK / Jacobian / singularity ---------- */
+function labArm(){
+  const svg=$('arm-svg'),O=[260,240],S=78,LINKS={2:[1.2,1.0],3:[1.0,0.8,0.5]};
+  let n=3,q=[0,0,0],target=null,ik=false,raf=0,raw=0,idle=0;
+  const ctl=mkCtl($('arm-ctl'),'arm',[['Joint angles（拖这里是 FK）',[['q1','q₁',-180,180,1,40,0,'°'],['q2','q₂',-180,180,1,60,0,'°'],['q3','q₃',-180,180,1,-50,0,'°']]],['IK 参数',[['lam','damping λ',0.01,1,0.01,0.15,2,'']]]],k=>{if(k!=='lam'){ik=false;target=null;readQ();}draw();});
+  const w=p=>[O[0]+S*p[0],O[1]-S*p[1]],wi=p=>[(p[0]-O[0])/S,(O[1]-p[1])/S];
+  const wrap=a=>{a=(a+Math.PI)%(2*Math.PI);if(a<0)a+=2*Math.PI;return a-Math.PI;};
+  function readQ(){q=[ctl.val('q1')*DEG,ctl.val('q2')*DEG,ctl.val('q3')*DEG];}
+  function writeQ(){['q1','q2','q3'].forEach((k,i)=>ctl.set(k,(q[i]/DEG).toFixed(1)));ctl.show();}
+  function fk(qq){const l=LINKS[n],pts=[[0,0]];let a=0;for(let i=0;i<n;i++){a+=qq[i];pts.push([pts[i][0]+l[i]*Math.cos(a),pts[i][1]+l[i]*Math.sin(a)]);}return pts;}
+  function jac(pts){const e=pts[n],J=[[],[]];for(let i=0;i<n;i++){J[0].push(-(e[1]-pts[i][1]));J[1].push(e[0]-pts[i][0]);}return J;}
+  function jjt(J){let a=0,b=0,c=0;for(let i=0;i<n;i++){a+=J[0][i]*J[0][i];b+=J[0][i]*J[1][i];c+=J[1][i]*J[1][i];}return [a,b,c];}
+  /* y = (JJᵀ + μI)⁻¹ v，2×2 直接求逆 */
+  function inv2(m,mu,v){const a=m[0]+mu,b=m[1],c=m[2]+mu;let det=a*c-b*b;if(Math.abs(det)<1e-12)det=1e-12;return [(c*v[0]-b*v[1])/det,(-b*v[0]+a*v[1])/det];}
+  function ikStep(){
+    const pts=fk(q),e=sub(target,pts[n]),en=norm(e),J=jac(pts),m=jjt(J),method=$('arm-m').value,lam=ctl.val('lam');
+    const ec=en>0.06?sc(e,0.06/en):e;let dq;
+    if(method==='jt'){const g=[];for(let i=0;i<n;i++)g.push(J[0][i]*ec[0]+J[1][i]*ec[1]);
+      const Jg=[0,0];for(let i=0;i<n;i++){Jg[0]+=J[0][i]*g[i];Jg[1]+=J[1][i]*g[i];}
+      const al=dot(ec,Jg)/Math.max(dot(Jg,Jg),1e-12);dq=g.map(v=>v*al);
+    }else{const y=inv2(m,method==='dls'?lam*lam:0,ec);dq=[];for(let i=0;i<n;i++)dq.push(J[0][i]*y[0]+J[1][i]*y[1]);}
+    let nsMove=0;
+    if(n===3&&$('arm-ns').checked){
+      /* (I − J⁺J)·q̇₀，q̇₀ = −k·q：在不动末端的前提下把各关节拉向 0 */
+      const mu=method==='pinv'?1e-6:lam*lam,q0=q.map(v=>-0.06*v),Jq=[0,0];
+      for(let i=0;i<n;i++){Jq[0]+=J[0][i]*q0[i];Jq[1]+=J[1][i]*q0[i];}
+      const y=inv2(m,mu,Jq);for(let i=0;i<n;i++){const d=q0[i]-(J[0][i]*y[0]+J[1][i]*y[1]);dq[i]+=d;nsMove+=d*d;}
+    }
+    raw=norm(dq);if(raw>0.35)dq=sc(dq,0.35/raw);
+    q=q.map((v,i)=>wrap(v+dq[i]));
+    return (en>2e-3&&raw>2e-5)||Math.sqrt(nsMove)>2e-3;
+  }
+  function loop(){
+    if(!ik||!target)return;
+    const moving=ikStep();writeQ();draw();idle++;
+    if(moving&&idle<500)raf=requestAnimationFrame(loop);else{ik=false;draw();}
+  }
+  function start(){idle=0;if(!ik){ik=true;cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);}}
+  function draw(){
+    const l=LINKS[n],pts=fk(q),J=jac(pts),m=jjt(J),ee=pts[n],reach=l.reduce((a,b)=>a+b,0);
+    const tr2=(m[0]+m[2])/2,df=Math.sqrt(Math.pow((m[0]-m[2])/2,2)+m[1]*m[1]),s1=Math.sqrt(Math.max(tr2+df,0)),s2=Math.sqrt(Math.max(tr2-df,0)),ang=0.5*Math.atan2(2*m[1],m[0]-m[2]);
+    let s=C(w([0,0]),reach*S,'fill:none;stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4');
+    if(n===2)s+=C(w([0,0]),Math.abs(l[0]-l[1])*S,'fill:none;stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4');
+    s+=L(w([-3.1,0]),w([3.1,0]),'stroke:var(--line);stroke-width:1')+L(w([0,-2.3]),w([0,2.9]),'stroke:var(--line);stroke-width:1');
+    if(n===2&&target){
+      /* 解析解：elbow-up 和 elbow-down */
+      const x=target[0],y=target[1],c2=(x*x+y*y-l[0]*l[0]-l[1]*l[1])/(2*l[0]*l[1]);
+      if(Math.abs(c2)<=1)[1,-1].forEach(sg=>{const q2=sg*Math.acos(c2),q1=Math.atan2(y,x)-Math.atan2(l[1]*Math.sin(q2),l[0]+l[1]*Math.cos(q2));
+        const a=[l[0]*Math.cos(q1),l[0]*Math.sin(q1)];s+=PL([w([0,0]),w(a),w([x,y])],'stroke:var(--muted);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.28');});
+    }
+    if($('arm-el').checked){
+      const k=0.42*S;
+      s+='<ellipse cx="'+w(ee)[0].toFixed(1)+'" cy="'+w(ee)[1].toFixed(1)+'" rx="'+(s1*k).toFixed(1)+'" ry="'+Math.max(s2*k,0.6).toFixed(1)+'" transform="rotate('+(-ang/DEG).toFixed(2)+' '+w(ee)[0].toFixed(1)+' '+w(ee)[1].toFixed(1)+')" style="fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-width:1.5"/>';
+    }
+    s+=PL(pts.map(w),'stroke:var(--ink);stroke-width:8;stroke-linecap:round;stroke-linejoin:round;opacity:.85');
+    s+='<rect x="'+(O[0]-16)+'" y="'+(O[1]+6)+'" width="32" height="10" rx="2" style="fill:var(--muted)"/>';
+    for(let i=0;i<n;i++)s+=C(w(pts[i]),6,'fill:var(--surface);stroke:var('+COLS[i]+');stroke-width:2.5');
+    if($('arm-el').checked)for(let i=0;i<n;i++)s+=arrow(w(ee),w([ee[0]+J[0][i]*0.42,ee[1]+J[1][i]*0.42]),'var('+COLS[i]+')',2.2);
+    s+=C(w(ee),5,'fill:var(--accent)');
+    if(target){const t=w(target);s+=C(t,9,'fill:none;stroke:var(--ray);stroke-width:2.2')+L([t[0]-13,t[1]],[t[0]+13,t[1]],'stroke:var(--ray);stroke-width:1.4')+L([t[0],t[1]-13],[t[0],t[1]+13],'stroke:var(--ray);stroke-width:1.4');}
+    s+=TX([O[0],O[1]+34],'base');
+    svg.innerHTML=s;
+    const phi=wrap(q.slice(0,n).reduce((a,b)=>a+b,0));
+    $('arm-fk').innerHTML=kv([['end-effector (x, y)',vec(ee,3)],['朝向 φ = Σq',fx(phi/DEG,1)+'°'],['到 base 的距离',fx(norm(ee),3)+'　最大 reach '+fx(reach,1)]]);
+    $('arm-J').innerHTML=mat(J,v=>fx(v,2),(i,j)=>CCLS[j]);
+    const rows=[['singular values',fx(s1,3)+', '+fx(s2,3)],['manipulability σ₁σ₂',fx(s1*s2,3)],['condition number',s2<1e-4?'∞':fx(s1/s2,1)]];
+    if(n===2)rows.push(['det J = l₁l₂ sin q₂',fx(l[0]*l[1]*Math.sin(q[1]),3)]);
+    rows.push(['状态',s2<0.03?pill('bad','singular'):s2<0.2?pill('mid','接近 singular'):pill('ok','正常')]);
+    $('arm-sv').innerHTML=kv(rows);
+    if(target){const en=norm(sub(target,ee)),far=norm(target)>reach+1e-6;
+      $('arm-ik').innerHTML=kv([['目标',vec(target,2)+(far?' '+pill('bad','workspace 外'):'')],['误差 ‖e‖',fx(en,4)],['这一步的 ‖Δq‖（限幅前）',raw>999?'&gt; 999 rad':fx(raw,3)+' rad'],['状态',ik?pill('mid','迭代中'):(en<5e-3?pill('ok','已收敛'):pill('bad','停在最近处'))]]);
+    }else $('arm-ik').innerHTML=kv([['目标','在左图里点一下或拖动']]);
+  }
+  function setN(){n=+$('arm-n').value;ctl.row('q3').style.display=n===3?'':'none';$('arm-ns').parentElement.style.opacity=n===3?1:0.4;target=null;ik=false;readQ();draw();}
+  onDrag(svg,pt=>{target=wi(pt);start();draw();},pt=>{target=wi(pt);start();});
+  $('arm-n').addEventListener('change',setN);
+  $('arm-m').addEventListener('change',()=>{if(target)start();});
+  $('arm-ns').addEventListener('change',()=>{if(!target)target=fk(q)[n];start();});
+  $('arm-el').addEventListener('change',draw);
+  document.querySelectorAll('button[data-arm]').forEach(b=>b.addEventListener('click',()=>{const p=b.dataset.arm.split(',');ctl.set('q1',p[0]);ctl.set('q2',p[1]);ctl.set('q3',p[2]);ctl.show();ik=false;target=null;readQ();draw();}));
+  readQ();setN();
+}
+
+/* ---------- §17 C-space ---------- */
+function labCS(){
+  const svg=$('cs-svg'),cv=$('cs-cv'),g=cv.getContext('2d'),l=[1,0.8],S=80,O=[170,170],PAD=0.04,NG=120,PI=Math.PI;
+  const obs=[{c:[0.95,1.05],r:0.3},{c:[-1.15,0.35],r:0.32},{c:[0.45,-1.25],r:0.28}];
+  let q=[-0.35,-1.3],qs=[-0.35,-1.3],qg=[1.9,0.9],tree=null,path=null,raf=0,msg='';
+  const grid=new Uint8Array(NG*NG);
+  const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const w=p=>[O[0]+S*p[0],O[1]-S*p[1]],wi=p=>[(p[0]-O[0])/S,(O[1]-p[1])/S];
+  const arm=qq=>{const a=[l[0]*Math.cos(qq[0]),l[0]*Math.sin(qq[0])];return [[0,0],a,[a[0]+l[1]*Math.cos(qq[0]+qq[1]),a[1]+l[1]*Math.sin(qq[0]+qq[1])]];};
+  function segD(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],t=clamp(((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1),0,1);return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
+  function coll(qq){const p=arm(qq);return obs.some(o=>segD(o.c,p[0],p[1])<o.r+PAD||segD(o.c,p[1],p[2])<o.r+PAD);}
+  function edgeFree(a,b){const n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/0.04);for(let k=1;k<=n;k++){const t=k/n;if(coll([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]))return false;}return true;}
+  function build(){for(let j=0;j<NG;j++)for(let i=0;i<NG;i++)grid[j*NG+i]=coll([-PI+(i+0.5)/NG*2*PI,PI-(j+0.5)/NG*2*PI])?1:0;}
+  const W=cv.width,cp=qq=>[(qq[0]+PI)/(2*PI)*W,(1-(qq[1]+PI)/(2*PI))*W];
+  function drawCS(){
+    const cell=W/NG;g.fillStyle=cssv('--bg');g.fillRect(0,0,W,W);g.fillStyle=cssv('--line-strong');
+    for(let j=0;j<NG;j++)for(let i=0;i<NG;i++)if(grid[j*NG+i])g.fillRect(i*cell,j*cell,cell+0.5,cell+0.5);
+    g.strokeStyle=cssv('--line');g.lineWidth=1.5;g.beginPath();g.moveTo(W/2,0);g.lineTo(W/2,W);g.moveTo(0,W/2);g.lineTo(W,W/2);g.stroke();
+    g.fillStyle=cssv('--muted');g.font='22px sans-serif';g.textAlign='left';g.fillText('q₂ = 180°',10,28);g.fillText('−180°',10,W-12);g.textAlign='right';g.fillText('q₁ = 180°',W-10,W-12);
+    if(tree){g.strokeStyle=cssv('--muted');g.globalAlpha=0.55;g.lineWidth=1.5;g.beginPath();
+      tree.nodes.forEach(nd=>{if(nd.parent<0)return;const a=cp(nd.p),b=cp(tree.nodes[nd.parent].p);g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);});g.stroke();g.globalAlpha=1;}
+    if(path){g.strokeStyle=cssv('--accent');g.lineWidth=5;g.lineJoin='round';g.beginPath();path.forEach((p,i)=>{const a=cp(p);if(i)g.lineTo(a[0],a[1]);else g.moveTo(a[0],a[1]);});g.stroke();}
+    const dotc=(qq,col,r)=>{const a=cp(qq);g.fillStyle=col;g.beginPath();g.arc(a[0],a[1],r,0,2*PI);g.fill();};
+    dotc(qs,cssv('--ok'),12);dotc(qg,cssv('--x'),12);
+    const a=cp(q);g.fillStyle=cssv('--ink');g.beginPath();g.arc(a[0],a[1],9,0,2*PI);g.fill();g.strokeStyle=cssv('--surface');g.lineWidth=3;g.stroke();
+  }
+  function drawWS(){
+    const hit=coll(q);
+    let s=C(w([0,0]),1.8*S,'fill:none;stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4');
+    obs.forEach(o=>{s+=C(w(o.c),o.r*S,'fill:var(--line-strong);stroke:var(--muted);stroke-width:1');});
+    s+=PL(arm(qs).map(w),'stroke:var(--ok);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.35');
+    s+=PL(arm(qg).map(w),'stroke:var(--x);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.35');
+    if(path)s+=PL(path.map(p=>w(arm(p)[2])),'stroke:var(--accent);stroke-width:1.5;stroke-dasharray:4 3');
+    const p=arm(q).map(w);
+    s+=PL(p,'stroke:'+(hit?'var(--x)':'var(--ink)')+';stroke-width:7;stroke-linecap:round;stroke-linejoin:round');
+    s+=C(p[0],5,'fill:var(--surface);stroke:var(--ink);stroke-width:2')+C(p[1],5,'fill:var(--surface);stroke:var(--ink);stroke-width:2')+C(p[2],4,'fill:var(--accent)');
+    if(hit)s+=TX([170,22],'collision','fill:var(--x);font-weight:600');
+    svg.innerHTML=s;
+  }
+  function out(){$('cs-out').innerHTML=msg+'　q = ('+fx(q[0]/DEG,0)+'°, '+fx(q[1]/DEG,0)+'°) '+(coll(q)?pill('bad','collision'):pill('ok','free'));}
+  function redraw(){drawCS();drawWS();out();}
+  function clearPlan(){tree=null;path=null;cancelAnimationFrame(raf);}
+  let grab=-1;
+  onDrag(svg,pt=>{const p=wi(pt);grab=obs.findIndex(o=>Math.hypot(o.c[0]-p[0],o.c[1]-p[1])<o.r+0.08);if(grab<0)return false;},
+    pt=>{const p=wi(pt);obs[grab].c=[clamp(p[0],-2,2),clamp(p[1],-2,2)];clearPlan();msg='';build();redraw();});
+  const setQ=pt=>{cancelAnimationFrame(raf);q=[clamp((pt[0]/W*2-1)*PI,-PI,PI),clamp((1-pt[1]/W*2)*PI,-PI,PI)];redraw();};
+  onDrag(cv,setQ,setQ);
+  $('cs-ss').addEventListener('click',()=>{qs=q.slice();clearPlan();msg='';redraw();});
+  $('cs-sg').addEventListener('click',()=>{qg=q.slice();clearPlan();msg='';redraw();});
+  $('cs-plan').addEventListener('click',()=>{
+    clearPlan();
+    if(coll(qs)||coll(qg)){msg='start 或 goal 本身在碰撞中';redraw();return;}
+    tree=makeRRT({lo:[-PI,-PI],hi:[PI,PI],start:qs.slice(),goal:qg.slice(),step:0.3,bias:0.1,goalTol:0.3,star:false,free:p=>!coll(p),edgeFree});
+    let k=0;while(!tree.found()&&k<8000){tree.iterate();k++;}
+    if(tree.found()){path=shortcut(tree.path(),edgeFree,200);msg='找到 path：'+tree.nodes.length+' 个节点，'+k+' 次迭代';}
+    else msg='8000 次迭代内没找到（可能被隔开了）';
+    redraw();
+  });
+  $('cs-play').addEventListener('click',()=>{
+    if(!path){msg='先跑 RRT';out();return;}
+    cancelAnimationFrame(raf);const len=pathLen(path),t0=performance.now(),dur=Math.max(1500,len*500);
+    const tick=now=>{let d=Math.min(1,(now-t0)/dur)*len,i=1;
+      while(i<path.length-1){const sl=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]);if(d<=sl)break;d-=sl;i++;}
+      const sl=Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1])||1,t=Math.min(1,d/sl);
+      q=[path[i-1][0]+(path[i][0]-path[i-1][0])*t,path[i-1][1]+(path[i][1]-path[i-1][1])*t];redraw();
+      if(now-t0<dur)raf=requestAnimationFrame(tick);};
+    raf=requestAnimationFrame(tick);
+  });
+  if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+  build();redraw();
+}
+
+/* ---------- §18 RRT ---------- */
+function labRRT(){
+  const svg=$('rrt-svg'),W=600,H=380,NS='http://www.w3.org/2000/svg';
+  const MAPS={
+    clutter:{obs:[[110,70,50,130],[215,215,70,120],[300,30,45,150],[400,170,80,60],[170,260,30,90],[470,270,60,80],[395,55,95,40],[30,150,50,30]],s:[40,340],g:[560,40]},
+    narrow:{obs:[[260,0,80,286],[260,304,80,76]],s:[70,80],g:[530,80]},
+    trap:{obs:[[230,120,150,14],[230,246,150,14],[366,120,14,140]],s:[320,190],g:[540,190]},
+    empty:{obs:[],s:[60,320],g:[540,60]}
+  };
+  let map=MAPS.clutter,start=map.s.slice(),goal=map.g.slice(),rrt=null,running=false,raf=0,lines=[],smooth=null,els={};
+  const ctl=mkCtl($('rrt-ctl'),'rrt',[['参数（改动后树会重置）',[['step','step size',5,80,1,22,0,' px'],['bias','goal bias',0,60,1,8,0,'%']]],['显示',[['speed','每帧迭代次数',1,40,1,5,0,'']]]],k=>{if(k!=='speed')reset();});
+  const free=p=>p[0]>3&&p[0]<W-3&&p[1]>3&&p[1]<H-3&&!map.obs.some(o=>p[0]>o[0]-3&&p[0]<o[0]+o[2]+3&&p[1]>o[1]-3&&p[1]<o[1]+o[3]+3);
+  const edgeFree=(a,b)=>{const n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/3);for(let k=1;k<=n;k++){const t=k/n;if(!free([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]))return false;}return true;};
+  const star=()=>$('rrt-algo').value==='star';
+  function setRun(v){running=v;$('rrt-run').textContent=v?'❚❚ 暂停':'▶ 运行';$('rrt-run').classList.toggle('on',v);if(!v)cancelAnimationFrame(raf);}
+  function reset(){
+    setRun(false);rrt=null;smooth=null;lines=[];
+    let s='';map.obs.forEach(o=>{s+='<rect x="'+o[0]+'" y="'+o[1]+'" width="'+o[2]+'" height="'+o[3]+'" style="fill:var(--line-strong);stroke:var(--muted);stroke-width:1"/>';});
+    s+='<g id="rrt-edges"></g><polyline id="rrt-path" points="" style="fill:none;stroke:var(--accent);stroke-width:3;stroke-linejoin:round"/><polyline id="rrt-sm" points="" style="fill:none;stroke:var(--ok);stroke-width:3;stroke-linejoin:round"/>';
+    s+='<circle id="rrt-samp" cx="-20" cy="-20" r="6" style="fill:none;stroke:var(--ray);stroke-width:2"/>';
+    s+=C(start,8,'fill:var(--ok);stroke:var(--surface);stroke-width:2')+C(goal,8,'fill:var(--x);stroke:var(--surface);stroke-width:2');
+    s+=TX([start[0],start[1]-13],'start','fill:var(--ok);font-weight:600')+TX([goal[0],goal[1]-13],'goal','fill:var(--x);font-weight:600');
+    svg.innerHTML=s;els={g:$('rrt-edges'),path:$('rrt-path'),sm:$('rrt-sm'),samp:$('rrt-samp')};out();
+  }
+  function ensure(){if(!rrt){const st=ctl.val('step');rrt=makeRRT({lo:[0,0],hi:[W,H],start:start.slice(),goal:goal.slice(),step:st,bias:ctl.val('bias')/100,goalTol:st,star:star(),radius:Math.max(st*2.2,45),free,edgeFree});lines=[null];}}
+  const done=()=>rrt&&((!star()&&rrt.found())||rrt.nodes.length>=2500||rrt.iters()>=30000);
+  function setLine(i){const nd=rrt.nodes[i],pp=rrt.nodes[nd.parent].p,ln=lines[i];ln.setAttribute('x1',pp[0].toFixed(1));ln.setAttribute('y1',pp[1].toFixed(1));ln.setAttribute('x2',nd.p[0].toFixed(1));ln.setAttribute('y2',nd.p[1].toFixed(1));}
+  function one(){
+    const r=rrt.iterate();
+    els.samp.setAttribute('cx',r.sample[0].toFixed(1));els.samp.setAttribute('cy',r.sample[1].toFixed(1));
+    if(r.idx!=null){const ln=document.createElementNS(NS,'line');ln.setAttribute('style','stroke:var(--muted);stroke-width:1;opacity:.7');els.g.appendChild(ln);lines[r.idx]=ln;setLine(r.idx);r.rew.forEach(setLine);}
+  }
+  function showPath(){const p=rrt&&rrt.path();els.path.setAttribute('points',p?P2(p):'');}
+  function out(){
+    const rows=[['迭代次数',rrt?String(rrt.iters()):'0'],['树的节点数',rrt?String(rrt.nodes.length):'1']];
+    rows.push(['path 长度',rrt&&rrt.found()?fx(rrt.pathCost(),0)+' px　直线距离 '+fx(Math.hypot(goal[0]-start[0],goal[1]-start[1]),0)+' px':'还没找到']);
+    if(smooth)rows.push(['shortcut 之后',fx(pathLen(smooth),0)+' px']);
+    if(rrt&&done())rows.push(['状态',rrt.found()?pill('ok',star()?'到节点上限，停止':'到达 goal'):pill('bad','到上限仍未找到')]);
+    $('rrt-out').innerHTML=kv(rows);
+  }
+  function frame(){
+    ensure();const k=ctl.val('speed');
+    for(let i=0;i<k&&!done();i++)one();
+    showPath();out();
+    if(done())setRun(false);else if(running)raf=requestAnimationFrame(frame);
+  }
+  $('rrt-run').addEventListener('click',()=>{if(running){setRun(false);return;}if(done())reset();setRun(true);raf=requestAnimationFrame(frame);});
+  $('rrt-one').addEventListener('click',()=>{setRun(false);ensure();if(!done())one();showPath();out();});
+  $('rrt-reset').addEventListener('click',reset);
+  $('rrt-short').addEventListener('click',()=>{const p=rrt&&rrt.path();if(!p)return;smooth=shortcut(p,edgeFree,400);els.sm.setAttribute('points',P2(smooth));out();});
+  $('rrt-algo').addEventListener('change',reset);
+  $('rrt-map').addEventListener('change',()=>{map=MAPS[$('rrt-map').value];start=map.s.slice();goal=map.g.slice();reset();});
+  let grab=null;
+  onDrag(svg,pt=>{const ds=Math.hypot(pt[0]-start[0],pt[1]-start[1]),dg=Math.hypot(pt[0]-goal[0],pt[1]-goal[1]);grab=ds<dg?start:goal;if(Math.min(ds,dg)>30){grab=null;return false;}},
+    pt=>{const p=[clamp(pt[0],6,W-6),clamp(pt[1],6,H-6)];if(!free(p))return;grab[0]=p[0];grab[1]=p[1];reset();});
+  reset();
+}
+
+/* ---------- §19 trajectory optimization（CHOMP 风格） ---------- */
+function labTO(){
+  const svg=$('to-svg'),N=48,A=[50,170],B=[550,170],ETA=0.02;
+  const obs=[{c:[215,138],r:52},{c:[390,206],r:46},{c:[300,36],r:26}];
+  let X=[],it=0,hist=[],running=false,raf=0,initPts=[];
+  const ctl=mkCtl($('to-ctl'),'to',[['Cost 的权重',[['ws','w_smooth',0.2,3,0.1,1,1,''],['wo','w_obs',0,10,0.1,4,1,'']]],['Obstacle cost',[['eps','安全距离 ε',5,70,1,30,0,' px']]]],()=>{kick();});
+  function init(){const kind=$('to-init').value,amp=kind==='up'?-130:kind==='down'?130:0;X=[];
+    for(let i=1;i<=N;i++){const u=i/(N+1);X.push([A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u+amp*Math.sin(Math.PI*u)]);}
+    initPts=[A].concat(X.map(p=>p.slice()),[B]);it=0;hist=[];}
+  function oc(p,eps){let c=0,gx=0,gy=0,dmin=Infinity;
+    obs.forEach(o=>{const dx=p[0]-o.c[0],dy=p[1]-o.c[1],r=Math.hypot(dx,dy),d=r-o.r;dmin=Math.min(dmin,d);if(d>=eps)return;
+      const ux=r>1e-9?dx/r:0,uy=r>1e-9?dy/r:0;
+      if(d<0){c+=-d+eps/2;gx-=ux;gy-=uy;}else{c+=(d-eps)*(d-eps)/(2*eps);gx+=(d-eps)/eps*ux;gy+=(d-eps)/eps*uy;}});
+    return {c,g:[gx,gy],d:dmin};}
+  function costs(){const eps=ctl.val('eps'),all=[A].concat(X,[B]);let sm=0,ob=0,dmin=Infinity;
+    for(let i=1;i<all.length;i++)sm+=Math.pow(all[i][0]-all[i-1][0],2)+Math.pow(all[i][1]-all[i-1][1],2);
+    X.forEach(p=>{const r=oc(p,eps);ob+=r.c;dmin=Math.min(dmin,r.d);});
+    return {sm:sm/2,ob,dmin,total:ctl.val('ws')*sm/2+ctl.val('wo')*ob};}
+  function step(){
+    const ws=ctl.val('ws'),wo=ctl.val('wo'),eps=ctl.val('eps'),gx=[],gy=[];
+    for(let i=0;i<N;i++){const p=X[i],a=i?X[i-1]:A,b=i<N-1?X[i+1]:B,o=oc(p,eps);
+      gx.push(wo*o.g[0]+ws*(2*p[0]-a[0]-b[0]));gy.push(wo*o.g[1]+ws*(2*p[1]-a[1]-b[1]));}
+    /* covariant update：ξ ← ξ − η·A⁻¹·∇U */
+    const dx=triSolve(gx),dy=triSolve(gy);let mx=0;
+    for(let i=0;i<N;i++){X[i][0]-=ETA*dx[i];X[i][1]=clamp(X[i][1]-ETA*dy[i],4,336);mx=Math.max(mx,ETA*Math.hypot(dx[i],dy[i]));}
+    it++;return mx;
+  }
+  function draw(){
+    const eps=ctl.val('eps'),c=costs();let s='';
+    obs.forEach(o=>{s+=C(o.c,o.r+eps,'fill:none;stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4')+C(o.c,o.r,'fill:var(--line-strong);stroke:var(--muted);stroke-width:1');});
+    s+=PL(initPts,'stroke:var(--muted);stroke-width:1;stroke-dasharray:3 4;opacity:.7');
+    const all=[A].concat(X,[B]);
+    s+=PL(all,'stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round');
+    X.forEach(p=>{const r=oc(p,eps);s+=C(p,2.6,'fill:'+(r.d<0?'var(--x)':r.d<eps?'var(--ray)':'var(--accent)'));});
+    s+=C(A,7,'fill:var(--ok);stroke:var(--surface);stroke-width:2')+C(B,7,'fill:var(--x);stroke:var(--surface);stroke-width:2');
+    s+=TX([A[0],A[1]-13],'start','fill:var(--ok);font-weight:600')+TX([B[0],B[1]-13],'goal','fill:var(--x);font-weight:600');
+    svg.innerHTML=s;
+    $('to-out').innerHTML=kv([['迭代次数',String(it)],['smoothness cost',fx(c.sm,0)],['obstacle cost',fx(c.ob,1)],['最小 clearance',fx(c.dmin,1)+' px '+(c.dmin<0?pill('bad','碰撞'):c.dmin<eps?pill('mid','在安全距离内'):pill('ok','安全'))],['状态',running?pill('mid','优化中'):pill('ok','已停止')]]);
+    if(hist.length>1){const mx=Math.max(...hist),mn=Math.min(...hist),rg=(mx-mn)||1;
+      $('to-plot').innerHTML='<rect x="0.5" y="0.5" width="299" height="89" style="fill:var(--bg);stroke:var(--line)"/>'+PL(hist.map((v,i)=>[6+288*i/(hist.length-1),82-74*(v-mn)/rg]),'stroke:var(--accent);stroke-width:1.8');}
+    else $('to-plot').innerHTML='<rect x="0.5" y="0.5" width="299" height="89" style="fill:var(--bg);stroke:var(--line)"/>';
+  }
+  function setRun(v){running=v;$('to-run').textContent=v?'❚❚ 暂停':'▶ 运行';$('to-run').classList.toggle('on',v);if(!v)cancelAnimationFrame(raf);}
+  let calm=0;
+  function loop(){let mx=0;for(let k=0;k<4;k++)mx=Math.max(mx,step());hist.push(costs().total);if(hist.length>400)hist.shift();
+    calm=mx<0.004?calm+1:0;if(calm>20||it>6000){setRun(false);draw();return;}
+    draw();if(running)raf=requestAnimationFrame(loop);}
+  function kick(){calm=0;if(running||it>0){if(!running){setRun(true);raf=requestAnimationFrame(loop);}}else draw();}
+  $('to-run').addEventListener('click',()=>{if(running){setRun(false);draw();}else{calm=0;setRun(true);raf=requestAnimationFrame(loop);}});
+  $('to-reset').addEventListener('click',()=>{setRun(false);init();draw();});
+  $('to-init').addEventListener('change',()=>{setRun(false);init();draw();});
+  $('to-kick').addEventListener('click',()=>{const a=[1,2,3].map(k=>(Math.random()*2-1)*40/k);X.forEach((p,i)=>{const u=(i+1)/(N+1);p[1]=clamp(p[1]+a.reduce((s,v,k)=>s+v*Math.sin((k+1)*Math.PI*u),0),4,336);});calm=0;if(!running){setRun(true);raf=requestAnimationFrame(loop);}});
+  let grab=-1;
+  onDrag(svg,pt=>{grab=obs.findIndex(o=>Math.hypot(o.c[0]-pt[0],o.c[1]-pt[1])<o.r+6);if(grab<0)return false;},
+    pt=>{obs[grab].c=[clamp(pt[0],90,510),clamp(pt[1],10,330)];calm=0;if(it>0&&!running){setRun(true);raf=requestAnimationFrame(loop);}else if(!running)draw();});
+  init();draw();
+}
+
+/* ---------- 画曲线用的小工具 ---------- */
+function niceTicks(a,b,n){const raw=(b-a)/n,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p,stp=(m<1.5?1:m<3.5?2:m<7.5?5:10)*p,out=[];for(let v=Math.ceil(a/stp-1e-9)*stp;v<=b+1e-9;v+=stp)out.push(Math.abs(v)<1e-12?0:v);return out;}
+function plotPanel(o){
+  const X=t=>o.x+(t-o.xr[0])/(o.xr[1]-o.xr[0])*o.w,Y=v=>o.y+o.h-(clamp(v,o.yr[0],o.yr[1])-o.yr[0])/(o.yr[1]-o.yr[0])*o.h;
+  let s='<rect x="'+o.x+'" y="'+o.y+'" width="'+o.w+'" height="'+o.h+'" style="fill:var(--bg);stroke:var(--line)"/>';
+  niceTicks(o.yr[0],o.yr[1],4).forEach(v=>{const y=Y(v);s+=L([o.x,y],[o.x+o.w,y],'stroke:var(--line);stroke-width:1')+'<text x="'+(o.x-6)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" class="d-m">'+(+v.toPrecision(6))+'</text>';});
+  niceTicks(o.xr[0],o.xr[1],6).forEach(v=>{const x=X(v);if(o.xt)s+='<text x="'+x.toFixed(1)+'" y="'+(o.y+o.h+15)+'" text-anchor="middle" class="d-m">'+(+v.toPrecision(6))+(o.xu||'')+'</text>';});
+  (o.vl||[]).forEach(v=>{s+=L([X(v.v),o.y],[X(v.v),o.y+o.h],v.st);if(v.label)s+=TX([X(v.v)+5,o.y+13],v.label,'',"start");});
+  (o.hl||[]).forEach(v=>{s+=L([o.x,Y(v.v)],[o.x+o.w,Y(v.v)],v.st);if(v.label)s+=TX([o.x+o.w-5,Y(v.v)-5],v.label,v.lst||'',"end");});
+  o.series.forEach(se=>{s+=PL(se.pts.map(p=>[X(p[0]),Y(p[1])]),se.st);});
+  if(o.title)s+=TX([o.x+6,o.y-6],o.title,'fill:var(--ink)',"start");
+  return s;
+}
+
+/* ---------- §20 PID ---------- */
+function labPID(){
+  const svg=$('pid-svg');
+  const ctl=mkCtl($('pid-ctl'),'pid',[['Gains',[['kp','K_p',0,300,1,80,0,''],['ki','K_i',0,200,1,60,0,''],['kd','K_d',0,40,0.5,16,1,'']]],['Plant 与 actuator',[['d','disturbance d',0,5,0.1,2,1,''],['umax','u_max（saturation）',2,50,1,50,0,'']]],['Measurement',[['noise','sensor noise σ',0,0.01,0.0005,0,4,''],['tau','D filter 时间常数',0,0.05,0.002,0,3,' s']]]],draw);
+  function sim(){
+    const kp=ctl.val('kp'),ki=ctl.val('ki'),kd=ctl.val('kd'),dist=ctl.val('d'),umax=ctl.val('umax'),nz=ctl.val('noise'),tau=ctl.val('tau'),aw=$('pid-aw').checked;
+    const dt=0.001,T=6,m=1,b=1,rng=mulberry32(5),xs=[],us=[];
+    let x=0,v=0,I=0,prev=0,df=0,sat=0;
+    for(let k=0;k<=T/dt;k++){
+      const t=k*dt,y=x+(nz?nz*gaussian(rng):0),e=1-y,dr=k?-(y-prev)/dt:0;
+      df=tau>0?df+(dr-df)*dt/(tau+dt):dr;prev=y;
+      const u0=kp*e+ki*I+kd*df,u=clamp(u0,-umax,umax);
+      if(u!==u0)sat++;
+      if(!aw||u===u0||e*u0<0)I+=e*dt;
+      const a=(u-(t>=3?dist:0)-b*v)/m;v+=a*dt;x+=v*dt;
+      if(!isFinite(x)||Math.abs(x)>1e6){x=clamp(x||0,-1e6,1e6);v=0;}
+      if(k%10===0){xs.push([t,x]);us.push([t,u]);}
+    }
+    return {xs,us,sat:sat*dt};
+  }
+  function draw(){
+    const r=sim(),pre=r.xs.filter(p=>p[0]<3),post=r.xs.filter(p=>p[0]>=3);
+    const t10=pre.find(p=>p[1]>=0.1),t90=pre.find(p=>p[1]>=0.9),mx=Math.max(...pre.map(p=>p[1]));
+    let ts=null;for(let i=pre.length-1;i>=0;i--)if(Math.abs(pre[i][1]-1)>0.02){ts=i===pre.length-1?null:pre[i+1][0];break;}
+    if(Math.abs(pre[0][1]-1)<=0.02&&ts===null&&pre.every(p=>Math.abs(p[1]-1)<=0.02))ts=0;
+    const e3=1-pre[pre.length-1][1],e6=1-post[post.length-1][1],dev=Math.max(...post.map(p=>Math.abs(p[1]-1)));
+    const ymax=clamp(Math.max(1.3,...r.xs.map(p=>p[1]))*1.08,1.4,3),ymin=clamp(Math.min(0,...r.xs.map(p=>p[1]))-0.05,-1,0);
+    const uv=r.us.map(p=>p[1]),ua=Math.max(1,Math.min(Math.max(...uv.map(Math.abs)),60))*1.1;
+    let s=plotPanel({x:52,y:26,w:612,h:210,xr:[0,6],yr:[ymin,ymax],title:'position y(t)',
+      hl:[{v:1,st:'stroke:var(--muted);stroke-width:1.2;stroke-dasharray:5 4',label:'reference = 1'}],
+      vl:[{v:3,st:'stroke:var(--ray);stroke-width:1.2;stroke-dasharray:3 3',label:'disturbance 开始'}],
+      series:[{pts:r.xs,st:'stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round'}]});
+    s+=plotPanel({x:52,y:276,w:612,h:96,xr:[0,6],yr:[-ua,ua],title:'control u(t)',xt:true,xu:' s',
+      hl:[{v:0,st:'stroke:var(--line-strong);stroke-width:1'}],vl:[{v:3,st:'stroke:var(--ray);stroke-width:1.2;stroke-dasharray:3 3'}],
+      series:[{pts:r.us,st:'stroke:var(--z);stroke-width:1.4;stroke-linejoin:round'}]});
+    svg.innerHTML=s;
+    const unstable=Math.max(...r.xs.map(p=>Math.abs(p[1])))>20;
+    $('pid-m1').innerHTML=kv([['rise time（10% → 90%）',t10&&t90?fx(t90[0]-t10[0],2)+' s':'没到 90%'],['overshoot',unstable?pill('bad','发散'):fx(Math.max(0,mx-1)*100,1)+'%'],['settling time（±2%）',ts===null?'3 s 内没稳住':fx(ts,2)+' s'],['t = 3 s 时的误差',fx(e3,3)]]);
+    $('pid-m2').innerHTML=kv([['被 disturbance 推开的最大偏差',fx(dev,3)],['t = 6 s 时的误差',fx(e6,3)+' '+(Math.abs(e6)<0.01?pill('ok','已消除'):pill('mid','有 steady-state error'))],['actuator 饱和的总时间',fx(r.sat,2)+' s']]);
+  }
+  document.querySelectorAll('button[data-pid]').forEach(b=>b.addEventListener('click',()=>{const p=b.dataset.pid.split(',');['kp','ki','kd','d','umax','noise','tau'].forEach((k,i)=>ctl.set(k,p[i]));$('pid-aw').checked=p[7]==='1';ctl.show();draw();}));
+  $('pid-aw').addEventListener('change',draw);
+  draw();
+}
+
+/* ---------- §22 impedance control ---------- */
+function labImp(){
+  const svg=$('imp-svg'),KE=20000,DE=20,FMAX=400,T=5,RAMP=2.5;
+  const ctl=mkCtl($('imp-ctl'),'imp',[['虚拟 spring–damper',[['k','stiffness K',20,4000,10,200,0,' N/m'],['z','damping ratio ζ',0.1,2,0.05,1,2,''],['ki','integral gain K_i',0,5000,50,0,0,'']]],['场景',[['xd','目标 x_d',0.1,0.9,0.01,0.6,2,' m'],['xw','墙的位置 x_wall',0.2,0.9,0.01,0.5,2,' m']]]],draw);
+  function sim(){
+    const K=ctl.val('k'),D=2*ctl.val('z')*Math.sqrt(K),Ki=ctl.val('ki'),xd=ctl.val('xd'),xw=ctl.val('xw'),dt=0.0002;
+    const xs=[],xds=[],fs=[];let x=0,v=0,I=0,peak=0,fc=0;
+    for(let k=0;k<=T/dt;k++){
+      const t=k*dt,r=xd*Math.min(t/RAMP,1),rv=t<RAMP?xd/RAMP:0;
+      I+=(r-x)*dt;
+      const F=clamp(K*(r-x)+D*(rv-v)+Ki*I,-FMAX,FMAX);
+      fc=x>xw?Math.max(0,KE*(x-xw)+DE*v):0;peak=Math.max(peak,fc);
+      v+=(F-fc)*dt;x+=v*dt;
+      if(k%50===0){xs.push([t,x]);xds.push([t,r]);fs.push([t,fc]);}
+    }
+    return {xs,xds,fs,peak,fend:fc,xend:x,K,xd,xw};
+  }
+  function draw(){
+    const r=sim(),X0=52,Wd=612,px=v=>X0+v*Wd;
+    /* 最终状态的示意图 */
+    let s=L([X0,46],[X0+Wd,46],'stroke:var(--line-strong);stroke-width:1.5');
+    s+='<rect x="'+px(r.xw).toFixed(1)+'" y="14" width="'+(X0+Wd-px(r.xw)).toFixed(1)+'" height="32" style="fill:var(--line-strong);fill-opacity:.5;stroke:var(--muted);stroke-width:1"/>'+TX([X0+Wd-8,34],'墙','fill:var(--ink)','end');
+    s+='<rect x="'+(px(r.xend)-34).toFixed(1)+'" y="20" width="34" height="26" rx="3" style="fill:var(--accent);fill-opacity:.85"/>'+TX([px(r.xend)-17,62],'末端');
+    s+=L([px(r.xd),8],[px(r.xd),52],'stroke:var(--ray);stroke-width:2;stroke-dasharray:4 3')+TX([px(r.xd),66],'x_d','fill:var(--ray)');
+    if(r.fend>0.5)s+=arrow([px(r.xend)+44,33],[px(r.xend)+4,33],'var(--x)',2.4)+TX([px(r.xend)+48,37],fx(r.fend,0)+' N','fill:var(--x);font-weight:600','start');
+    s+=plotPanel({x:X0,y:104,w:Wd,h:140,xr:[0,T],yr:[0,1],title:'position x(t)',
+      hl:[{v:r.xw,st:'stroke:var(--muted);stroke-width:1.5',label:'墙',lst:''}],
+      series:[{pts:r.xds,st:'stroke:var(--ray);stroke-width:1.5;stroke-dasharray:5 4'},{pts:r.xs,st:'stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round'}]});
+    const fm=Math.max(40,r.peak*1.1);
+    s+=plotPanel({x:X0,y:284,w:Wd,h:112,xr:[0,T],yr:[0,fm],title:'contact force (N)',xt:true,xu:' s',
+      series:[{pts:r.fs,st:'stroke:var(--x);stroke-width:2;stroke-linejoin:round'}]});
+    svg.innerHTML=s;
+    const pen=r.xd-r.xw,theory=pen>0?r.K*KE/(r.K+KE)*pen:0,sat=r.fend>FMAX-1;
+    $('imp-out').innerHTML=kv([
+      ['t = 5 s 时的接触力',fx(r.fend,1)+' N '+(r.fend<0.5?pill('ok','没有接触'):sat?pill('bad','actuator 已饱和'):r.fend>100?pill('bad','很大'):pill('ok','温和'))],
+      ['理论稳态值 K·K_e/(K + K_e)·(x_d − x_wall)',fx(theory,1)+' N　≈ K·Δx = '+fx(Math.max(0,r.K*pen),1)+' N'],
+      ['撞击时的峰值力',fx(r.peak,1)+' N'],
+      ['墙被压入',fx(Math.max(0,r.xend-r.xw)*1000,2)+' mm']]);
+  }
+  document.querySelectorAll('button[data-imp]').forEach(b=>b.addEventListener('click',()=>{const p=b.dataset.imp.split(',');['k','z','xd','xw','ki'].forEach((k,i)=>ctl.set(k,p[i]));ctl.show();draw();}));
+  draw();
+}
+
+safe('rot',labRot);safe('slerp',labSlerp);safe('ord',labOrd);safe('chain',labChain);safe('handeye',labHE);
+safe('arm',labArm);safe('cspace',labCS);safe('rrt',labRRT);safe('trajopt',labTO);safe('pid',labPID);safe('imp',labImp);
+$('qa-open').addEventListener('click',()=>document.querySelectorAll('details.qa').forEach(d=>{d.open=true;}));
+$('qa-close').addEventListener('click',()=>document.querySelectorAll('details.qa').forEach(d=>{d.open=false;}));
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>

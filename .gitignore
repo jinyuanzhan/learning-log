@@ -1,0 +1,13 @@
+# Obsidian：只忽略个人工作区状态，保留插件和设置以便多台设备同步
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/
+
+# macOS
+.DS_Store
+
+# 私人内容：只保存在本地，不推送到公开仓库
+CV/
+interview/
+journal/
