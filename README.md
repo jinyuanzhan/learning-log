@@ -15,3 +15,6 @@ Read online: **[jinyuanzhan.github.io/learning-log](https://jinyuanzhan.github.i
 **Quadrotor**
 - [Quadrotor Dynamics](https://jinyuanzhan.github.io/learning-log/notes/robotics/quadrotor-dynamics.html)
 - [Minimum Snap Trajectory Generation](https://jinyuanzhan.github.io/learning-log/notes/robotics/minimum-snap-trajectory.html)
+
+**Locomotion & Whole-Body Control**
+- [Whole-Body Control Paradigms: From ZMP to World Models](https://jinyuanzhan.github.io/learning-log/notes/robotics/whole-body-control-paradigms.html)

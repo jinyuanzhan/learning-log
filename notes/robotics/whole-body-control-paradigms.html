@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-17">
+<meta name="tags" content="whole-body-control, legged-locomotion, humanoid, MPC, reinforcement-learning, sim-to-real, motion-tracking, world-model">
+<title>Whole-Body Control 范式全景</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 planning-and-task-allocation-basics.html 同一套样式：左侧固定目录 + 右侧单栏笔记 */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:620px}
+.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+.opts output{font-family:var(--mono);font-size:13px;min-width:3em}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 560px;max-width:100%;min-width:0}
+.stage-side{flex:1 1 220px;min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.cv{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;touch-action:none}
+.w-grid{stroke:var(--line);stroke-width:1}
+.w-poly{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.w-traj{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.w-dot{fill:var(--accent)}
+.w-wp circle{fill:var(--a2);stroke:var(--surface);stroke-width:2;cursor:grab}
+.w-wp.stop circle{fill:var(--bad)}
+.w-wp text{fill:var(--on-agent);font-family:var(--mono);font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.w-wp .w-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.s-ax{stroke:var(--line-strong);stroke-width:1}
+.s-lim{stroke:var(--bad);stroke-width:1.2;stroke-dasharray:5 4}
+.s-tick{stroke:var(--a2);stroke-width:1;stroke-dasharray:2 3}
+.s-v{fill:none;stroke:var(--accent);stroke-width:2.2}
+.s-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:10px 0 0}
+.live p{margin:0 0 8px}
+.pill{display:inline-block;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body);margin-left:6px}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){.page{padding-left:16px;padding-right:16px}}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+
+</style>
+<style>
+/* 这一页新增 */
+.era th:first-child,.era td:first-child{white-space:nowrap;font-weight:600;color:var(--ink)}
+.era td{font-size:13.5px;line-height:1.6;min-width:112px;padding-left:9px;padding-right:9px}
+.era td.now{background:var(--accent-soft)}
+.four{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:0 0 14px}
+.four>div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.four h4{margin:0 0 4px;font-size:12.5px;font-family:var(--mono);font-weight:500;letter-spacing:.04em;color:var(--accent)}
+.four p{margin:0;font-size:14.5px;max-width:none}
+.four .dead h4{color:var(--bad)}
+.four .why h4{color:var(--ok)}
+.s-hand{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.s-learn{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.2}
+.s-none{fill:none;stroke:var(--line-strong);stroke-width:1;stroke-dasharray:4 4}
+.s-row{fill:var(--muted);font-size:12.5px;font-family:var(--body)}
+.s-era{fill:var(--ink);font-size:13.5px;font-family:var(--body);font-weight:600}
+.s-eras{fill:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.sp-line{stroke:var(--line-strong);stroke-width:2}
+.sp-dot{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.papers td:first-child{font-family:var(--mono);font-size:13px;white-space:nowrap;color:var(--muted)}
+.papers td:nth-child(2){font-weight:500}
+.papers td:nth-child(3){white-space:nowrap;font-size:12.5px;color:var(--accent)}
+.papers tr[hidden]{display:none}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.cnt{font-size:13px;color:var(--muted);margin:0 0 8px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+</defs></svg>
+
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#map"><span class="k">01</span>一张表：范式演进</a></li>
+    <li><a href="#problem"><span class="k">02</span>问题到底难在哪</a></li>
+    <li><a href="#stack"><span class="k">03</span>控制栈被 learning 吃掉的顺序</a></li>
+  </ol>
+  <p class="toc-part">PART A · MODEL-BASED</p>
+  <ol>
+    <li><a href="#reduced"><span class="k">04</span>简化模型与稳定性判据</a></li>
+    <li><a href="#wbc"><span class="k">05</span>Whole-body QP</a></li>
+    <li><a href="#mpc"><span class="k">06</span>MPC 与 trajectory optimization</a></li>
+    <li><a href="#limit"><span class="k">07</span>这条路线卡在哪</a></li>
+  </ol>
+  <p class="toc-part">PART B · LEARNING</p>
+  <ol>
+    <li><a href="#rl"><span class="k">08</span>RL + sim-to-real</a></li>
+    <li><a href="#priv"><span class="k">09</span>Privileged learning</a></li>
+    <li><a href="#mimic"><span class="k">10</span>Motion imitation</a></li>
+    <li><a href="#percept"><span class="k">11</span>Perceptive locomotion</a></li>
+    <li><a href="#wm"><span class="k">12</span>World model 与 MBRL</a></li>
+    <li><a href="#gen"><span class="k">13</span>Generative 与 foundation model</a></li>
+  </ol>
+  <p class="toc-part">PART C · 结合与对比</p>
+  <ol>
+    <li><a href="#hybrid"><span class="k">14</span>Hybrid 的六种做法</a></li>
+    <li><a href="#compare"><span class="k">15</span>一张对比表</a></li>
+    <li><a href="#others"><span class="k">16</span>其他机器人的同一个故事</a></li>
+  </ol>
+  <p class="toc-part">PART D · 讨论</p>
+  <ol>
+    <li><a href="#themes"><span class="k">17</span>贯穿始终的六条主线</a></li>
+    <li><a href="#open"><span class="k">18</span>可以拿来讨论的问题</a></li>
+    <li><a href="#papers"><span class="k">19</span>代表工作与阅读顺序</a></li>
+    <li><a href="#related"><span class="k">20</span>Related</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Whole-Body Control 范式全景</h1>
+  <p>腿足机器人和 humanoid 的运动控制，过去五十年换过好几代做法：ZMP、whole-body QP、MPC、RL + sim-to-real、motion tracking、world model。这一页不讲任何一种方法的推导，只回答三个问题：每一代在解决什么，为什么能成立，又卡在哪里。</p>
+  <p>读完应该能做到：看到一篇新论文，能说出它属于哪条线、把哪一块从"人写"换成了"学出来"、付出的代价是什么。最后两节是可以拿来讨论的问题和阅读顺序。</p>
+</header>
+
+<div class="note"><p><span class="q">一句话版本</span>控制器里的<strong>结构</strong>，从写在方程里，一步步挪到 simulator、reward 和数据里；<strong>计算</strong>，从上线后每个控制周期解一次优化，挪到上线前在仿真里训练。每一代范式都是在挪这两样东西。</p></div>
+
+<div class="note warn"><p><span class="q">怎么用这一页</span>这是一张地图，不是综述论文。选的工作偏 legged 和 humanoid，年份以论文公开时间为准，个别可能差一年，引用前请核对原文。2026 年年中以后的进展基本没有覆盖。</p></div>
+
+<section id="map">
+<h2><span class="n">01</span>一张表：范式演进</h2>
+<p>三行分别是 model-based 路线、learning 路线，以及让它们成为可能的硬件和工具。第三行最容易被忽略，但很多范式的切换其实是它推动的。</p>
+<div class="tw"><table class="era">
+<thead><tr><th></th><th>1970–2005</th><th>2005–2015</th><th>2016–2020</th><th>2021–2023</th><th>2024–2026</th></tr></thead>
+<tbody>
+<tr><td>Model-based</td>
+  <td>ZMP；LIPM + preview control（ASIMO）；Raibert hopper；passive dynamic walking；HZD</td>
+  <td>Capture Point / DCM；operational space 发展为 whole-body QP；DRC 上的 Atlas；contact-implicit TO</td>
+  <td>convex MPC + WBC（MIT Cheetah 3、Mini Cheetah）；Atlas parkour；TOWR</td>
+  <td>perceptive NMPC（ANYmal）；sampling-based MPC（MuJoCo MPC）</td>
+  <td class="now">多数退到三个角色：生成 reference、做 teacher、负责高精度任务；sampling MPC 仍在推进</td></tr>
+<tr><td>Learning</td>
+  <td>少量 policy search（例如 Aibo 步态调参）</td>
+  <td>PILCO；TRPO 等 deep RL 在仿真里起步</td>
+  <td>PPO；DeepMimic；domain randomization；actuator network；teacher-student；Cassie 上的 RL</td>
+  <td>legged_gym；RMA；perceptive RL；AMP；parkour；PHC</td>
+  <td class="now">humanoid 通用 motion tracking（H2O、ExBody、GMT、BeyondMimic、SONIC）；world model（RWM、SuperMimic）；behavior foundation model；分层 VLA</td></tr>
+<tr><td>硬件与工具</td>
+  <td>高减速比、位置控制的关节；计算靠离线</td>
+  <td>力矩控制（液压 Atlas、SEA）；QP solver 变快；MuJoCo（2012）</td>
+  <td>proprioceptive actuator（MIT Cheetah）；GPU；大规模 mocap 数据集</td>
+  <td>GPU 并行仿真，单卡几千个环境；便宜的四足（Unitree A1、Go1）</td>
+  <td class="now">便宜的 humanoid（Unitree H1、G1）；大规模 retarget 数据；Isaac Lab、MuJoCo Warp</td></tr>
+</tbody></table></div>
+<p>两个时间点值得记住。<strong>2019–2020 年</strong>：ANYmal 上的 RL policy 第一次在真实野外地形上明显超过 model-based 控制器，四足从此转向 learning。<strong>2024 年</strong>：同样的事情发生在 humanoid 上，而且主流做法变成了 motion tracking。</p>
+</section>
+
+<section id="problem">
+<h2><span class="n">02</span>问题到底难在哪</h2>
+<p>所有范式面对的是同一个方程。带腿的机器人的 dynamics 可以写成：</p>
+<div class="eq">M(q) q̈ + h(q, q̇) = Sᵀ τ + J_c(q)ᵀ f
+
+q   关节角 + 机身的位置和姿态（floating base，6 维）
+τ   电机力矩，只作用在关节上；S 把机身那 6 维选掉
+f   地面给脚（或手）的 contact force
+J_c contact Jacobian，把 contact force 映射到每个自由度上</div>
+<p>难点全在这个方程里：</p>
+<ul>
+  <li><strong>Underactuated</strong>：机身的 6 个自由度没有电机直接驱动（<code>Sᵀτ</code> 在那 6 维上是 0）。想移动机身，只能通过 contact force <code>f</code> 间接实现。</li>
+  <li><strong>Contact 有约束</strong>：地面只能推不能拉（<code>f_z ≥ 0</code>），切向力不能超过 friction cone，否则打滑。</li>
+  <li><strong>Hybrid</strong>：脚落地和离地的瞬间，<code>J_c</code> 的结构会变，dynamics 在不同 contact mode 之间切换。决定"哪只脚什么时候着地"是一个离散的组合问题。</li>
+  <li><strong>不稳定且高维</strong>：本质上是倒立摆，要高频 feedback；humanoid 有 20–50 个自由度。</li>
+</ul>
+<p>所以所有方法都在回答同一件事：<strong>下一刻每个关节出多少力，使得 contact force 合起来能把机身带到想去的地方。</strong>区别只在于谁来算、什么时候算、依据什么算。</p>
+<div class="note"><p><span class="q">"Whole-body control" 这个词有两个意思</span>
+<strong>狭义</strong>（经典控制的用法）：给定任务空间的目标，解一个 QP 得到全身关节力矩的那一层，见第 05 节。<strong>广义</strong>（现在 learning 社区的用法）：协调腿、腰、手臂所有关节，同时完成 locomotion 和 manipulation 的 controller。讨论时先确认对方说的是哪一个。</p></div>
+</section>
+
+<section id="stack">
+<h2><span class="n">03</span>控制栈被 learning 吃掉的顺序</h2>
+<p>经典做法把问题切成五层，每层由人设计。Learning 的历史可以看成这五层被神经网络从中间向两头逐步合并的过程。</p>
+<figure class="fig">
+<svg viewBox="0 0 960 372" role="img" aria-label="控制栈四个阶段的对比：经典分层全部手工设计；2019 年后 RL policy 合并中间两层；2022 年后合并感知层；2024 年后任务层也由模型给出">
+  <g class="s-row" text-anchor="end">
+    <text x="136" y="77">任务与指令</text>
+    <text x="136" y="131">感知与落脚规划</text>
+    <text x="136" y="185">质心层规划</text>
+    <text x="136" y="239">全身力矩分配</text>
+    <text x="136" y="293">关节层</text>
+  </g>
+  <g text-anchor="middle">
+    <text class="s-era" x="245" y="18">经典分层</text><text class="s-eras" x="245" y="36">约 2000–2018</text>
+    <text class="s-era" x="448" y="18">Blind RL</text><text class="s-eras" x="448" y="36">2019–2021</text>
+    <text class="s-era" x="651" y="18">Perceptive / tracking RL</text><text class="s-eras" x="651" y="36">2022–2024</text>
+    <text class="s-era" x="854" y="18">分层 learning</text><text class="s-eras" x="854" y="36">2024–</text>
+  </g>
+  <!-- col A -->
+  <g text-anchor="middle">
+    <rect class="s-hand" x="148" y="50" width="195" height="46" rx="6"/><text class="d-t" x="245" y="70">状态机</text><text class="d-s" x="245" y="87">人写每个行为的切换</text>
+    <rect class="s-hand" x="148" y="104" width="195" height="46" rx="6"/><text class="d-t" x="245" y="124">地形建图 + footstep planner</text><text class="d-s" x="245" y="141">搜索或优化</text>
+    <rect class="s-hand" x="148" y="158" width="195" height="46" rx="6"/><text class="d-t" x="245" y="178">ZMP preview / MPC</text><text class="d-s" x="245" y="195">简化模型</text>
+    <rect class="s-hand" x="148" y="212" width="195" height="46" rx="6"/><text class="d-t" x="245" y="232">Whole-body QP</text><text class="d-s" x="245" y="249">全阶模型，每周期求解</text>
+    <rect class="s-hand" x="148" y="266" width="195" height="46" rx="6"/><text class="d-t" x="245" y="286">力矩控制 / PD</text><text class="d-s" x="245" y="303">1 kHz 以上</text>
+  </g>
+  <!-- col B -->
+  <g text-anchor="middle">
+    <rect class="s-hand" x="351" y="50" width="195" height="46" rx="6"/><text class="d-t" x="448" y="70">Velocity command</text><text class="d-s" x="448" y="87">人用手柄给</text>
+    <rect class="s-none" x="351" y="104" width="195" height="46" rx="6"/><text class="d-s" x="448" y="124">没有这一层</text><text class="d-s" x="448" y="141">靠本体感知"摸"地形</text>
+    <rect class="s-learn" x="351" y="158" width="195" height="100" rx="6"/><text class="d-t" x="448" y="200">一个 RL policy</text><text class="d-s" x="448" y="219">输出 joint position target</text>
+    <rect class="s-hand" x="351" y="266" width="195" height="46" rx="6"/><text class="d-t" x="448" y="286">低增益 PD</text><text class="d-s" x="448" y="303">policy 50 Hz，PD 更高频</text>
+  </g>
+  <!-- col C -->
+  <g text-anchor="middle">
+    <rect class="s-hand" x="554" y="50" width="195" height="46" rx="6"/><text class="d-t" x="651" y="70">Velocity 或 reference</text><text class="d-s" x="651" y="87">手柄，或一段 mocap</text>
+    <rect class="s-learn" x="554" y="104" width="195" height="154" rx="6"/><text class="d-t" x="651" y="172">一个 RL policy</text><text class="d-s" x="651" y="191">直接读 height map / depth</text><text class="d-s" x="651" y="208">或跟踪 reference motion</text>
+    <rect class="s-hand" x="554" y="266" width="195" height="46" rx="6"/><text class="d-t" x="651" y="286">低增益 PD</text>
+  </g>
+  <!-- col D -->
+  <g text-anchor="middle">
+    <rect class="s-learn" x="757" y="50" width="195" height="46" rx="6"/><text class="d-t" x="854" y="70">VLA / planner / teleop</text><text class="d-s" x="854" y="87">输出 keypoints 或 latent</text>
+    <rect class="s-learn" x="757" y="104" width="195" height="154" rx="6"/><text class="d-t" x="854" y="172">通用 tracking policy</text><text class="d-s" x="854" y="191">一个网络覆盖大量动作</text><text class="d-s" x="854" y="208">充当新的 "WBC" 层</text>
+    <rect class="s-hand" x="757" y="266" width="195" height="46" rx="6"/><text class="d-t" x="854" y="286">低增益 PD</text>
+  </g>
+  <g>
+    <rect class="s-hand" x="148" y="338" width="18" height="14" rx="3"/><text class="d-s" x="174" y="350">人设计</text>
+    <rect class="s-learn" x="246" y="338" width="18" height="14" rx="3"/><text class="d-s" x="272" y="350">学出来</text>
+    <rect class="s-none" x="344" y="338" width="18" height="14" rx="3"/><text class="d-s" x="370" y="350">不存在</text>
+  </g>
+</svg>
+<figcaption class="cap">最底下的 PD 一直没有被替换。分层也一直存在，变的是层与层之间的接口：从 footstep，到 velocity command，再到 reference motion、keypoints、latent。</figcaption>
+</figure>
+</section>
+
+<div class="part"><div class="tag">PART A</div><h2>Model-based 路线</h2><p>先写出物理模型，再基于模型分析或优化。强项是可解释和有保证，弱项是模型假设限制了能做的动作。</p></div>
+
+<section id="reduced">
+<h2><span class="n">04</span>简化模型与稳定性判据</h2>
+<p>全阶 dynamics 太复杂，没法直接分析。最早的思路是：<strong>把机器人看成一个人能分析的简单系统，在简单系统上得到结论，再映射回全身。</strong></p>
+<div class="tw"><table>
+<thead><tr><th>模型</th><th>把机器人看成什么</th><th>给出什么</th><th>代表</th><th>局限</th></tr></thead>
+<tbody>
+<tr><td>ZMP + LIPM</td><td>质心高度不变的倒立摆</td><td>判据：ZMP 落在 support polygon 内就不会翻倒；preview control 据此生成质心轨迹</td><td>ASIMO、HRP 系列</td><td>要求脚掌平贴地面、膝盖弯曲；不能跑跳</td></tr>
+<tr><td>Capture Point / DCM</td><td>LIPM 里不稳定的那一部分</td><td>解析公式：现在踩哪里才能停下来</td><td>IHMC 的 Atlas；push recovery</td><td>仍基于 LIPM 假设</td></tr>
+<tr><td>SLIP + Raibert heuristic</td><td>弹簧上的质点</td><td>三条解耦的简单控制律：跳多高、落脚点决定前进速度、支撑期调姿态</td><td>Raibert hopper、BigDog</td><td>靠经验调参，没有全身协调</td></tr>
+<tr><td>Passive dynamic walking</td><td>机械结构本身</td><td>在斜坡上不加驱动就能走，说明行走可以由自然动力学产生</td><td>McGeer；Cornell biped</td><td>鲁棒性差，是一个洞察而不是通用控制器</td></tr>
+<tr><td>Hybrid Zero Dynamics</td><td>被 virtual constraints 压到低维的周期轨道</td><td>用 Poincaré map 证明周期步态稳定</td><td>MABEL、ATRIAS、早期 Cassie</td><td>主要适用于周期步态，步态库要离线优化</td></tr>
+</tbody></table></div>
+<p>这一代的共同点是<strong>降维</strong>。它留下的概念（CoM、ZMP、capture point、落脚点调节）到今天还在用，包括作为 RL 的 observation、reward 或分析工具。</p>
+</section>
+
+<section id="wbc">
+<h2><span class="n">05</span>Whole-body QP：把任务目标变成关节力矩</h2>
+<p>简化模型给出"质心该怎么动、脚该踩哪"，还需要一层把它变成几十个关节的力矩。这就是狭义的 whole-body control。</p>
+<p>源头是 Khatib 的 operational space control：<strong>在任务空间（手、脚、质心的位置）里写控制目标，而不是在关节空间里写。</strong>后来发展成每个控制周期解一个 QP：</p>
+<div class="eq">min   Σ wᵢ ‖ Jᵢ q̈ + J̇ᵢ q̇ − ẍᵢ_des ‖²        每个任务的期望加速度
+over  q̈, τ, f
+s.t.  M q̈ + h = Sᵀτ + J_cᵀ f               dynamics
+      f 在 friction cone 内，f_z ≥ 0          contact 约束
+      τ_min ≤ τ ≤ τ_max                      力矩限制
+      J_c q̈ + J̇_c q̇ = 0                     支撑脚不动</div>
+<p>多个任务冲突时，用权重或严格优先级（hierarchical QP）处理，例如"保持平衡"优先于"手到达目标"。</p>
+<div class="four">
+  <div class="why"><h4>为什么兴起</h4><p>力矩控制的硬件出现了，QP solver 能在 1 ms 内解完。2015 年 DARPA Robotics Challenge 上，几乎所有队伍都是"footstep planner、质心规划、whole-body QP"三层架构。</p></div>
+  <div class="dead"><h4>暴露的问题</h4><p>DRC 上的机器人走得慢、经常摔。这套架构对 model error、state estimation 误差、没预料到的接触都很敏感，而且每个新行为都要专家重新设计。</p></div>
+</div>
+</section>
+
+<section id="mpc">
+<h2><span class="n">06</span>MPC 与 trajectory optimization</h2>
+<p>MPC 的思路：<strong>每个控制周期在线解一个有限时域的 optimal control 问题，只执行第一步，下个周期重新解。</strong>它用"反复重新规划"来获得 feedback。</p>
+<h3>用多复杂的模型</h3>
+<p>模型越完整，能做的动作越多，但越难实时解。这是 MPC 路线的核心权衡：</p>
+<div class="tw"><table>
+<thead><tr><th>模型</th><th>假设</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td>LIPM</td><td>质心高度不变，没有角动量</td><td>线性，极快，只能走</td></tr>
+<tr><td>Single rigid body</td><td>机身是一个刚体，腿没有质量，contact 时序预先给定</td><td>可以写成 convex QP 并实时求解。MIT Cheetah 3 的 convex MPC 就是这个，之后"MPC + WBC"成为四足的标准栈</td></tr>
+<tr><td>Centroidal dynamics + 全身 kinematics</td><td>只算整体的线动量和角动量</td><td>能表达跳跃、手臂摆动，需要 nonlinear MPC</td></tr>
+<tr><td>全阶 whole-body</td><td>没有简化</td><td>最通用，实时求解最难</td></tr>
+</tbody></table></div>
+<h3>Contact 时序由谁决定</h3>
+<ul>
+  <li><strong>预先给定</strong>：人指定 gait（trot、bound），优化只算力和轨迹。简单可靠，但动作被 gait 限制。</li>
+  <li><strong>让优化自己找</strong>：contact-implicit optimization 把 contact 写成 complementarity constraint。问题非凸，局部最优多，很难实时。</li>
+  <li><strong>离线找，在线跟</strong>：离线用 trajectory optimization 生成行为库，在线用 MPC 跟踪并修正。Boston Dynamics 早期 Atlas 的 parkour 是这条路线的代表。</li>
+</ul>
+<h3>Sampling-based MPC</h3>
+<p>不求梯度，而是在 GPU 上并行采样大量动作序列，在 simulator 里各自往前推，按 cost 加权平均（MPPI 一类）。它可以直接用全阶模型，也不怕 contact 不光滑。它和 RL 的关系值得想一想：两者都靠采样，一个在线算，一个离线算好存进网络。</p>
+</section>
+
+<section id="limit">
+<h2><span class="n">07</span>这条路线卡在哪</h2>
+<ol>
+  <li><strong>Contact 的组合爆炸和不光滑。</strong>为了实时，只能简化模型或固定 contact 时序，而这又限制了动作范围。</li>
+  <li><strong>对模型和 state estimation 的依赖。</strong>地面软硬、打滑、脚到底有没有着地，估错了控制器就会出问题。</li>
+  <li><strong>感知难接入。</strong>地形要先变成优化能用的约束（可踩的平面、障碍的凸包），这本身是一条很长的链。</li>
+  <li><strong>工程成本。</strong>每一种新行为都要专家重新设计 cost、constraint 和状态机。</li>
+</ol>
+<p>但它没有消失。Model-based 方法不需要训练，约束能明确保证，结果可解释。在需要精确落脚、搬运已知重物、或必须给出安全保证的场合仍然有优势，并且大量以另一种身份出现在 learning 系统里，见第 14 节。</p>
+</section>
+
+<div class="part"><div class="tag">PART B</div><h2>Learning 路线</h2><p>不在线求解模型，而是在仿真里离线训练一个神经网络，上线后只做一次 forward pass。</p></div>
+
+<section id="rl">
+<h2><span class="n">08</span>RL + sim-to-real：为什么 2019 年之后突然成立</h2>
+<p>做法本身很简单：在 simulator 里用 RL 训练一个 policy，输入机器人的 proprioception，输出每个关节的 position target，直接放到真机上。难点是让它在真机上也能用。它同时依赖四件事：</p>
+<div class="four">
+  <div><h4>1 · 快的仿真</h4><p>GPU 并行仿真让单卡同时跑几千个环境，训练一个走路 policy 从几天降到几十分钟。试错的成本降下来之后，reward 和 randomization 才调得动。</p></div>
+  <div><h4>2 · 缩小 sim-to-real gap</h4><p>三种手段：把 sim 做准（system identification，或用真机数据学一个 actuator network）；把 policy 做鲁棒（domain randomization：随机化摩擦、质量、延迟、外力）；让 policy 在线适应（见下一节）。</p></div>
+  <div><h4>3 · 合适的 action space</h4><p>Policy 以 50 Hz 输出 joint position target，底层低增益 PD 以更高频率跟踪。PD 相当于一个弹簧，给 policy 留了容错空间，也让 sim 和 real 的差别不那么敏感。</p></div>
+  <div><h4>4 · Reward shaping</h4><p>一项主任务（例如跟踪 velocity command）加十几项 regularization（力矩、action 变化率、脚的滞空时间、姿态）。这是这一代最费人工的部分。</p></div>
+</div>
+<p>算法几乎都是 PPO。原因不是它最 sample-efficient，而是它稳定、对超参不敏感，而且在仿真很便宜的前提下，wall-clock 时间比 sample efficiency 更重要。</p>
+<div class="note"><p><span class="q">一个容易说错的地方</span>"Model-free RL" 并不是没有模型。<strong>Simulator 就是模型</strong>，而且是比 MPC 用的模型更完整的全阶模型。区别在于使用方式：MPC 在线求解它，RL 离线从它里面采样，然后把结果压缩进网络。</p></div>
+<p>RL 相对 MPC 的真正优势有两点。一是它在训练时见过各种扰动和模型误差，学到的是对整个分布都有效的 feedback，而 MPC 每次只针对当前这一个模型求解。二是 contact 时序不需要人指定，policy 自己会学出来。</p>
+</section>
+
+<section id="priv">
+<h2><span class="n">09</span>Privileged learning：真机上看不到的信息怎么办</h2>
+<p>仿真里能直接读到摩擦系数、地形高度、contact force，真机上读不到。这类信息叫 privileged information。三种处理方式：</p>
+<div class="tw"><table>
+<thead><tr><th>方法</th><th>做法</th><th>特点</th></tr></thead>
+<tbody>
+<tr><td>Teacher-student</td><td>Teacher 用 privileged information 做 RL；student 只看 proprioception 的历史，用 imitation 学 teacher 的输出</td><td>两阶段，稳定。后来几乎所有带感知的工作都在用</td></tr>
+<tr><td>RMA</td><td>把 privileged information 编码成一个 latent；再训练一个 adaptation module，从最近的 state-action 历史回归这个 latent</td><td>相当于在线的隐式 system identification</td></tr>
+<tr><td>Asymmetric actor-critic</td><td>Critic 看 privileged information，actor 只看真机上有的</td><td>单阶段，实现简单</td></tr>
+</tbody></table></div>
+<p>背后的道理是同一个：<strong>proprioception 的历史里已经包含了环境的信息。</strong>脚踩下去关节怎么响应，就透露了地面的软硬和摩擦。经典控制栈里单独设计的 state estimator、contact detector、参数辨识，在这里被 policy 隐式地做掉了。</p>
+</section>
+
+<section id="mimic">
+<h2><span class="n">10</span>Motion imitation：让数据来定义"好动作"</h2>
+<p>手写 reward 有两个问题：学出来的动作常常不自然，而且每个新行为都要重新调。Motion imitation 的回答是：<strong>不描述什么是好动作，直接给一段 mocap，reward 就是"和它有多像"。</strong></p>
+<h3>在仿真角色上（图形学社区）</h3>
+<ul>
+  <li><strong>DeepMimic</strong>（2018）：逐帧跟踪 reference。配套两个后来一直在用的技巧：reference state initialization（从动作中间开始练）和 early termination。</li>
+  <li><strong>AMP</strong>（2021）：不逐帧跟踪，用 discriminator 判断"像不像数据里的动作"。风格 reward 可以和任务 reward 叠加。</li>
+  <li><strong>规模化</strong>：PHC 用一个 policy 跟踪整个 mocap 数据集；ASE、PULSE 把技能压进 latent space；MaskedMimic 支持只给部分身体的目标。</li>
+</ul>
+<h3>到真机 humanoid 上（2024 年之后）</h3>
+<p>流程变成：人类 mocap，retarget 到机器人的骨架，训练一个通用 tracker，作为低层 controller。H2O / OmniH2O、ExBody、HumanPlus、HOVER、GMT、TWIST、BeyondMimic、SONIC 都在这条线上。ASAP 则用真机数据学一个 delta action 模型来修正仿真。</p>
+<div class="four">
+  <div class="why"><h4>为什么成了 humanoid 的主流</h4><p>一是省掉了 reward 设计。二是 tracking 是一个通用接口：teleoperation、动作生成模型、VLA 都可以输出 reference 给它。三是它能 scale：数据越多，覆盖的动作越广。</p></div>
+  <div class="dead"><h4>代价</h4><p>Retargeting 的质量直接决定上限；数据里没有的动作就不会；动作库越大训练越贵（SONIC 用了 128 张 GPU 跑 7 天）。最后一点正是 SuperMimic 的出发点。</p></div>
+</div>
+</section>
+
+<section id="percept">
+<h2><span class="n">11</span>Perceptive locomotion：把感知也并进 policy</h2>
+<p>早期 RL policy 是 blind 的，只靠本体感知。接入外部感知经过了两步：</p>
+<ul>
+  <li><strong>Height map 输入</strong>：policy 读机身周围的地形高度。关键设计是让它学会在感知不可靠时（雪地、草丛、反光）自动退回本体感知，而不是盲目相信地图。</li>
+  <li><strong>直接读 depth image</strong>：parkour 一类工作。通常先用 privileged 的地形信息训练，再 distill 到只看 depth 的 policy，也就是又一次 teacher-student。</li>
+</ul>
+<p>配套的关键技巧是 terrain curriculum：从简单地形开始，学会了再自动升难度。</p>
+<p>意义在于：经典栈里"感知、建图、footstep planning、控制"这条很长的链，被一个网络端到端替代了。落脚点不再被显式规划，而是隐含在 policy 的输出里。</p>
+</section>
+
+<section id="wm">
+<h2><span class="n">12</span>World model 与 model-based RL</h2>
+<p>学一个环境的模型，再用它来改进 policy。用法有三种：</p>
+<div class="tw"><table>
+<thead><tr><th>用法</th><th>模型的角色</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>在模型里生成数据，再跑 model-free 算法</td><td>一个更快或更省真实数据的 simulator</td><td>Dyna、MBPO、RWM</td></tr>
+<tr><td>用模型做在线 planning</td><td>MPC 里的预测模型</td><td>PETS、TD-MPC</td></tr>
+<tr><td>对模型求导</td><td>提供 analytic gradient</td><td>Dreamer、SHAC（用 differentiable simulator）、SuperTrack、SuperMimic</td></tr>
+</tbody></table></div>
+<div class="four">
+  <div class="dead"><h4>为什么在 legged 上长期不是主流</h4><p>MBRL 的卖点是 sample efficiency，但仿真数据几乎免费，这个卖点不值钱。同时模型误差会累积，contact 又难学准，而 PPO 简单稳定。</p></div>
+  <div class="why"><h4>为什么又回来了</h4><p>三个原因。规模上去后 compute 成了瓶颈，SuperMimic 用一个可微 world model 把 GPU-hours 降了三个数量级。直接在真机上学必须省样本，DayDreamer 是这个方向。真实世界里有 simulator 建不出来的东西，只能从数据学。</p></div>
+</div>
+<p>注意这里"model"的含义和 PART A 不同：PART A 的模型是人写的方程，这里的模型是从数据拟合的神经网络。两者之间还有一个中间形态：differentiable simulator，模型是人写的，但可以求导。</p>
+</section>
+
+<section id="gen">
+<h2><span class="n">13</span>Generative model 与 foundation model</h2>
+<p>最新的一层，还在快速变化，结论最不确定。</p>
+<ul>
+  <li><strong>Diffusion policy</strong>：把 policy 建模成"给定 observation，生成一段 action 序列"的生成模型。好处是能表达多模态（同一个情况有多种合理做法）。在 locomotion 上，可以把很多 RL 专家 distill 成一个 diffusion policy，再用 guidance 在测试时指定新任务，BeyondMimic 是这个思路。</li>
+  <li><strong>Behavior foundation model</strong>：用 unsupervised RL 预训练一个 policy，再用 mocap 数据约束它的行为像人。训练完之后不用再训练，就能响应新的 reward、目标姿态或 tracking 任务。Meta Motivo 是代表。</li>
+  <li><strong>分层 VLA</strong>：上层是 vision-language model，理解指令和场景，频率低；下层是快速的 action 模型和 whole-body controller。GR00T N1、Helix 是这种结构。争论的焦点是两层之间的接口该是什么：关节目标、末端位姿、keypoints，还是 latent。</li>
+  <li><strong>Teleoperation 成为数据来源</strong>：通用 tracker 让人可以全身遥操作 humanoid，采到的真机数据再用来做 imitation learning。Tracking policy 因此既是 controller，也是采数据的工具。</li>
+</ul>
+</section>
+
+<div class="part"><div class="tag">PART C</div><h2>结合与对比</h2><p>两条路线并不互斥。现实中的系统大多是混合的。</p></div>
+
+<section id="hybrid">
+<h2><span class="n">14</span>Hybrid 的六种做法</h2>
+<div class="tw"><table>
+<thead><tr><th>结合方式</th><th>分工</th><th>例子</th></tr></thead>
+<tbody>
+<tr><td>RL 跟踪 model-based reference</td><td>Trajectory optimization 或 MPC 给出落脚点和质心轨迹；RL 负责鲁棒地跟上</td><td>DTC；OPT-Mimic；Cassie 的 HZD 步态库 + RL</td></tr>
+<tr><td>RL 在上，model-based 在下</td><td>RL 输出 gait 参数、质心加速度或落脚点；MPC / WBC 执行</td><td>GLiDE；CAJun；RLOC</td></tr>
+<tr><td>Residual learning</td><td>Model-based controller 给基础动作；RL 只学修正量</td><td>Residual RL</td></tr>
+<tr><td>把学到的模型放进 MPC</td><td>学 dynamics 或 value function；在线用它做 planning</td><td>TD-MPC；各种 learned residual dynamics</td></tr>
+<tr><td>Model-based 当 teacher 或数据生成器</td><td>用 MPC / TO 生成 demonstration 或 reference 库；policy 去模仿</td><td>用 TO 生成的轨迹库训练 tracker</td></tr>
+<tr><td>可微模型提供梯度</td><td>模型（人写的或学的）给出 analytic gradient；policy 用它更新</td><td>SHAC；SuperMimic</td></tr>
+</tbody></table></div>
+<p>选哪一种，取决于一个判断：<strong>哪些结构是已知而且可靠的，值得直接写死；哪些是不确定的，应该交给数据。</strong>例如 kinematics 几乎总是准的，contact 和 actuator 则常常不准。</p>
+</section>
+
+<section id="compare">
+<h2><span class="n">15</span>一张对比表</h2>
+<figure class="fig">
+<svg viewBox="0 0 960 150" role="img" aria-label="从结构写在方程里到结构来自数据的一条光谱，依次是 ZMP、MPC 加 WBC、RL 跟踪优化轨迹、RL 加 domain randomization、motion tracking、foundation model">
+  <text class="d-a" x="40" y="16">结构写在方程里</text><text class="d-a" x="920" y="16" text-anchor="end">结构来自数据</text>
+  <line class="sp-line" x1="40" y1="70" x2="920" y2="70"/>
+  <g><circle class="sp-dot" cx="40" cy="70" r="7"/><circle class="sp-dot" cx="216" cy="70" r="7"/><circle class="sp-dot" cx="392" cy="70" r="7"/><circle class="sp-dot" cx="568" cy="70" r="7"/><circle class="sp-dot" cx="744" cy="70" r="7"/><circle class="sp-dot" cx="920" cy="70" r="7"/></g>
+  <g class="d-t">
+    <text x="40" y="50">ZMP + preview</text>
+    <text x="216" y="50" text-anchor="middle">MPC + WBC</text>
+    <text x="392" y="50" text-anchor="middle">RL 跟踪 TO 轨迹</text>
+    <text x="568" y="50" text-anchor="middle">RL + randomization</text>
+    <text x="744" y="50" text-anchor="middle">Motion tracking</text>
+    <text x="920" y="50" text-anchor="end">BFM / VLA</text>
+  </g>
+  <g class="d-s">
+    <text x="40" y="98">模型、判据、轨迹</text><text x="40" y="115">全部人写</text>
+    <text x="216" y="98" text-anchor="middle">人写模型和 cost</text><text x="216" y="115" text-anchor="middle">在线优化</text>
+    <text x="392" y="98" text-anchor="middle">人写轨迹</text><text x="392" y="115" text-anchor="middle">feedback 学出来</text>
+    <text x="568" y="98" text-anchor="middle">人写 reward</text><text x="568" y="115" text-anchor="middle">控制全部学出来</text>
+    <text x="744" y="98" text-anchor="middle">mocap 定义 reward</text><text x="744" y="115" text-anchor="middle">人只选数据</text>
+    <text x="920" y="98" text-anchor="end">数据定义任务</text><text x="920" y="115" text-anchor="end">人给指令</text>
+  </g>
+</svg>
+<figcaption class="cap">越往右，人写的东西越少，需要的数据和离线计算越多。</figcaption>
+</figure>
+<div class="tw"><table>
+<thead><tr><th>范式</th><th>先验知识放在哪</th><th>计算花在哪</th><th>加一个新行为要做什么</th><th>强项</th><th>弱项</th></tr></thead>
+<tbody>
+<tr><td>简化模型 + WBC</td><td>人写的简化模型和判据</td><td>在线，很轻</td><td>重新设计规划器和状态机</td><td>可解释，有稳定性结论</td><td>动作范围被模型假设限制</td></tr>
+<tr><td>MPC / TO</td><td>人写的 dynamics、cost、constraint</td><td>在线，每周期解优化</td><td>改 cost 和约束，调 solver</td><td>不用训练，约束明确，精确</td><td>contact 难处理，对模型误差敏感</td></tr>
+<tr><td>RL + sim-to-real</td><td>simulator + 人写的 reward</td><td>离线训练，在线一次 forward</td><td>设计 reward 和 curriculum，重新训练</td><td>鲁棒，contact 时序自动涌现</td><td>reward 难调，没有保证，难解释</td></tr>
+<tr><td>Motion tracking</td><td>simulator + mocap 数据</td><td>离线训练，规模大时很贵</td><td>加数据</td><td>动作自然，能 scale，接口通用</td><td>受数据和 retargeting 限制</td></tr>
+<tr><td>World model / MBRL</td><td>学出来的 dynamics</td><td>离线，比 model-free 省</td><td>复用同一个模型</td><td>省样本、省算力，能从真实数据学</td><td>模型误差累积，稀疏 reward 下难用</td></tr>
+<tr><td>Generative / BFM</td><td>大规模行为数据</td><td>离线预训练很贵</td><td>换 prompt 或 guidance</td><td>多模态，zero-shot 新任务</td><td>还不成熟，评估困难</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="others">
+<h2><span class="n">16</span>其他机器人的同一个故事</h2>
+<p>同样的范式切换在别的平台上也发生了，但时间点和最后胜出的方法不一样。差别本身很有信息量。</p>
+<div class="tw"><table>
+<thead><tr><th>平台</th><th>经典做法</th><th>转折</th><th>现在</th></tr></thead>
+<tbody>
+<tr><td>四足</td><td>Raibert heuristic；MPC + WBC</td><td>2019–2020 年 ANYmal 上的 RL 在野外地形超过 model-based</td><td>RL 是默认做法，产品里也在用；MPC 留在需要精确落脚的任务里</td></tr>
+<tr><td>双足（Cassie）</td><td>HZD 步态库 + 反馈</td><td>2018–2021 年 sim-to-real RL，先跟踪步态库，后来不需要</td><td>RL</td></tr>
+<tr><td>Humanoid</td><td>ZMP；DRC 的 whole-body QP；Atlas 的 MPC</td><td>2024 年前后，便宜硬件加 motion tracking</td><td>通用 tracker 做低层，上面接 teleoperation 或 VLA</td></tr>
+<tr><td>Quadrotor</td><td>Differential flatness + geometric controller；MPC</td><td>2023 年 Swift 用 RL 在竞速中赢了人类冠军</td><td>常规飞行仍是经典控制；极限机动用 RL</td></tr>
+<tr><td>机械臂 manipulation</td><td>Motion planning + impedance control</td><td>2023 年前后 ACT、Diffusion Policy</td><td>主流是从真机 teleoperation 数据做 imitation learning，再到 VLA</td></tr>
+<tr><td>灵巧手</td><td>基于接触模型的 grasp planning</td><td>2018 年 OpenAI Dactyl 用大规模 domain randomization</td><td>仿真里的 RL，加触觉和视觉</td></tr>
+<tr><td>角色动画</td><td>Motion matching 等 kinematic 方法</td><td>2018 年 DeepMimic 开始 physics-based</td><td>方法持续流向机器人：AMP、PHC、SuperTrack 都先出现在图形学</td></tr>
+</tbody></table></div>
+<div class="note"><p><span class="q">为什么 locomotion 选了 RL，manipulation 选了 imitation learning</span>
+Locomotion 的 reward 好写（走得快、别摔），刚体接触的仿真也够准，所以在仿真里 RL 很划算。Manipulation 的 reward 难写（什么叫"把衣服叠好"），视觉和物体多样性又很难仿真，所以直接从真机 demonstration 学更可行。<strong>方法的选择，取决于 reward 好不好写、仿真准不准、数据好不好采。</strong>Humanoid 的 loco-manipulation 正好卡在两者中间，这也是它现在最难的原因。</p></div>
+<div class="note"><p><span class="q">Quadrotor 的例子说明了什么</span>
+Quadrotor 的模型非常准，经典方法本来就很强（见 <a href="quadrotor-dynamics.html">无人机动力学</a>、<a href="minimum-snap-trajectory.html">Minimum Snap 轨迹生成</a>）。但在竞速这种极限任务上 RL 仍然赢了。有研究对此的解释是：经典方法把问题拆成"先规划轨迹、再跟踪轨迹"，这个拆分本身损失了性能；RL 直接优化最终任务目标，没有这层损失。也就是说，learning 的优势不一定来自"模型不准"，也可能来自<strong>不需要人为拆分问题</strong>。</p></div>
+</section>
+
+<div class="part"><div class="tag">PART D</div><h2>讨论</h2><p>把上面的内容压缩成几条可以带进任何一篇论文的视角。</p></div>
+
+<section id="themes">
+<h2><span class="n">17</span>贯穿始终的六条主线</h2>
+<h3>1 · 结构放在哪里</h3>
+<p>每个 controller 都需要关于世界的先验知识，区别在于放在哪：方程里（MPC）、simulator 里（RL）、reward 里（手写 reward 的 RL）、数据里（motion tracking）、网络结构里。读论文时先问：<strong>这篇把哪一块结构从一个地方挪到了另一个地方？</strong></p>
+<h3>2 · 计算从 online 挪到 offline</h3>
+<p>MPC 每个周期解一次优化。RL 把这些优化提前在训练时做完，把结果存进网络，可以叫 amortized optimization。代价是训练分布之外的情况没有保证。Sampling-based MPC 和 test-time 的 guidance 是在往回挪。</p>
+<h3>3 · Simulator 是所有 learning 方法的地基</h3>
+<p>现在的 legged learning 几乎都是 sim-to-real。这意味着能力的上限是"仿真里能建出来的东西"。刚体加简单接触能仿真得好，所以 locomotion 先成功；软物体、流体、复杂摩擦仿真不好，所以涉及它们的任务仍然困难。</p>
+<h3>4 · 从 reward engineering 到 data</h3>
+<p>手写 reward 是把"人对好动作的理解"翻译成数学，很费力而且不可扩展。Motion tracking 用数据代替了这层翻译。趋势是：人写的东西越来越少，越来越高层。</p>
+<h3>5 · 分层没有消失，接口在变</h3>
+<p>端到端并没有真正发生。底层 PD 一直在，高层和低层的划分也一直在。变化的是接口：footstep，velocity command，reference motion，keypoints，latent，语言。<strong>接口的选择决定了上层能表达什么、下层要泛化到什么程度。</strong></p>
+<h3>6 · 鲁棒性的来源变了</h3>
+<p>经典方法靠稳定性分析和安全裕度。Learning 方法靠训练时见过足够多样的情况。前者有证明但保守，后者性能高但只能靠测试来建立信心。评价标准也跟着变了：从稳定裕度，变成成功率、覆盖的动作数量、GPU-hours。</p>
+</section>
+
+<section id="open">
+<h2><span class="n">18</span>可以拿来讨论的问题</h2>
+<p>这些问题目前没有公认的答案。每一条下面是我的初步看法，用来引出讨论，不是结论。</p>
+<details class="qa"><summary>Motion tracking 存在 scaling law 吗？</summary><div class="a">
+<p>语言模型里"更多数据、更大模型、更多算力，性能可预测地变好"是成立的。Tracking 上，SONIC 给了一些正面证据，SuperMimic 的贡献之一是把做这类实验的成本降到一张 GPU。还不清楚的是：增加的 mocap 数据带来的是新能力，还是只是把已有能力覆盖得更密；以及 tracking 做好了，离"完成任务"还有多远。</p>
+</div></details>
+<details class="qa"><summary>VLA 和 whole-body controller 之间的接口应该是什么？</summary><div class="a">
+<p>接口越低层（关节目标），上层越灵活但越难学、越慢；接口越高层（velocity、语言），下层要自己决定的越多。Keypoints 和 latent 是折中。一个值得想的角度：好的接口应该让上层的错误容易被下层纠正，而不是被放大。</p>
+</div></details>
+<details class="qa"><summary>Loco-manipulation 为什么比 locomotion 难这么多？</summary><div class="a">
+<p>Locomotion 只和地面交互，地面是静止的、大体已知的。Manipulation 要和各种物体交互，物体的形状、质量、摩擦每次都不同，相当于 dynamics 不再固定。这同时打破了 RL 的前提（仿真要能覆盖）和 SuperMimic 这类方法的前提（一个模型覆盖所有任务）。再加上 reward 难写，数据又没有 mocap 那么容易得到。</p>
+</div></details>
+<details class="qa"><summary>Model-based 方法会不会借着 world model 回来？</summary><div class="a">
+<p>某种意义上已经在回来，但形态变了：模型是学出来的，用法是提供梯度或加速 rollout，而不是在线求解。更有意思的问题是，world model 能不能从真实数据学到 simulator 给不了的东西，例如软接触、磨损之后的 actuator。如果能，它就不只是一个更快的 simulator。</p>
+</div></details>
+<details class="qa"><summary>真机数据在 legged 控制里到底有多大用？</summary><div class="a">
+<p>目前主流几乎完全靠仿真，真机数据只用于 system identification 或小范围修正（actuator network、ASAP 的 delta action）。Manipulation 则相反，主要靠真机数据。两边会不会汇合，取决于仿真能走多远，以及真机数据的采集成本能降多少。</p>
+</div></details>
+<details class="qa"><summary>Learned controller 怎么给出安全保证？</summary><div class="a">
+<p>现在的做法基本是大量测试加外部保护（力矩限制、摔倒检测）。可能的方向有：在 policy 外面套一层 model-based 的 safety filter；让 policy 输出置信度，不确定时交给保守的控制器；或者干脆接受没有证明，像对待人类操作员一样用统计数据建立信任。产品化之后这个问题会变得很具体。</p>
+</div></details>
+<details class="qa"><summary>RL policy 输出的是 position target，那力控制怎么办？</summary><div class="a">
+<p>低增益 PD 加 position target 实际上是在间接控制力：目标位置和实际位置的差乘以增益就是力矩。这对 locomotion 够用，但对需要精确施力的任务（拧螺丝、推重物、和人协作）不够直接。显式的力或 impedance 接口、加入力和触觉感知，是正在做的方向。可以对照 <a href="transforms-and-manipulation.html">Manipulation 基础</a>里的 impedance control。</p>
+</div></details>
+<details class="qa"><summary>在线优化会不会因为算力变便宜而回归？</summary><div class="a">
+<p>Sampling-based MPC 在 GPU 上已经能用全阶模型实时求解一些任务，而且不需要训练，换任务只要换 cost。它的弱点是每一步都从头想，没有积累经验。合理的结合是：用学到的 policy 或 value function 作为初值和终端代价，在线再优化一小段。这和围棋里"网络加搜索"是同一个结构。</p>
+</div></details>
+</section>
+
+<section id="papers">
+<h2><span class="n">19</span>代表工作与阅读顺序</h2>
+<h3>建议的阅读顺序</h3>
+<ol>
+  <li><strong>先建立经典图景</strong>：LIPM 和 ZMP 的直觉，convex MPC（MIT Cheetah 3）。目标是理解 single rigid body 模型和"MPC + WBC"的分层，不必推完所有公式。</li>
+  <li><strong>再看 RL 是怎么站住的</strong>：Hwangbo 2019、Lee 2020、Rudin 2021、RMA。这四篇基本覆盖了 sim-to-real 的全部核心技巧。</li>
+  <li><strong>然后是 motion imitation</strong>：DeepMimic、AMP，再到 BeyondMimic 和 SONIC。</li>
+  <li><strong>最后是当前的前沿</strong>：world model（SHAC、RWM、SuperMimic）和分层 VLA。</li>
+</ol>
+<h3>代表工作</h3>
+<div class="filters" id="flt">
+  <button type="button" class="pre on" data-c="all">全部</button>
+  <button type="button" class="pre" data-c="mb">Model-based</button>
+  <button type="button" class="pre" data-c="rl">RL sim-to-real</button>
+  <button type="button" class="pre" data-c="mi">Motion imitation</button>
+  <button type="button" class="pre" data-c="wm">World model</button>
+  <button type="button" class="pre" data-c="hy">Hybrid</button>
+  <button type="button" class="pre" data-c="gen">Generative</button>
+  <button type="button" class="pre" data-c="ot">其他平台</button>
+</div>
+<p class="cnt" id="cnt" aria-live="polite"></p>
+<div class="tw"><table class="papers" id="ptab">
+<thead><tr><th>年份</th><th>工作</th><th>类别</th><th>为什么重要</th></tr></thead>
+<tbody>
+<tr data-c="mb"><td>1972</td><td>Vukobratović：ZMP</td><td>Model-based</td><td>第一个可操作的双足平衡判据</td></tr>
+<tr data-c="mb"><td>1986</td><td>Raibert：Legged Robots That Balance</td><td>Model-based</td><td>动态平衡可以用三条解耦的简单控制律实现</td></tr>
+<tr data-c="mb"><td>1987</td><td>Khatib：Operational Space Control</td><td>Model-based</td><td>在任务空间里写控制目标，whole-body control 的源头</td></tr>
+<tr data-c="mb"><td>1990</td><td>McGeer：Passive Dynamic Walking</td><td>Model-based</td><td>行走可以来自机械本身的自然动力学</td></tr>
+<tr data-c="mb"><td>2001–03</td><td>Kajita：LIPM、ZMP preview control</td><td>Model-based</td><td>ASIMO 一代 humanoid 的标准做法</td></tr>
+<tr data-c="mb"><td>2003</td><td>Westervelt、Grizzle：Hybrid Zero Dynamics</td><td>Model-based</td><td>给欠驱动双足行走提供稳定性证明</td></tr>
+<tr data-c="mb"><td>2006</td><td>Pratt：Capture Point</td><td>Model-based</td><td>把"该踩哪里"变成解析公式</td></tr>
+<tr data-c="mb"><td>2012</td><td>Mordatch：Contact-Invariant Optimization</td><td>Model-based</td><td>让优化自己发现 contact 时序</td></tr>
+<tr data-c="mb"><td>2014</td><td>Posa：contact-implicit trajectory optimization</td><td>Model-based</td><td>把 contact 写成 complementarity constraint</td></tr>
+<tr data-c="mb"><td>2016</td><td>Kuindersma：Atlas 的 optimization-based 控制</td><td>Model-based</td><td>DRC 时代分层架构的完整总结</td></tr>
+<tr data-c="mb"><td>2018</td><td>Di Carlo：Convex MPC（MIT Cheetah 3）</td><td>Model-based</td><td>Single rigid body 模型让 MPC 能实时</td></tr>
+<tr data-c="mb"><td>2019</td><td>Kim：WBIC + MPC（Mini Cheetah）</td><td>Model-based</td><td>"MPC + WBC"成为四足的标准栈</td></tr>
+<tr data-c="mb"><td>2023</td><td>Grandia：perceptive NMPC（ANYmal）</td><td>Model-based</td><td>Model-based 路线接入地形感知的代表</td></tr>
+<tr data-c="mb"><td>2022–24</td><td>MuJoCo MPC；DIAL-MPC</td><td>Model-based</td><td>Sampling-based MPC 用全阶模型在线优化</td></tr>
+<tr data-c="rl"><td>2017</td><td>Schulman：PPO</td><td>RL</td><td>之后 legged RL 的默认算法</td></tr>
+<tr data-c="rl"><td>2017</td><td>Tobin：Domain Randomization</td><td>RL</td><td>Sim-to-real 的基本思路</td></tr>
+<tr data-c="rl"><td>2018</td><td>Tan：Sim-to-Real quadruped（Minitaur）</td><td>RL</td><td>早期四足 sim-to-real</td></tr>
+<tr data-c="rl"><td>2019</td><td>Hwangbo：Learning agile and dynamic motor skills</td><td>RL</td><td>Actuator network；ANYmal 上超过 model-based 控制器</td></tr>
+<tr data-c="rl"><td>2020</td><td>Lee：Quadrupedal locomotion over challenging terrain</td><td>RL</td><td>Teacher-student 和 privileged learning</td></tr>
+<tr data-c="rl"><td>2021</td><td>Kumar：RMA</td><td>RL</td><td>在线适应，相当于隐式 system identification</td></tr>
+<tr data-c="rl"><td>2021</td><td>Rudin：Learning to walk in minutes</td><td>RL</td><td>GPU 并行仿真把训练降到分钟级</td></tr>
+<tr data-c="rl"><td>2021</td><td>Siekmann：Cassie blind stair traversal</td><td>RL</td><td>双足的 sim-to-real RL</td></tr>
+<tr data-c="rl"><td>2022</td><td>Miki：Robust perceptive locomotion in the wild</td><td>RL</td><td>感知不可靠时自动退回本体感知</td></tr>
+<tr data-c="rl"><td>2022</td><td>Fu：Deep Whole-Body Control</td><td>RL</td><td>一个 policy 同时控制腿和手臂</td></tr>
+<tr data-c="rl"><td>2023</td><td>Robot Parkour Learning；Extreme Parkour</td><td>RL</td><td>从 depth image 直接到敏捷动作</td></tr>
+<tr data-c="rl"><td>2024</td><td>Radosavovic：Real-world humanoid locomotion</td><td>RL</td><td>Transformer policy 的 humanoid sim-to-real</td></tr>
+<tr data-c="mi"><td>2018</td><td>Peng：DeepMimic</td><td>Motion imitation</td><td>用 mocap 定义 reward</td></tr>
+<tr data-c="mi"><td>2021</td><td>Peng：AMP</td><td>Motion imitation</td><td>用 discriminator 学动作风格</td></tr>
+<tr data-c="mi"><td>2023</td><td>Luo：PHC</td><td>Motion imitation</td><td>一个 policy 跟踪整个 mocap 数据集</td></tr>
+<tr data-c="mi"><td>2024</td><td>He：H2O、OmniH2O</td><td>Motion imitation</td><td>人到 humanoid 的实时全身 teleoperation</td></tr>
+<tr data-c="mi"><td>2024</td><td>ExBody；HumanPlus</td><td>Motion imitation</td><td>真机 humanoid 的全身表达性动作</td></tr>
+<tr data-c="mi"><td>2025</td><td>He：ASAP</td><td>Motion imitation</td><td>用真机数据学 delta action 修正仿真</td></tr>
+<tr data-c="mi"><td>2025</td><td>Liao：BeyondMimic</td><td>Motion imitation</td><td>高质量 tracking，加 guided diffusion 做下游任务</td></tr>
+<tr data-c="mi"><td>2025</td><td>Luo：SONIC</td><td>Motion imitation</td><td>Cluster 规模训练的通用 tracker</td></tr>
+<tr data-c="wm"><td>2011</td><td>Deisenroth：PILCO</td><td>World model</td><td>极省样本的 MBRL，但难以扩展</td></tr>
+<tr data-c="wm"><td>2020</td><td>Hafner：Dreamer</td><td>World model</td><td>在 latent 空间里 imagination</td></tr>
+<tr data-c="wm"><td>2021</td><td>Fussell：SuperTrack</td><td>World model</td><td>用学到的可微 dynamics 做 tracking</td></tr>
+<tr data-c="wm"><td>2022</td><td>Hansen：TD-MPC</td><td>World model</td><td>Latent 模型 + 在线 planning + value</td></tr>
+<tr data-c="wm"><td>2022</td><td>Wu：DayDreamer</td><td>World model</td><td>直接在真机上学 world model</td></tr>
+<tr data-c="wm"><td>2022</td><td>Xu：SHAC</td><td>World model</td><td>Differentiable simulation + 短 horizon + critic</td></tr>
+<tr data-c="wm"><td>2025</td><td>Li：Robotic World Model</td><td>World model</td><td>在学到的 neural simulator 里训练并上真机</td></tr>
+<tr data-c="wm"><td>2026</td><td>Liao：SuperMimic</td><td>World model</td><td>一个可微 world model 把 tracking 训练降到单卡几小时</td></tr>
+<tr data-c="hy"><td>2019</td><td>Johannink：Residual RL</td><td>Hybrid</td><td>在已有 controller 上只学修正量</td></tr>
+<tr data-c="hy"><td>2021</td><td>Li：Cassie 的参数化 locomotion</td><td>Hybrid</td><td>HZD 步态库作为 reference，RL 负责鲁棒</td></tr>
+<tr data-c="hy"><td>2021</td><td>Xie：GLiDE</td><td>Hybrid</td><td>RL 在 centroidal 模型上决策，底层用 model-based</td></tr>
+<tr data-c="hy"><td>2024</td><td>Jenelten：DTC</td><td>Hybrid</td><td>TO 给落脚点，RL 跟踪并处理意外</td></tr>
+<tr data-c="gen"><td>2023</td><td>Chi：Diffusion Policy</td><td>Generative</td><td>把 policy 建模成 action 序列的生成模型</td></tr>
+<tr data-c="gen"><td>2024</td><td>Tirinzoni：Meta Motivo</td><td>Generative</td><td>Humanoid 的 behavioral foundation model</td></tr>
+<tr data-c="gen"><td>2025</td><td>GR00T N1；Helix</td><td>Generative</td><td>分层 VLA 接 whole-body controller</td></tr>
+<tr data-c="ot"><td>2010–11</td><td>Lee：SE(3) geometric control；Mellinger：minimum snap</td><td>Quadrotor</td><td>Quadrotor 经典控制的两块基石</td></tr>
+<tr data-c="ot"><td>2023</td><td>Kaufmann：Swift</td><td>Quadrotor</td><td>RL 在无人机竞速中赢了人类冠军</td></tr>
+<tr data-c="ot"><td>2023</td><td>Song：Optimal control vs RL in racing</td><td>Quadrotor</td><td>解释 RL 的优势来自直接优化任务目标</td></tr>
+<tr data-c="ot"><td>2018</td><td>OpenAI：Dactyl</td><td>灵巧手</td><td>大规模 domain randomization 的 sim-to-real</td></tr>
+<tr data-c="ot"><td>2023</td><td>Zhao：ACT / ALOHA</td><td>Manipulation</td><td>低成本 teleoperation + imitation learning</td></tr>
+<tr data-c="ot"><td>2017</td><td>Holden：PFNN</td><td>角色动画</td><td>Kinematic 角色控制的代表，physics-based 之前的主流</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="related">
+<h2><span class="n">20</span>读一篇新论文时问的五个问题</h2>
+<ol>
+  <li>它属于哪条线？Model-based、RL、imitation、world model，还是 hybrid？</li>
+  <li>它把哪一块从"人设计"换成了"学出来"，或者反过来？</li>
+  <li>它的先验知识放在哪：方程、simulator、reward、数据？</li>
+  <li>它成立的前提是什么？前提不满足时会怎样？（例如 dense reward、平地、dynamics 固定）</li>
+  <li>它的计算花在线上还是线下？换一个新任务的代价是什么？</li>
+</ol>
+<h3>Related</h3>
+<ul>
+  <li><a href="quadrotor-dynamics.html">无人机动力学</a>：underactuated、differential flatness、geometric controller，是 model-based 路线在另一个平台上的完整例子。</li>
+  <li><a href="minimum-snap-trajectory.html">Minimum Snap 轨迹生成</a>：trajectory optimization 的一个可解析的特例。</li>
+  <li><a href="transforms-and-manipulation.html">Rigid Body Transforms 与 Manipulation 基础</a>：Jacobian、impedance control，是第 05 节 whole-body QP 的前置知识。</li>
+</ul>
+</section>
+
+</main>
+</div>
+
+<script>
+// 代表工作表的类别筛选
+(function(){
+  const rows = Array.from(document.querySelectorAll('#ptab tbody tr'));
+  const btns = Array.from(document.querySelectorAll('#flt button'));
+  const cnt = document.getElementById('cnt');
+  function apply(c){
+    let n = 0;
+    rows.forEach(r => { const show = c === 'all' || r.dataset.c === c; r.hidden = !show; if (show) n++; });
+    btns.forEach(b => { const on = b.dataset.c === c; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    cnt.textContent = '显示 ' + n + ' / ' + rows.length + ' 项';
+  }
+  btns.forEach(b => b.addEventListener('click', () => apply(b.dataset.c)));
+  apply('all');
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>
