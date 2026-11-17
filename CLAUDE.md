@@ -7,9 +7,9 @@ GitHub 公开仓库：`jinyuanzhan/learning-log`。
 
 ## 公开与私有
 
-- `CV/`、`interview/`、`journal/` 只保存在本地，已写进 `.gitignore`，不会推送到 GitHub。云端会话看不到这三个文件夹。
+- `CV/`、`interview/`、`journal/`、`paper/` 只保存在本地，已写进 `.gitignore`，不会推送到 GitHub。云端会话看不到这四个文件夹。
 - 其他内容都是公开的。写进公开文件夹的内容不要带个人隐私、具体公司的面试细节、面试官信息；这类内容放 `interview/`。
-- 不要用 `git add -f` 把这三个文件夹加回来。
+- 不要用 `git add -f` 把这四个文件夹加回来。
 
 ## 在线目录
 
@@ -26,6 +26,7 @@ GitHub 公开仓库：`jinyuanzhan/learning-log`。
 | 面试题、自我介绍、面试复盘 | `interview/`，复盘放 `interview/reviews/` |
 | 项目总结 | `projects/`，一个项目一个文件 |
 | 简历、Cover letter | `CV/` |
+| 论文 PDF 与论文阅读笔记 | `paper/`（仅本地） |
 | 还没想清楚的想法 | `thinking/`，frontmatter 标 `status: thinking` 或 `status: done` |
 | 图片等附件 | `assets/` |
 
