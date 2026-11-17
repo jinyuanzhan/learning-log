@@ -11,6 +11,11 @@ GitHub 公开仓库：`jinyuanzhan/learning-log`。
 - 其他内容都是公开的。写进公开文件夹的内容不要带个人隐私、具体公司的面试细节、面试官信息；这类内容放 `interview/`。
 - 不要用 `git add -f` 把这三个文件夹加回来。
 
+## 在线目录
+
+- HTML 笔记通过 GitHub Pages 在线阅读：`https://jinyuanzhan.github.io/learning-log/`。
+- 新增、改名或删除 HTML 笔记时，同步更新根目录的 `index.html`（网站首页）和 `README.md` 里的目录。
+
 ## 内容放哪
 
 | 内容 | 位置 |
