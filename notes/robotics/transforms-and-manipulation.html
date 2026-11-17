@@ -862,7 +862,7 @@ q₁ = atan2(y, x) − atan2( l₂ sin q₂,  l₁ + l₂ cos q₂ )</div>
     <li><strong>Manipulability</strong>：对 J 做 SVD，<span class="m">J = UΣVᵀ</span>。所有满足 <span class="m">‖q̇‖ = 1</span> 的关节速度，映射到 task space 是一个椭球，主轴方向是 U 的列，半轴长是 singular value <span class="m">σ<sub>i</sub></span>。长轴方向末端容易动，短轴方向难动。力的椭球正好相反（半轴 <span class="m">1/σ<sub>i</sub></span>）：<strong>容易动的方向不容易出力，难动的方向能出大力</strong>。</li>
     <li><strong>误差传播</strong>：关节的小误差 <span class="m">δq</span> 造成末端误差 <span class="m">J δq</span>；covariance 传播是 <span class="m">JΣJᵀ</span>。</li>
   </ol>
-  <div class="note"><span class="q">一个细节</span><p>J 是在哪个 frame 里表达的要说清楚：末端速度写在 base frame 里（space Jacobian）还是 ee frame 里（body Jacobian），两者差一个 rotation / adjoint。算误差 e 用的 frame 必须和 J 一致。检查 J 实现对不对的最简单方法：和 finite difference <span class="m">(FK(q + εe<sub>i</sub>) − FK(q))/ε</span> 对比。</p></div>
+  <div class="note"><span class="q">一个细节</span><p>J 是在哪个 frame 里表达的要说清楚：末端速度写在 base frame 里还是 ee frame 里，两者差一个 rotation。另外注意 Modern Robotics 的 space Jacobian 不是“末端速度在 base frame 里的表达”：它给的是 spatial twist，线速度部分是和 base 原点重合的那个点的速度；它和 body Jacobian 之间差一个 adjoint。上面逐列写出的 geometric Jacobian 才是末端点的速度。算误差 e 用的 frame 必须和 J 一致。检查 J 实现对不对的最简单方法：和 finite difference <span class="m">(FK(q + εe<sub>i</sub>) − FK(q))/ε</span> 对比。</p></div>
 </section>
 
 <section id="singularity">

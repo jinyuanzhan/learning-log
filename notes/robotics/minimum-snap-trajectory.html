@@ -316,7 +316,7 @@ pⱼ(t) = c₀ + c₁t + c₂t² + … + c₇t⁷</div>
 <tr><td>距离 / 平均速度</td><td>Tᵢ = Lᵢ / v_avg，最简单</td></tr>
 <tr><td>Trapezoidal 估计</td><td>按 v_max、a_max 算每段加速、匀速、减速的时间，更准</td></tr>
 <tr><td>上游直接给定</td><td>CBS 已经规定每个 timestep 在哪，Tᵢ = tᵢ₊₁ − tᵢ（见 <a href="#cbs">11</a>）</td></tr>
-<tr><td>时间也优化</td><td>外层对 T 做 gradient descent，cost 取 J + k_T·ΣTᵢ（Mellinger &amp; Kumar 2011）；新方法如 MINCO 同时优化空间和时间</td></tr>
+<tr><td>时间也优化</td><td>外层对 T 做 gradient descent。Mellinger &amp; Kumar 2011 固定总时间 ΣTᵢ，只在各段之间重新分配；Richter, Bry, Roy 2013 把总时间放进 cost，取 J + k_T·ΣTᵢ。新方法如 MINCO 同时优化空间和时间</td></tr>
 </table></div>
 <div class="note"><p><span class="q">直觉</span>T 整体变大，轨迹变慢、更保守；整体变小，会超速。T 之间的<strong>比例</strong>还会改变形状：某段时间给得太少，轨迹会在相邻段绕远路"补时间"。实验台里切换"均匀 1s"和"按距离"就能看到。</p></div>
 </section>
@@ -448,9 +448,10 @@ s.t. A c = b                （必有）
 姿态      x_C = [cos ψ, sin ψ, 0]
           y_B = (z_B × x_C) / ‖z_B × x_C‖,   x_B = y_B × z_B
 角速度    h_ω = (m/f)·( ȷ − (z_B·ȷ)·z_B )             ← jerk
-          p = −h_ω·y_B,   q = h_ω·x_B,   r = ψ̇·(e₃·z_B)
+          p = −h_ω·y_B,   q = h_ω·x_B,   r ≈ ψ̇·(e₃·z_B)
 角加速度 / 力矩                                         ← snap</div>
 <p>奇异点：a = −g（自由落体）时推力为 0，姿态无定义。</p>
+<p>r 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 x_C 构造，精确式是 <span class="m">r = (ψ̇·(y_B·y_C) + p·(z_B·x_C)) / (x_B·x_C)</span>，其中 y_C = [−sin ψ, cos ψ, 0]。机身倾斜越大、姿态变化越快，近似式的误差越大。</p>
 <h3>差速底盘：flat outputs = (x, y)</h3>
 <div class="eq">θ = atan2(ẏ, ẋ)
 v = √(ẋ² + ẏ²)

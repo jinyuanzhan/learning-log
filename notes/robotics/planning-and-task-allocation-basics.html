@@ -418,7 +418,7 @@ C D E</pre>
 <tr><td><strong>BFS</strong></td><td>最早放进去的</td><td>queue，先进先出</td><td>步数最少的 path</td></tr>
 <tr><td><strong>DFS</strong></td><td>最晚放进去的</td><td>stack，后进先出</td><td>只保证找到一条 path，不保证短</td></tr>
 <tr><td><strong>Dijkstra</strong></td><td>g 最小的</td><td>priority queue，通常是 min-heap</td><td>cost 最小的 path，要求 edge cost 不是负数</td></tr>
-<tr><td><strong>A*</strong></td><td>g + h 最小的</td><td>priority queue</td><td>cost 最小的 path，要求 h 不高估</td></tr>
+<tr><td><strong>A*</strong></td><td>g + h 最小的</td><td>priority queue</td><td>cost 最小的 path，要求 h 不高估（骨架里 CLOSED 直接 skip 的写法还要求 h consistent，见 05）</td></tr>
 </table></div>
 <p>Dijkstra 和 A* 这种“每次取某个评分最好的 node”的做法，统称 <strong>best-first search</strong>。后面 CBS 的 high level 用的也是它，只是搜索的对象从 cell 换成了别的东西。</p>
 </section>
@@ -558,9 +558,10 @@ h(n)：从 n 到 goal 还要花多少的估计，叫 heuristic
 <p>只要 h 从不高估真实的剩余 cost，f(n) 就是“经过 n 的任何 path 至少要花多少”的一个 lower bound。A* 按 lower bound 从小到大处理 node。goal 被 pop 出来的那一刻，OPEN 里其他所有 node 的 lower bound 都不比它小，所以不可能再有更便宜的 path。</p>
 <h3>Admissible 和 consistent</h3>
 <ul>
-<li><strong>admissible</strong>：h(n) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的。</li>
+<li><strong>admissible</strong>：h(n) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的，前提是允许 reopen（或者不用 CLOSED）。</li>
 <li><strong>consistent</strong>：对每条 edge (n, n′) 都有 h(n) ≤ cost(n, n′) + h(n′)，并且 h(goal) = 0。直观上是 heuristic 满足三角不等式。满足它，每个 node 只需要 expand 一次。</li>
 <li>consistent 的 heuristic 一定 admissible，反过来不一定。只 admissible 不 consistent 时，已经进了 CLOSED 的 node 可能要重新拿出来处理，这叫 reopen。</li>
+<li>上面的 pseudo-code 对 CLOSED 里的 node 直接 skip，不 reopen。这种写法要 h <strong>consistent</strong> 才保证 optimal；h 只 admissible 时，要么把 skip 改成 reopen，要么可能返回次优的 path。grid 上的 Manhattan distance 和 true distance 都 consistent，所以这一页的例子不受影响。</li>
 </ul>
 <h3>Heuristic 越准，expand 越少</h3>
 <div class="tw"><table>
@@ -964,8 +965,8 @@ safety stock  = z · σ · √(lead time)    # σ 是日需求的标准差，z �
 <details class="qa"><summary>DFS 和 BFS 各适合做什么？</summary><div class="a"><p>BFS 适合 unit-cost 的最短路，以及算每个 node 到某一点的距离。DFS 省内存，适合判断能不能到达、找环、把所有可能性穷举一遍。DFS 找到的 path 不保证短。</p></div></details>
 <details class="qa"><summary>Dijkstra 为什么要求 edge cost 不是负数？</summary><div class="a"><p>它的正确性依赖一个事实：一个 node 被 expand 时，g 已经是最终值，因为其他的路都要经过 g 更大的 node，再往后只会更贵。有负的 edge 时，“再往后只会更贵”不成立，已经 expand 的 node 的 g 之后可能还会变小。</p></div></details>
 <details class="qa"><summary>A* 和 Dijkstra 差在哪？A* 什么时候退化成 Dijkstra？</summary><div class="a"><p>只差排序的依据：Dijkstra 按 g，A* 按 f = g + h。h 是到 goal 剩余 cost 的估计。h 恒等于 0 时，A* 就是 Dijkstra。</p></div></details>
-<details class="qa"><summary>A* 为什么是 optimal 的？需要什么条件？</summary><div class="a"><p>需要 h 是 admissible 的，也就是从不高估。这样 f 是经过这个 node 的 path 的 cost 的 lower bound。A* 按 f 从小到大处理，goal 被 pop 出来时，其他 node 的 lower bound 都不比它小，所以不会有更便宜的 path。</p></div></details>
-<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 h 从不高估，保证 optimal。consistent 是 h(n) ≤ cost(n, n′) + h(n′)，保证每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。</p></div></details>
+<details class="qa"><summary>A* 为什么是 optimal 的？需要什么条件？</summary><div class="a"><p>需要 h 是 admissible 的，也就是从不高估。这样 f 是经过这个 node 的 path 的 cost 的 lower bound。A* 按 f 从小到大处理，goal 被 pop 出来时，其他 node 的 lower bound 都不比它小，所以不会有更便宜的 path。追问：如果实现里用了 CLOSED 并且不 reopen，还需要 h consistent。</p></div></details>
+<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 h 从不高估，保证 optimal（允许 reopen 时）。consistent 是 h(n) ≤ cost(n, n′) + h(n′)，保证每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。</p></div></details>
 <details class="qa"><summary>grid 上有很多障碍物时，怎么得到比 Manhattan distance 更好的 heuristic？</summary><div class="a"><p>从 goal 反向跑一次 BFS，cost 不同时跑 Dijkstra，得到每个 cell 到 goal 的真实最短距离，存成表。它考虑了障碍物，仍然 admissible 而且 consistent。地图固定时每个 goal 只算一次。</p></div></details>
 <details class="qa"><summary>weighted A* 是什么？什么时候用？</summary><div class="a"><p>f = g + w·h，w 大于 1。它更相信 heuristic，expand 的 node 更少，但 path 的 cost 最多可能是 optimal 的 w 倍。时间预算很紧、能接受一点次优的时候用。</p></div></details>
 
@@ -998,7 +999,7 @@ safety stock  = z · σ · √(lead time)    # σ 是日需求的标准差，z �
 <tr><td>BFS</td><td>unit-cost 最短路</td><td>queue，一圈一圈往外</td><td>步数上是</td><td>O(V + E)</td></tr>
 <tr><td>DFS</td><td>可达性、找环</td><td>stack，一条路走到底</td><td>否</td><td>O(V + E)</td></tr>
 <tr><td>Dijkstra</td><td>带 cost 的最短路</td><td>每次 expand g 最小的</td><td>是，cost 非负</td><td>O((V + E) log V)</td></tr>
-<tr><td>A*</td><td>带 cost 的最短路，更快</td><td>每次 expand g + h 最小的</td><td>是，h admissible</td><td>取决于 h</td></tr>
+<tr><td>A*</td><td>带 cost 的最短路，更快</td><td>每次 expand g + h 最小的</td><td>是，h admissible（不 reopen 时要 consistent）</td><td>取决于 h</td></tr>
 <tr><td>weighted A*</td><td>要更快，能接受次优</td><td>f = g + w·h</td><td>不超过 w 倍</td><td>比 A* 少</td></tr>
 <tr><td>PRM</td><td>高维、多次查询</td><td>随机采样建 roadmap，再跑 A*</td><td>否</td><td></td></tr>
 <tr><td>RRT</td><td>高维、单次查询</td><td>从 start 长一棵随机的 tree</td><td>否</td><td></td></tr>

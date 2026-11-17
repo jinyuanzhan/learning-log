@@ -354,7 +354,7 @@ f  = F₁ + F₂ + F₃ + F₄
 <tr><th>想要</th><th>怎么改转速</th><th>原理</th></tr>
 <tr><td>上升</td><td>4 个一起加速</td><td>f 变大</td></tr>
 <tr><td>机头朝下（向前飞）</td><td>后面 2、4 加速，前面 1、3 减速</td><td>τy &gt; 0</td></tr>
-<tr><td>向左滚（左侧抬起）</td><td>左边 2、3 加速，右边 1、4 减速</td><td>τx &gt; 0</td></tr>
+<tr><td>向右滚（左侧抬起，往右飞）</td><td>左边 2、3 加速，右边 1、4 减速</td><td>τx &gt; 0</td></tr>
 <tr><td>原地转向（yaw）</td><td>顺时针的一对加速，逆时针的一对减速</td><td>反扭矩不再抵消，τz ≠ 0</td></tr>
 </table></div>
 <p><strong>关键限制</strong>：推力 f 的方向<strong>永远沿着 z_B</strong>。4 个输入里没有一个能直接产生水平方向的力。想水平移动，只能先用力矩把机身转过去。这就是 <strong>underactuated</strong>（欠驱动）：6 个自由度（3 平移 + 3 转动），只有 4 个输入。</p>
@@ -538,7 +538,7 @@ f  = F₁ + F₂ + F₃ + F₄
 姿态      x_C = [cos ψ, sin ψ, 0]                        ← 用上 yaw
           y_B = (z_B × x_C) / ‖z_B × x_C‖,   x_B = y_B × z_B,   R = [x_B y_B z_B]
 角速度    h_ω = (m/f)·( ȷ − (z_B·ȷ)·z_B )                ← jerk
-          p = −h_ω·y_B,   q = h_ω·x_B,   r = ψ̇·(e₃·z_B)
+          p = −h_ω·y_B,   q = h_ω·x_B,   r ≈ ψ̇·(e₃·z_B)
 角加速度 → 力矩 τ = J·ω̇ + ω × Jω                       ← snap</div>
 <p>第一行是核心：平动方程 <span class="m">m·a = f·z_B − m·g·e₃</span> 移项，得到 <span class="m">f·z_B = m·(a + g·e₃)</span>。左边方向是 z_B，大小是 f，所以<strong>想要的加速度一给定，推力方向和大小就都定了</strong>。下面的实验台就是这一行。</p>
 <div class="lab" id="flLab">
@@ -562,10 +562,11 @@ f  = F₁ + F₂ + F₃ + F₄
 </div>
 <h3>数字例子</h3>
 <p>m = 1 kg，悬停时想以 a_x = 2 m/s² 向前加速：<span class="m">a + g·e₃ = (2, 0, 9.81)</span>，pitch = atan(2 / 9.81) ≈ <strong>11.5°</strong>，f = √(2² + 9.81²) ≈ <strong>10.0 N</strong>，比悬停的 9.81 N 略大。全程只是代公式，不解微分方程。</p>
-<h3>两个注意点</h3>
+<h3>三个注意点</h3>
 <ul>
 <li><strong>奇异点</strong>：a = −g（自由落体）时 f = 0，z_B 无定义，姿态算不出来。</li>
-<li><strong>ψ 自由的代价</strong>：x_C 和 z_B 平行时（机身侧倾 90°）y_B 无定义，实际飞行一般碰不到。</li>
+<li><strong>ψ 自由的代价</strong>：x_C 和 z_B 平行时（推力轴水平并指向 heading 方向，也就是 pitch ±90°）y_B 无定义，实际飞行一般碰不到。roll 90° 时 z_B 垂直于 x_C，不是奇异点。</li>
+<li><strong>yaw rate 是近似式</strong>：r 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 x_C 构造，精确式是 <span class="m">r = (ψ̇·(y_B·y_C) + p·(z_B·x_C)) / (x_B·x_C)</span>，其中 y_C = [−sin ψ, cos ψ, 0]。机身倾斜越大、姿态变化越快，近似式的误差越大。</li>
 </ul>
 </section>
 
@@ -582,7 +583,7 @@ f  = F₁ + F₂ + F₃ + F₄
 
 <h3>开环为什么不行</h3>
 <ul>
-<li><strong>模型参数不准</strong>：质量、转动惯量有误差；推力系数 k_f 会随电池电压下降而变。</li>
+<li><strong>模型参数不准</strong>：质量、转动惯量有误差；电池电压下降时，同样的 throttle 指令对应的转速变低，推力跟着变小（k_f 本身主要由桨和空气密度决定）。</li>
 <li><strong>没建模的效应</strong>：电机响应延迟、风、地面效应、桨叶空气动力。</li>
 <li><strong>起点有误差</strong>：起飞时的姿态、位置不可能刚好等于参考值。</li>
 </ul>
@@ -669,7 +670,7 @@ flatness  z_B,des = (a_cmd + g)/‖a_cmd + g‖，  f = m·‖a_cmd + g‖
 <div class="note"><p><span class="q">我的问题</span>SE(3) 几何控制器的原理是什么？和普通的控制器有什么区别？它替代的是底层 tracking controller 的 PID 吗？</p></div>
 <h3>结论：它在哪一层，替代什么</h3>
 <ul>
-<li>它属于<strong>跟踪控制层</strong>：负责位置环和姿态环，输出推力 f 和力矩 M。下面的角速度环、mixer、ESC <strong>不变</strong>。原论文直接输出力矩；工程实现（比如 PX4 的姿态环）常常只取前半部分，输出 ω_cmd 给角速度 PID。</li>
+<li>它属于<strong>跟踪控制层</strong>：负责位置环和姿态环，输出推力 f 和力矩 M。下面的角速度环、mixer、ESC <strong>不变</strong>。原论文直接输出力矩；工程实现常常只保留“算出期望姿态和姿态误差”这一步，输出 ω_cmd 给角速度 PID。PX4 的姿态环就是这种分层，不过它用的是 quaternion-based 的 P controller，不是 Lee 的 e_R。</li>
 <li>它替代的是<strong>"基于 Euler angle、在悬停附近线性化的串级 PID"</strong>。</li>
 <li>它<strong>仍然是 feedforward + feedback</strong>，增益也还是 PD 形式（K_p、K_v、K_R、K_ω）。变的只有两件事：<strong>姿态用旋转矩阵 R 表示，而不是 Euler angles；误差直接在旋转矩阵上定义，而不是角度相减。</strong></li>
 </ul>

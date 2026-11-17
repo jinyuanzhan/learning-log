@@ -452,7 +452,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     <li>令 <span class="m">y = Vᵀ·h</span>。旋转不改变长度，所以 <span class="m">‖y‖ = 1</span>。于是 <span class="m">‖A·h‖² = σ<sub>1</sub>²y<sub>1</sub>² + σ<sub>2</sub>²y<sub>2</sub>² + … + σ<sub>n</sub>²y<sub>n</sub>²</span>。</li>
     <li>要让这个和最小，就把全部权重放在最小的 <span class="m">σ<sub>n</sub></span> 上：<span class="m">y = (0, …, 0, 1)</span>。对应的 <span class="m">h = V·y</span> 就是 V 的最后一列。</li>
   </ol>
-  <p>实验台当前 <span class="m">A</span> 的 9 个奇异值如下。最后一个是 0（数值上是极小的数）：A 只有 8 行，所以必然存在一个方向被它压成 0，这个方向就是我们要的 h。</p>
+  <p>实验台当前 <span class="m">A</span> 的奇异值如下。严格地说 8×9 的矩阵只有 8 个奇异值；A 只有 8 行，所以 9 维的输入空间里必然有一个方向被它压成 0（null space，V 的第 9 列），这里把它记成 σ<sub>9</sub> = 0（数值上是极小的数）。这个方向就是我们要的 h。</p>
   <div class="sig" id="sig-list"></div>
   <p class="cap" style="margin-bottom:14px">高亮的是最小奇异值。它对应的 V 的那一列，除以最后一个元素后重排成 3×3，就是实验台里显示的 H。</p>
   <p>正好 4 个点时，最小奇异值恰好为 0，解是精确的。如果用更多的点（比如标定棋盘格），方程多于未知数，最小奇异值不再是 0，这时 V 的最后一列是最小二乘意义下的最优解。两种情况用同一段代码。</p>
