@@ -254,7 +254,7 @@ details.code .a{padding:12px 12px 0}
     <li><a href="#themes"><span class="k">17</span>贯穿始终的六条主线</a></li>
     <li><a href="#open"><span class="k">18</span>可以拿来讨论的问题</a></li>
     <li><a href="#papers"><span class="k">19</span>代表工作与阅读顺序</a></li>
-    <li><a href="#related"><span class="k">20</span>Related</a></li>
+    <li><a href="#related"><span class="k">20</span>读新论文的五个问题与 Related</a></li>
   </ol>
 </nav>
 
@@ -262,7 +262,7 @@ details.code .a{padding:12px 12px 0}
 <header class="top">
   <h1>Whole-Body Control 范式全景</h1>
   <p>腿足机器人和 humanoid 的运动控制，过去五十年换过好几代做法：ZMP、whole-body QP、MPC、RL + sim-to-real、motion tracking、world model。这一页不讲任何一种方法的推导，只回答三个问题：每一代在解决什么，为什么能成立，又卡在哪里。</p>
-  <p>读完应该能做到：看到一篇新论文，能说出它属于哪条线、把哪一块从"人写"换成了"学出来"、付出的代价是什么。最后两节是可以拿来讨论的问题和阅读顺序。</p>
+  <p>读完应该能做到：看到一篇新论文，能说出它属于哪条线、把哪一块从"人写"换成了"学出来"、付出的代价是什么。最后三节是可以拿来讨论的问题、阅读顺序，以及读新论文时问的五个问题。</p>
 </header>
 
 <div class="note"><p><span class="q">一句话版本</span>控制器里的<strong>结构</strong>，从写在方程里，一步步挪到 simulator、reward 和数据里；<strong>计算</strong>，从上线后每个控制周期解一次优化，挪到上线前在仿真里训练。每一代范式都是在挪这两样东西。</p></div>
@@ -317,7 +317,7 @@ details.code .a{padding:12px 12px 0}
 <ul>
   <li><strong>Underactuated</strong>：机身的 6 个自由度没有电机直接驱动（\(S^\top\tau\) 在那 6 维上是 0）。想移动机身，只能通过 contact force \(f\) 间接实现。</li>
   <li><strong>Contact 有约束</strong>：地面只能推不能拉（\(f_z \ge 0\)），切向力不能超过 friction cone，否则打滑。</li>
-  <li><strong>Hybrid</strong>：脚落地和离地的瞬间，\(J_c\) 的结构会变，dynamics 在不同 contact mode 之间切换。决定"哪只脚什么时候着地"是一个离散的组合问题。</li>
+  <li><strong>Hybrid</strong>：脚落地和离地的瞬间，\(J_c\) 的结构会变，dynamics 在不同 contact mode 之间切换。落地瞬间还有 impact，速度会跳变，所以 dynamics 不光滑。决定"哪只脚什么时候着地"是一个离散的组合问题。</li>
   <li><strong>不稳定且高维</strong>：本质上是倒立摆，要高频 feedback；humanoid 有 20–50 个自由度。</li>
 </ul>
 <p>所以所有方法都在回答同一件事：<strong>下一刻每个关节出多少力，使得 contact force 合起来能把机身带到想去的地方。</strong>区别只在于谁来算、什么时候算、依据什么算。</p>
@@ -327,7 +327,7 @@ details.code .a{padding:12px 12px 0}
 
 <section id="stack">
 <h2><span class="n">03</span>控制栈被 learning 吃掉的顺序</h2>
-<p>经典做法把问题切成五层，每层由人设计。Learning 的历史可以看成这五层被神经网络从中间向两头逐步合并的过程。</p>
+<p>经典做法把问题切成五层，每层由人设计。Learning 的历史可以看成：神经网络从中间两层（质心规划和力矩分配）开始，先向上并掉感知层，之后在最上面又长出一个学出来的任务层；最底下的关节层基本没动。</p>
 <figure class="fig">
 <svg viewBox="0 0 960 372" role="img" aria-label="控制栈四个阶段的对比：经典分层全部手工设计；2019 年后 RL policy 合并中间两层；2022 年后合并感知层；2024 年后任务层也由模型给出">
   <g class="s-row" text-anchor="end">
@@ -376,7 +376,7 @@ details.code .a{padding:12px 12px 0}
     <rect class="s-none" x="344" y="338" width="18" height="14" rx="3"/><text class="d-s" x="370" y="350">不存在</text>
   </g>
 </svg>
-<figcaption class="cap">最底下的 PD 一直没有被替换。分层也一直存在，变的是层与层之间的接口：从 footstep，到 velocity command，再到 reference motion、keypoints、latent。</figcaption>
+<figcaption class="cap">最底下的 PD 几乎一直没有被替换（直接输出 torque 的 policy 有，但不是主流）。分层也一直存在，变的是层与层之间的接口：从 footstep，到 velocity command，再到 reference motion、keypoints、latent。</figcaption>
 </figure>
 </section>
 
@@ -388,7 +388,7 @@ details.code .a{padding:12px 12px 0}
 <div class="tw"><table>
 <thead><tr><th>模型</th><th>把机器人看成什么</th><th>给出什么</th><th>代表</th><th>局限</th></tr></thead>
 <tbody>
-<tr><td>ZMP + LIPM</td><td>质心高度不变的倒立摆</td><td>判据：ZMP 落在 support polygon 内就不会翻倒；preview control 据此生成质心轨迹</td><td>ASIMO、HRP 系列</td><td>要求脚掌平贴地面、膝盖弯曲；不能跑跳</td></tr>
+<tr><td>ZMP + LIPM</td><td>质心高度不变的倒立摆</td><td>判据：ZMP 留在 support polygon 内部，支撑脚就不会绕边缘翻转（contact 保持平贴），但这不等于不会摔；preview control 据此生成质心轨迹</td><td>ASIMO、HRP 系列</td><td>要求脚掌平贴地面、膝盖弯曲；原始判据不处理 flight phase，跑跳要另外扩展（ASIMO 后来能跑）</td></tr>
 <tr><td>Capture Point / DCM</td><td>LIPM 里不稳定的那一部分</td><td>解析公式：现在踩哪里才能停下来</td><td>IHMC 的 Atlas；push recovery</td><td>仍基于 LIPM 假设</td></tr>
 <tr><td>SLIP + Raibert heuristic</td><td>弹簧上的质点</td><td>三条解耦的简单控制律：跳多高、落脚点决定前进速度、支撑期调姿态</td><td>Raibert hopper、BigDog</td><td>靠经验调参，没有全身协调</td></tr>
 <tr><td>Passive dynamic walking</td><td>机械结构本身</td><td>在斜坡上不加驱动就能走，说明行走可以由自然动力学产生</td><td>McGeer；Cornell biped</td><td>鲁棒性差，是一个洞察而不是通用控制器</td></tr>
@@ -425,8 +425,8 @@ details.code .a{padding:12px 12px 0}
 </div>
 <p>多个任务冲突时，用权重或严格优先级（hierarchical QP）处理，例如"保持平衡"优先于"手到达目标"。</p>
 <div class="four">
-  <div class="why"><h4>为什么兴起</h4><p>力矩控制的硬件出现了，QP solver 能在 1 ms 内解完。2015 年 DARPA Robotics Challenge 上，几乎所有队伍都是"footstep planner、质心规划、whole-body QP"三层架构。</p></div>
-  <div class="dead"><h4>暴露的问题</h4><p>DRC 上的机器人走得慢、经常摔。这套架构对 model error、state estimation 误差、没预料到的接触都很敏感，而且每个新行为都要专家重新设计。</p></div>
+  <div class="why"><h4>为什么兴起</h4><p>力矩控制的硬件出现了，QP solver 能在 1 ms 内解完。2015 年 DARPA Robotics Challenge 上，用 Atlas 的几支队伍（IHMC、MIT、WPI-CMU 等）基本都是"footstep planner、质心规划、whole-body QP"三层架构。不是所有队伍都这样：冠军 KAIST 的 DRC-HUBO 是位置控制，大部分时间跪下来用膝盖上的轮子移动。</p></div>
+  <div class="dead"><h4>暴露的问题</h4><p>DRC 上用这套架构的双足机器人走得慢、经常摔。这套架构对 model error、state estimation 误差、没预料到的接触都很敏感，而且每个新行为都要专家重新设计。</p></div>
 </div>
 </section>
 
@@ -439,7 +439,7 @@ details.code .a{padding:12px 12px 0}
 <thead><tr><th>模型</th><th>假设</th><th>结果</th></tr></thead>
 <tbody>
 <tr><td>LIPM</td><td>质心高度不变，没有角动量</td><td>线性，极快，只能走</td></tr>
-<tr><td>Single rigid body</td><td>机身是一个刚体，腿没有质量，contact 时序预先给定</td><td>可以写成 convex QP 并实时求解。MIT Cheetah 3 的 convex MPC 就是这个，之后"MPC + WBC"成为四足的标准栈</td></tr>
+<tr><td>Single rigid body</td><td>机身是一个刚体，腿没有质量</td><td>模型本身仍是非线性的；再固定 contact 时序和落脚点，并对姿态做小角度线性化，才能写成 convex QP 并实时求解。MIT Cheetah 3 的 convex MPC 就是这个，之后"MPC + WBC"成为四足的标准栈</td></tr>
 <tr><td>Centroidal dynamics + 全身 kinematics</td><td>只算整体的线动量和角动量</td><td>能表达跳跃、手臂摆动，需要 nonlinear MPC</td></tr>
 <tr><td>全阶 whole-body</td><td>没有简化</td><td>最通用，实时求解最难</td></tr>
 </tbody></table></div>
@@ -450,7 +450,7 @@ details.code .a{padding:12px 12px 0}
   <li><strong>离线找，在线跟</strong>：离线用 trajectory optimization 生成行为库，在线用 MPC 跟踪并修正。Boston Dynamics 早期 Atlas 的 parkour 是这条路线的代表。</li>
 </ul>
 <h3>Sampling-based MPC</h3>
-<p>不求梯度，而是在 GPU 上并行采样大量动作序列，在 simulator 里各自往前推，按 cost 加权平均（MPPI 一类）。它可以直接用全阶模型，也不怕 contact 不光滑。它和 RL 的关系值得想一想：两者都靠采样，一个在线算，一个离线算好存进网络。</p>
+<p>不求梯度，而是并行采样大量动作序列（MuJoCo MPC 用 CPU 多线程，DIAL-MPC 这类用 GPU），在 simulator 里各自往前推，按 cost 加权平均（MPPI 一类）。它可以直接用全阶模型，也不怕 contact 不光滑。它和 RL 的关系值得想一想：两者都靠采样，一个在线算，一个离线算好存进网络。</p>
 </section>
 
 <section id="limit">
@@ -470,12 +470,12 @@ details.code .a{padding:12px 12px 0}
 <h2><span class="n">08</span>RL + sim-to-real：为什么 2019 年之后突然成立</h2>
 <p>做法本身很简单：在 simulator 里用 RL 训练一个 policy，输入机器人的 proprioception，输出每个关节的 position target，直接放到真机上。难点是让它在真机上也能用。它同时依赖四件事：</p>
 <div class="four">
-  <div><h4>1 · 快的仿真</h4><p>GPU 并行仿真让单卡同时跑几千个环境，训练一个走路 policy 从几天降到几十分钟。试错的成本降下来之后，reward 和 randomization 才调得动。</p></div>
+  <div><h4>1 · 快的仿真</h4><p>2019–2020 年 ANYmal 上的突破用的是 CPU 上的快速仿真器 RaiSim，训练一次要几个小时以上。2021 年起 GPU 并行仿真让单卡同时跑几千个环境，训练一个走路 policy 降到几分钟到几十分钟，这是这套做法普及开的原因。试错的成本降下来之后，reward 和 randomization 才调得动。</p></div>
   <div><h4>2 · 缩小 sim-to-real gap</h4><p>三种手段：把 sim 做准（system identification，或用真机数据学一个 actuator network）；把 policy 做鲁棒（domain randomization：随机化摩擦、质量、延迟、外力）；让 policy 在线适应（见下一节）。</p></div>
   <div><h4>3 · 合适的 action space</h4><p>Policy 以 50 Hz 输出 joint position target，底层低增益 PD 以更高频率跟踪。PD 相当于一个弹簧，给 policy 留了容错空间，也让 sim 和 real 的差别不那么敏感。</p></div>
   <div><h4>4 · Reward shaping</h4><p>一项主任务（例如跟踪 velocity command）加十几项 regularization（力矩、action 变化率、脚的滞空时间、姿态）。这是这一代最费人工的部分。</p></div>
 </div>
-<p>算法几乎都是 PPO。原因不是它最 sample-efficient，而是它稳定、对超参不敏感，而且在仿真很便宜的前提下，wall-clock 时间比 sample efficiency 更重要。</p>
+<p>算法从 2021 年 legged_gym 之后几乎都是 PPO（最早的 Hwangbo 2019 和 Lee 2020 用的是同一家族的 TRPO）。原因不是它最 sample-efficient，而是它稳定、对超参不敏感，而且在仿真很便宜的前提下，wall-clock 时间比 sample efficiency 更重要。</p>
 <div class="note"><p><span class="q">一个容易说错的地方</span>"Model-free RL" 并不是没有模型。<strong>Simulator 就是模型</strong>，而且是比 MPC 用的模型更完整的全阶模型。区别在于使用方式：MPC 在线求解它，RL 离线从它里面采样，然后把结果压缩进网络。</p></div>
 <p>RL 相对 MPC 的真正优势有两点。一是它在训练时见过各种扰动和模型误差，学到的是对整个分布都有效的 feedback，而 MPC 每次只针对当前这一个模型求解。二是 contact 时序不需要人指定，policy 自己会学出来。</p>
 </section>
@@ -506,7 +506,7 @@ details.code .a{padding:12px 12px 0}
 <p>流程变成：人类 mocap，retarget 到机器人的骨架，训练一个通用 tracker，作为低层 controller。H2O / OmniH2O、ExBody、HumanPlus、HOVER、GMT、TWIST、BeyondMimic、SONIC 都在这条线上。ASAP 则用真机数据学一个 delta action 模型来修正仿真。</p>
 <div class="four">
   <div class="why"><h4>为什么成了 humanoid 的主流</h4><p>一是省掉了 reward 设计。二是 tracking 是一个通用接口：teleoperation、动作生成模型、VLA 都可以输出 reference 给它。三是它能 scale：数据越多，覆盖的动作越广。</p></div>
-  <div class="dead"><h4>代价</h4><p>Retargeting 的质量直接决定上限；数据里没有的动作就不会；动作库越大训练越贵（SONIC 用了 128 张 GPU 跑 7 天）。最后一点正是 SuperMimic 的出发点。</p></div>
+  <div class="dead"><h4>代价</h4><p>Retargeting 的质量直接决定上限；数据里没有的动作就不会；动作库越大训练越贵（SONIC 论文摘要写的是约 9k GPU-hours，即 128 张 GPU 约 3 天；SuperMimic 做对比时按 128 张 GPU × 168 小时 ≈ 21k GPU-hours 计）。最后一点正是 SuperMimic 的出发点。</p></div>
 </div>
 </section>
 
@@ -529,11 +529,11 @@ details.code .a{padding:12px 12px 0}
 <tbody>
 <tr><td>在模型里生成数据，再跑 model-free 算法</td><td>一个更快或更省真实数据的 simulator</td><td>Dyna、MBPO、RWM</td></tr>
 <tr><td>用模型做在线 planning</td><td>MPC 里的预测模型</td><td>PETS、TD-MPC</td></tr>
-<tr><td>对模型求导</td><td>提供 analytic gradient</td><td>Dreamer、SHAC（用 differentiable simulator）、SuperTrack、SuperMimic</td></tr>
+<tr><td>对模型求导</td><td>提供 analytic gradient</td><td>Dreamer（V1，以及 V2 的连续控制；V3 改用 REINFORCE）、SHAC（用 differentiable simulator）、SuperTrack、SuperMimic</td></tr>
 </tbody></table></div>
 <div class="four">
   <div class="dead"><h4>为什么在 legged 上长期不是主流</h4><p>MBRL 的卖点是 sample efficiency，但仿真数据几乎免费，这个卖点不值钱。同时模型误差会累积，contact 又难学准，而 PPO 简单稳定。</p></div>
-  <div class="why"><h4>为什么又回来了</h4><p>三个原因。规模上去后 compute 成了瓶颈，SuperMimic 用一个可微 world model 把 GPU-hours 降了三个数量级。直接在真机上学必须省样本，DayDreamer 是这个方向。真实世界里有 simulator 建不出来的东西，只能从数据学。</p></div>
+  <div class="why"><h4>为什么又回来了</h4><p>三个原因。规模上去后 compute 成了瓶颈，SuperMimic 用一个可微 world model 把 GPU-hours 降了约三个数量级（论文自己的口径，硬件和数据量并不对齐，评估也只在平地、训练集动作上）。直接在真机上学必须省样本，DayDreamer 是这个方向。真实世界里有 simulator 建不出来的东西，只能从数据学。</p></div>
 </div>
 <p>注意这里"model"的含义和 PART A 不同：PART A 的模型是人写的方程，这里的模型是从数据拟合的神经网络。两者之间还有一个中间形态：differentiable simulator，模型是人写的，但可以求导。</p>
 </section>
@@ -543,7 +543,7 @@ details.code .a{padding:12px 12px 0}
 <p>最新的一层，还在快速变化，结论最不确定。</p>
 <ul>
   <li><strong>Diffusion policy</strong>：把 policy 建模成"给定 observation，生成一段 action 序列"的生成模型。好处是能表达多模态（同一个情况有多种合理做法）。在 locomotion 上，可以把很多 RL 专家 distill 成一个 diffusion policy，再用 guidance 在测试时指定新任务，BeyondMimic 是这个思路。</li>
-  <li><strong>Behavior foundation model</strong>：用 unsupervised RL 预训练一个 policy，再用 mocap 数据约束它的行为像人。训练完之后不用再训练，就能响应新的 reward、目标姿态或 tracking 任务。Meta Motivo 是代表。</li>
+  <li><strong>Behavior foundation model</strong>：在用 unsupervised RL 预训练 policy 的同时，用未标注的 mocap 数据做 regularization，让它的行为像人。训练完之后不用再训练，就能响应新的 reward、目标姿态或 tracking 任务。Meta Motivo 是代表，它本身只在仿真角色上验证。</li>
   <li><strong>分层 VLA</strong>：上层是 vision-language model，理解指令和场景，频率低；下层是快速的 action 模型和 whole-body controller。GR00T N1、Helix 是这种结构。争论的焦点是两层之间的接口该是什么：关节目标、末端位姿、keypoints，还是 latent。</li>
   <li><strong>Teleoperation 成为数据来源</strong>：通用 tracker 让人可以全身遥操作 humanoid，采到的真机数据再用来做 imitation learning。Tracking policy 因此既是 controller，也是采数据的工具。</li>
 </ul>
@@ -584,7 +584,7 @@ details.code .a{padding:12px 12px 0}
   <g class="d-s">
     <text x="40" y="98">模型、判据、轨迹</text><text x="40" y="115">全部人写</text>
     <text x="216" y="98" text-anchor="middle">人写模型和 cost</text><text x="216" y="115" text-anchor="middle">在线优化</text>
-    <text x="392" y="98" text-anchor="middle">人写轨迹</text><text x="392" y="115" text-anchor="middle">feedback 学出来</text>
+    <text x="392" y="98" text-anchor="middle">TO 算出轨迹</text><text x="392" y="115" text-anchor="middle">feedback 学出来</text>
     <text x="568" y="98" text-anchor="middle">人写 reward</text><text x="568" y="115" text-anchor="middle">控制全部学出来</text>
     <text x="744" y="98" text-anchor="middle">mocap 定义 reward</text><text x="744" y="115" text-anchor="middle">人只选数据</text>
     <text x="920" y="98" text-anchor="end">数据定义任务</text><text x="920" y="115" text-anchor="end">人给指令</text>
@@ -599,7 +599,7 @@ details.code .a{padding:12px 12px 0}
 <tr><td>MPC / TO</td><td>人写的 dynamics、cost、constraint</td><td>在线，每周期解优化</td><td>改 cost 和约束，调 solver</td><td>不用训练，约束明确，精确</td><td>contact 难处理，对模型误差敏感</td></tr>
 <tr><td>RL + sim-to-real</td><td>simulator + 人写的 reward</td><td>离线训练，在线一次 forward</td><td>设计 reward 和 curriculum，重新训练</td><td>鲁棒，contact 时序自动涌现</td><td>reward 难调，没有保证，难解释</td></tr>
 <tr><td>Motion tracking</td><td>simulator + mocap 数据</td><td>离线训练，规模大时很贵</td><td>加数据</td><td>动作自然，能 scale，接口通用</td><td>受数据和 retargeting 限制</td></tr>
-<tr><td>World model / MBRL</td><td>学出来的 dynamics</td><td>离线，比 model-free 省</td><td>复用同一个模型</td><td>省样本、省算力，能从真实数据学</td><td>模型误差累积，稀疏 reward 下难用</td></tr>
+<tr><td>World model / MBRL</td><td>学出来的 dynamics</td><td>离线；省样本，但不一定省算力</td><td>复用同一个模型</td><td>省样本，能从真实数据学；对模型求导的一类（如 SuperMimic）还能大幅省算力</td><td>模型误差累积；对模型求导的一类需要 dense、可微的 reward</td></tr>
 <tr><td>Generative / BFM</td><td>大规模行为数据</td><td>离线预训练很贵</td><td>换 prompt 或 guidance</td><td>多模态，zero-shot 新任务</td><td>还不成熟，评估困难</td></tr>
 </tbody></table></div>
 </section>
@@ -616,7 +616,7 @@ details.code .a{padding:12px 12px 0}
 <tr><td>Quadrotor</td><td>Differential flatness + geometric controller；MPC</td><td>2023 年 Swift 用 RL 在竞速中赢了人类冠军</td><td>常规飞行仍是经典控制；极限机动用 RL</td></tr>
 <tr><td>机械臂 manipulation</td><td>Motion planning + impedance control</td><td>2023 年前后 ACT、Diffusion Policy</td><td>主流是从真机 teleoperation 数据做 imitation learning，再到 VLA</td></tr>
 <tr><td>灵巧手</td><td>基于接触模型的 grasp planning</td><td>2018 年 OpenAI Dactyl 用大规模 domain randomization</td><td>仿真里的 RL，加触觉和视觉</td></tr>
-<tr><td>角色动画</td><td>Motion matching 等 kinematic 方法</td><td>2018 年 DeepMimic 开始 physics-based</td><td>方法持续流向机器人：AMP、PHC、SuperTrack 都先出现在图形学</td></tr>
+<tr><td>角色动画</td><td>Motion matching 等 kinematic 方法</td><td>Physics-based 控制早就有（例如 2007 年的 SIMBICON）；2018 年 DeepMimic 把 deep RL 带进 physics-based motion imitation</td><td>方法持续流向机器人：AMP、PHC、SuperTrack 都先出现在图形学</td></tr>
 </tbody></table></div>
 <div class="note"><p><span class="q">为什么 locomotion 选了 RL，manipulation 选了 imitation learning</span>
 Locomotion 的 reward 好写（走得快、别摔），刚体接触的仿真也够准，所以在仿真里 RL 很划算。Manipulation 的 reward 难写（什么叫"把衣服叠好"），视觉和物体多样性又很难仿真，所以直接从真机 demonstration 学更可行。<strong>方法的选择，取决于 reward 好不好写、仿真准不准、数据好不好采。</strong>Humanoid 的 loco-manipulation 正好卡在两者中间，这也是它现在最难的原因。</p></div>
@@ -637,7 +637,7 @@ Quadrotor 的模型非常准，经典方法本来就很强（见 <a href="quadro
 <h3>4 · 从 reward engineering 到 data</h3>
 <p>手写 reward 是把"人对好动作的理解"翻译成数学，很费力而且不可扩展。Motion tracking 用数据代替了这层翻译。趋势是：人写的东西越来越少，越来越高层。</p>
 <h3>5 · 分层没有消失，接口在变</h3>
-<p>端到端并没有真正发生。底层 PD 一直在，高层和低层的划分也一直在。变化的是接口：footstep，velocity command，reference motion，keypoints，latent，语言。<strong>接口的选择决定了上层能表达什么、下层要泛化到什么程度。</strong></p>
+<p>端到端并没有真正发生。底层 PD 基本一直在，高层和低层的划分也一直在。变化的是接口：footstep，velocity command，reference motion，keypoints，latent，语言。<strong>接口的选择决定了上层能表达什么、下层要泛化到什么程度。</strong></p>
 <h3>6 · 鲁棒性的来源变了</h3>
 <p>经典方法靠稳定性分析和安全裕度。Learning 方法靠训练时见过足够多样的情况。前者有证明但保守，后者性能高但只能靠测试来建立信心。评价标准也跟着变了：从稳定裕度，变成成功率、覆盖的动作数量、GPU-hours。</p>
 </section>
@@ -667,7 +667,7 @@ Quadrotor 的模型非常准，经典方法本来就很强（见 <a href="quadro
 <p>低增益 PD 加 position target 实际上是在间接控制力：目标位置和实际位置的差乘以增益就是力矩。这对 locomotion 够用，但对需要精确施力的任务（拧螺丝、推重物、和人协作）不够直接。显式的力或 impedance 接口、加入力和触觉感知，是正在做的方向。可以对照 <a href="transforms-and-manipulation.html">Manipulation 基础</a>里的 impedance control。</p>
 </div></details>
 <details class="qa"><summary>在线优化会不会因为算力变便宜而回归？</summary><div class="a">
-<p>Sampling-based MPC 在 GPU 上已经能用全阶模型实时求解一些任务，而且不需要训练，换任务只要换 cost。它的弱点是每一步都从头想，没有积累经验。合理的结合是：用学到的 policy 或 value function 作为初值和终端代价，在线再优化一小段。这和围棋里"网络加搜索"是同一个结构。</p>
+<p>Sampling-based MPC 靠 CPU 多线程或 GPU 并行，已经能用全阶模型实时求解一些任务，而且不需要训练，换任务只要换 cost。它的弱点是每一步都从头想，没有积累经验。合理的结合是：用学到的 policy 或 value function 作为初值和终端代价，在线再优化一小段。这和围棋里"网络加搜索"是同一个结构。</p>
 </div></details>
 </section>
 
@@ -749,7 +749,7 @@ Quadrotor 的模型非常准，经典方法本来就很强（见 <a href="quadro
 <tr data-c="ot"><td>2023</td><td>Song：Optimal control vs RL in racing</td><td>Quadrotor</td><td>解释 RL 的优势来自直接优化任务目标</td></tr>
 <tr data-c="ot"><td>2018</td><td>OpenAI：Dactyl</td><td>灵巧手</td><td>大规模 domain randomization 的 sim-to-real</td></tr>
 <tr data-c="ot"><td>2023</td><td>Zhao：ACT / ALOHA</td><td>Manipulation</td><td>低成本 teleoperation + imitation learning</td></tr>
-<tr data-c="ot"><td>2017</td><td>Holden：PFNN</td><td>角色动画</td><td>Kinematic 角色控制的代表，physics-based 之前的主流</td></tr>
+<tr data-c="ot"><td>2017</td><td>Holden：PFNN</td><td>角色动画</td><td>Kinematic 角色控制的代表；这类方法在游戏里至今仍是主流</td></tr>
 </tbody></table></div>
 </section>
 
