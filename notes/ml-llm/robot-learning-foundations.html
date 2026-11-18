@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="created" content="2026-11-17">
-<meta name="tags" content="deep-learning, representation-learning, transformer, tokenizer, autoencoder, diffusion, flow-matching, reinforcement-learning, imitation-learning, distillation, VLA, robot-learning">
+<meta name="tags" content="deep-learning, representation-learning, transformer, tokenizer, autoencoder, diffusion, flow-matching, reinforcement-learning, imitation-learning, distillation, VLA, LLM-planner, code-as-policy, evaluation, robot-learning">
 <title>Robot Learning 的知识框架</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -315,15 +315,17 @@ input.find{font:inherit;font-size:14px;color:var(--ink);background:var(--surface
     <li><a href="#state"><span class="k">18</span>State-based policy 的解剖</a></li>
     <li><a href="#visuo"><span class="k">19</span>Visuomotor policy 的解剖</a></li>
     <li><a href="#vla"><span class="k">20</span>VLA</a></li>
-    <li><a href="#wm"><span class="k">21</span>World model 与 3D 表示</a></li>
+    <li><a href="#llmplan"><span class="k">21</span>LLM 当 planner</a></li>
+    <li><a href="#wm"><span class="k">22</span>World model 与 3D 表示</a></li>
+    <li><a href="#eval"><span class="k">23</span>评估与部署</a></li>
   </ol>
   <p class="toc-part">PART F · 讨论</p>
   <ol>
-    <li><a href="#themes"><span class="k">22</span>贯穿始终的六条主线</a></li>
-    <li><a href="#confuse"><span class="k">23</span>容易混的十组词</a></li>
-    <li><a href="#open"><span class="k">24</span>可以拿来讨论的问题</a></li>
-    <li><a href="#glossary"><span class="k">25</span>术语速查</a></li>
-    <li><a href="#papers"><span class="k">26</span>学习路径与代表工作</a></li>
+    <li><a href="#themes"><span class="k">24</span>贯穿始终的六条主线</a></li>
+    <li><a href="#confuse"><span class="k">25</span>容易混的十组词</a></li>
+    <li><a href="#open"><span class="k">26</span>可以拿来讨论的问题</a></li>
+    <li><a href="#glossary"><span class="k">27</span>术语速查</a></li>
+    <li><a href="#papers"><span class="k">28</span>学习路径与代表工作</a></li>
   </ol>
 </nav>
 
@@ -1093,7 +1095,7 @@ FAST 论文给的解释和第 05 节直接相关。控制频率高（例如 50 H
 <tr><td>从头训练的 ResNet</td><td>直接用 policy 的 action loss</td><td>只保留对这个任务有用的信息；不泛化到新场景</td><td>ACT、Diffusion Policy 这类单任务 policy 常用 ResNet-18</td></tr>
 </tbody></table></div>
 <div class="note deep"><p><span class="q">深一层：预测像素，还是预测 latent</span>
-MAE 和 video generation 在像素空间里预测，好处是目标明确，不会 collapse；坏处是模型要花力气预测无法预测也无关紧要的细节（每片树叶的位置）。JEPA 一类的方法（I-JEPA、V-JEPA）主张只在 latent space 里预测，让模型自己决定丢掉哪些细节。DINO 的 self-distillation 也可以归入这个思路。目前没有定论，两条路线都有很强的结果。对机器人来说这个问题很具体：world model 应该生成未来的视频，还是只预测未来的 latent（第 21 节）。</p></div>
+MAE 和 video generation 在像素空间里预测，好处是目标明确，不会 collapse；坏处是模型要花力气预测无法预测也无关紧要的细节（每片树叶的位置）。JEPA 一类的方法（I-JEPA、V-JEPA）主张只在 latent space 里预测，让模型自己决定丢掉哪些细节。DINO 的 self-distillation 也可以归入这个思路。目前没有定论，两条路线都有很强的结果。对机器人来说这个问题很具体：world model 应该生成未来的视频，还是只预测未来的 latent（第 22 节）。</p></div>
 </section>
 
 <section id="generative">
@@ -1162,6 +1164,11 @@ MAE 和 video generation 在像素空间里预测，好处是目标明确，不�
 </div>
 <p>第 ① 步不是巧合，可以直接推出来。在 \(t=0\)，\(x_t\) 就是纯噪声，和它将要去的数据点无关，所以 MSE 的最优解是 \(v^\star(x, 0) = \mathbb{E}[x_1] - x\)。走一整步就到了 \(x + v^\star = \mathbb{E}[x_1]\)。也就是说：</p>
 <div class="note"><p><span class="q">这个实验的结论</span><strong>只走一步的 flow matching 就是 MSE regression。</strong>Flow matching 的训练 loss 本身也是 MSE，它也在做平均。区别是它把问题拆成了很多小步：每一步只需要回答"从这里出发，平均该往哪边挪"，而离某个 mode 越近，这个平均就越偏向那个 mode。<strong>多峰是靠多步积分分辨出来的，不是靠输出层。</strong>这就是 generative policy 多花的那几次 forward 买到的东西。</p></div>
+<h3>两个实用的旋钮：采样步数和 guidance</h3>
+<p><strong>步数。</strong>训练时的噪声等级可以有上百个，采样时不必每一级都走。DDIM 把采样改成确定性的、可以跳步的更新：Diffusion Policy 训练时用 100 个噪声等级，真机推理时用 DDIM 只走 10 步左右。Flow matching 的路径更接近直线，π0 用 10 步 Euler 积分。想压到一两步，要靠 distillation：训练一个 student，一步走完 teacher 多步才走完的路（consistency model 一类，机器人上有 Consistency Policy）。步数直接决定控制延迟，所以它是 generative policy 上真机时第一个要调的量。</p>
+<p><strong>Classifier-free guidance（CFG）。</strong>训练时以一定概率把条件 \(c\)（语言、goal）换成空条件 \(\varnothing\)，同一个网络就同时学会了有条件和无条件的预测。采样时把两者的差放大：</p>
+<div class="eq">\[ \hat\epsilon = \epsilon_\theta(x_t, \varnothing) + w\,\big[\epsilon_\theta(x_t, c) - \epsilon_\theta(x_t, \varnothing)\big] \]</div>
+<p>\(w=1\) 是普通的条件采样，\(w\gt 1\) 让样本更"听"条件的话，代价是多样性下降。它是图像生成的标配；在 policy 里用来调节 action 跟 goal 或语言贴得多紧。</p>
 <h3>Robot policy 的输出头：一张对照表</h3>
 <div class="tw"><table>
 <thead><tr><th>输出头</th><th>假设的 action 分布</th><th>能否表示多峰</th><th>一次推理的代价</th><th>代表</th></tr></thead>
@@ -1169,6 +1176,8 @@ MAE 和 video generation 在像素空间里预测，好处是目标明确，不�
 <tr><td>直接回归（MSE、L1）</td><td>单峰</td><td>不能</td><td>1 次 forward</td><td>早期 behavior cloning；OpenVLA-OFT</td></tr>
 <tr><td>Gaussian（均值加方差）</td><td>单峰</td><td>不能</td><td>1 次 forward</td><td>PPO 训练的 RL policy</td></tr>
 <tr><td>Conditional VAE</td><td>由 latent \(z\) 选择 mode</td><td>能，靠 \(z\)</td><td>1 次 forward</td><td>ACT</td></tr>
+<tr><td>Gaussian mixture（GMM）</td><td>固定个数的 Gaussian 之和</td><td>能，但峰的个数事先定死</td><td>1 次 forward</td><td>robomimic 里的 BC-RNN</td></tr>
+<tr><td>Energy-based</td><td>网络给每个 (observation, action) 打一个 energy，分布由它隐式定义</td><td>能</td><td>推理时要对 action 采样或做优化</td><td>Implicit BC</td></tr>
 <tr><td>离散 token，autoregressive</td><td>任意，精度受 bin 数限制</td><td>能</td><td>每个 token 1 次 forward</td><td>RT-2、OpenVLA、π0-FAST</td></tr>
 <tr><td>Diffusion、flow matching</td><td>任意连续分布</td><td>能</td><td>几次到上百次 forward</td><td>Diffusion Policy、π0、GR00T N1</td></tr>
 </tbody></table></div>
@@ -1198,23 +1207,66 @@ Diffusion 或 flow 的 policy 在每次出动作时都要做一次迭代计算�
 <p>降低方差靠 <strong>critic</strong>：再训练一个网络 \(V(s)\) 来预测"从这个状态开始，按当前 policy 走下去能拿多少 reward"，用它来算 advantage。Policy 叫 actor，合起来叫 actor–critic。Critic 的训练是一个普通的 regression。</p>
 <div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
 \(V(s)\) 满足 Bellman equation：\(V(s) = \mathbb{E}[\,r + \gamma V(s')\,]\)，就是 dynamic programming。LQR 是它的特例：dynamics 线性、cost 二次时，value function 正好是二次型 \(x^\top P x\)，把它代入 Bellman equation，得到的就是 \(P\) 要满足的 Riccati equation。RL 里的 critic 是在没有模型、非线性的情况下，用神经网络和样本去近似同一个东西。</p></div>
+<h3>Critic 的目标怎么造：Monte Carlo、TD 和 GAE</h3>
+<p>Critic 要回归的"未来能拿多少 reward"有两种极端的算法，policy gradient 里的 advantage 也跟着有两种：</p>
+<ul>
+  <li><strong>Monte Carlo。</strong>直接用这条轨迹后面实际拿到的 return \(G_t=\sum_{k\ge 0}\gamma^k r_{t+k}\)。没有偏差，但后面每一步的随机性都算在里面，方差大。</li>
+  <li><strong>Temporal difference（TD）。</strong>只看一步，剩下的用 critic 自己的估计补上：目标是 \(r_t+\gamma V(s_{t+1})\)。方差小，但 critic 不准时目标本身就是偏的。用自己的估计当目标，叫 <strong>bootstrapping</strong>。</li>
+</ul>
+<div class="eq">
+\[ \delta_t = r_t + \gamma V(s_{t+1}) - V(s_t), \qquad \hat{A}_t^{\,\text{GAE}} = \sum_{l=0}^{\infty} (\gamma\lambda)^l\, \delta_{t+l} \]
+<div class="sym">
+  <span>\(\delta_t\)</span><span>TD error：这一步的实际结果比 critic 预期的好多少</span>
+  <span>\(\lambda\)</span><span>在两个极端之间插值：\(\lambda=0\) 只信一步的 TD，\(\lambda=1\) 等于 Monte Carlo</span>
+  <span>\(\gamma\)</span><span>discount factor：有效的 horizon 约为 \(1/(1-\gamma)\) 步</span>
+</div>
+</div>
+<p>这就是 generalized advantage estimation（GAE），PPO 默认用它算 advantage，常见取值是 \(\gamma=0.99\)、\(\lambda=0.95\)。\(\gamma=0.99\) 配 50 Hz 的 policy，相当于往前看大约 2 秒：对保持平衡够了，对"走到房间另一头"不够，后者要靠上层给命令。</p>
 <h3>PPO：为什么它是 legged robot 的默认算法</h3>
 <p>Policy gradient 的一步如果迈得太大，policy 会突然变差，接下来采到的数据也跟着变差，很难恢复。PPO 的做法是限制每次更新后 policy 不能离采数据时的旧 policy 太远：</p>
 <div class="eq">\[ L^{\text{CLIP}}(\theta) = \mathbb{E}_t\Big[\min\big(\rho_t(\theta)\,\hat{A}_t,\ \ \mathrm{clip}(\rho_t(\theta),\,1-\varepsilon,\,1+\varepsilon)\,\hat{A}_t\big)\Big], \qquad \rho_t(\theta) = \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)} \]</div>
 <p>\(\rho_t\) 是新旧 policy 给同一个动作的概率之比。把它 clip 在 1 附近，相当于一个便宜的 trust region。PPO 的样本效率不高，但相对稳健、容易大规模并行。在仿真里样本几乎免费，所以这个取舍很划算。</p>
+<h3>Q-learning：off-policy 方法的地基</h3>
+<p>\(V(s)\) 评价的是当前 policy。换一个问法：\(Q^\star(s,a)\) 是"在 \(s\) 下做 \(a\)，之后一直按最优方式走"能拿到的 return。它满足 Bellman optimality equation：</p>
+<div class="eq">\[ Q^\star(s,a) = \mathbb{E}\Big[\, r + \gamma \max_{a'} Q^\star(s', a') \Big] \]</div>
+<p>Q-learning 把等号两边的差当作 loss 来做 regression（这个差也叫 TD error）。式子里没有出现"数据是哪个 policy 采的"，所以任何旧数据都能拿来用。这就是 <strong>off-policy</strong>：经验存进 replay buffer，反复采样。DQN 让它在神经网络上稳定下来靠两件事：<strong>replay buffer</strong> 打散相邻样本之间的相关性；<strong>target network</strong>，算目标时用一份更新得慢的参数拷贝，否则目标会跟着自己一起动。</p>
+<p>连续的 action 上 \(\max_{a'}\) 没法枚举，所以再训练一个 actor 去输出让 \(Q\) 最大的 action，这就是 DDPG、TD3、SAC 这一支。取 max 会系统性地高估 \(Q\)，TD3 和 SAC 用两个 \(Q\) 网络取较小的那个来压。</p>
+<div class="note deep"><p><span class="q">深一层：为什么 off-policy 省样本但难调</span>
+Function approximation、bootstrapping、off-policy 三者同时出现时，训练可能发散，Sutton 和 Barto 把它叫 deadly triad。PPO 的数据是当前 policy 新采的，避开了第三个，所以稳；SAC 三个都占，所以需要 target network、双 \(Q\) 这些补丁。Offline RL 是最极端的情况：数据完全不是自己采的，\(\max\) 会挑中数据里从没出现过、\(Q\) 值被估高了的动作，所以 CQL、IQL 的核心都是不让 policy 离开数据覆盖的范围。</p></div>
 <h3>RL 算法的几个家族</h3>
 <div class="tw"><table>
 <thead><tr><th>家族</th><th>怎么拿到改进方向</th><th>特点</th><th>什么时候用</th></tr></thead>
 <tbody>
 <tr><td>On-policy policy gradient（PPO）</td><td>用当前 policy 新采的数据估计梯度，用完就扔</td><td>稳定，费样本</td><td>仿真又快又便宜：locomotion、motion tracking</td></tr>
 <tr><td>Off-policy actor–critic（SAC、TD3）</td><td>学一个 \(Q(s,a)\)，对 \(Q\) 关于 action 求导；旧数据可以反复用</td><td>省样本，调参更难</td><td>样本贵：真机上的 RL</td></tr>
-<tr><td>Model-based RL（Dreamer、TD-MPC2）</td><td>先学一个 world model，在模型里想象或做 planning</td><td>更省样本；受模型误差限制</td><td>第 21 节</td></tr>
+<tr><td>Model-based RL（Dreamer、TD-MPC2）</td><td>先学一个 world model，在模型里想象或做 planning</td><td>更省样本；受模型误差限制</td><td>第 22 节</td></tr>
 <tr><td>对可微模型求导（SHAC、SuperMimic）</td><td>Dynamics 可微时，直接用 BPTT 得到 analytic gradient</td><td>梯度方差低得多；需要可微的模型和 reward</td><td>有 differentiable simulator 或学到的可微 world model</td></tr>
 <tr><td>Offline RL（CQL、IQL）</td><td>只用一个固定的数据集，不再交互</td><td>要防止高估数据里没出现过的动作</td><td>有大量已有数据、但质量参差不齐</td></tr>
 </tbody></table></div>
 <p>第四行和第一行的对比最能说明问题。Policy gradient 是"零阶"的：只用到 reward 的值。对模型求导是"一阶"的：用到了 reward 对 action 的导数。SuperMimic 的 ablation 报告，在同一个 world model 上，BPTT 达到同样 return 所需的 imagined step 比 PPO 少约 64 倍。这正是第 12 节那条分界线的体现：<strong>知道"往哪个方向改"比只知道"好不好"值钱得多。</strong></p>
+<h3>Exploration、reward 的形状和 curriculum</h3>
+<div class="tw"><table>
+<thead><tr><th>概念</th><th>是什么</th><th>在机器人的 RL 里</th></tr></thead>
+<tbody>
+<tr><td>Exploration</td><td>Policy 只能从试过的动作里学，所以必须主动去试没试过的</td><td>PPO 靠 Gaussian 的方差，有时再加 entropy bonus。SAC 把 entropy 直接写进目标（maximum entropy RL）：最大化 \(\sum_t r_t + \alpha\,\mathcal{H}(\pi(\cdot\mid s_t))\)</td></tr>
+<tr><td>Sparse 与 dense reward</td><td>只在任务完成时给分，还是每一步都按进展给分</td><td>Sparse 最符合本意，但随机探索几乎碰不到；dense 好学，但把设计者的偏好也写了进去。给 reward 加引导项叫 reward shaping</td></tr>
+<tr><td>Reward 的组成</td><td>一个主项，加一串 regularization 项</td><td>Locomotion 的 reward 通常是十几项的加权和：跟踪速度命令是主项，其余惩罚 torque、action 的变化率、足端打滑、关节超限。真机上动作平不平滑，大多由这些项决定</td></tr>
+<tr><td>Curriculum</td><td>从易到难安排训练</td><td>地形、命令范围、外力扰动的难度，随 policy 的表现自动上调</td></tr>
+<tr><td>Termination 与 reset</td><td>什么时候结束一个 episode，从哪里重新开始</td><td>"摔倒就结束"本身是很强的信号。Reset 的分布决定 policy 见过哪些状态：motion tracking 里从 reference 的任意时刻开始（reference state initialization）</td></tr>
+<tr><td>Hindsight relabeling</td><td>没达到原定 goal 的轨迹，把它实际到达的地方改标成 goal</td><td>Goal-conditioned 的任务里，失败的数据变成了"到达另一个 goal"的成功数据（HER）</td></tr>
+</tbody></table></div>
 <h3>RL 在机器人上成立的条件</h3>
 <p>现在的 legged RL 几乎都是 sim-to-real：在 simulator 里训练，直接部署到真机。它依赖四样东西：<strong>够快够准的 simulator</strong>；<strong>domain randomization</strong>（训练时随机改变质量、摩擦、延迟等参数，让真机落在训练分布之内，对应第 06 节）；<strong>写得出来的 reward</strong>；以及训练时可以给 critic 看真机上拿不到的信息（asymmetric actor–critic）。Reward 是最花人力的部分：它是对任务的间接描述，policy 会找到一切能拿高分但不符合你本意的办法。这也是 motion tracking 兴起的原因之一：用 mocap 数据定义 reward，省掉了大部分手工设计（见 <a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a>）。</p>
+<p>Domain randomization 的范围本身也可以做成 curriculum：OpenAI 在用灵巧手转魔方的工作里提出 automatic domain randomization（ADR），policy 表现好，就自动把随机化的范围加宽。</p>
+<h3>常见的 simulator</h3>
+<div class="tw"><table>
+<thead><tr><th>Simulator</th><th>特点</th><th>常见用途</th></tr></thead>
+<tbody>
+<tr><td>Isaac Gym、Isaac Lab（NVIDIA）</td><td>物理和 policy 都在 GPU 上，一块卡并行几千个环境；Isaac Lab 建在 Isaac Sim 上，带渲染</td><td>Legged locomotion、humanoid motion tracking、灵巧手</td></tr>
+<tr><td>MuJoCo、MJX、MuJoCo Playground（Google DeepMind）</td><td>接触模型准，开源；MJX 是能在 GPU 上并行的版本</td><td>Manipulation benchmark、model-based 控制，也越来越多地用于 sim-to-real</td></tr>
+<tr><td>ManiSkill、RoboCasa、LIBERO</td><td>建在物理引擎之上的 manipulation 任务集</td><td>评估 imitation policy 和 VLA（第 23 节）；生成训练数据</td></tr>
+<tr><td>Drake</td><td>面向优化和接触分析，dynamics 可微</td><td>Trajectory optimization、model-based 控制的验证</td></tr>
+</tbody></table></div>
 </section>
 
 <section id="il">
@@ -1227,7 +1279,7 @@ Diffusion 或 flow 的 policy 在每次出动作时都要做一次迭代计算�
 <tbody>
 <tr><td>Compounding error</td><td>闭环下误差累积，走到示范没覆盖的状态（第 06 节）</td><td>Action chunking，减少做决策的次数；数据里包含纠错动作；DAgger；更多更多样的数据</td></tr>
 <tr><td>Multimodality</td><td>同一个 observation 下，不同示范做了不同的动作（第 04 节）</td><td>Generative 的输出头：diffusion、flow matching、离散 token、CVAE（第 14 节）</td></tr>
-<tr><td>学到错误的因果关系</td><td>把历史喂给 policy 时，它可能学会"照抄上一步的动作"，因为这在训练集上几乎总是对的</td><td>限制历史长度；预测一整段而不是下一步</td></tr>
+<tr><td>学到错误的因果关系（causal confusion）</td><td>把历史喂给 policy 时，它可能学会"照抄上一步的动作"，因为这在训练集上几乎总是对的</td><td>限制历史长度；预测一整段而不是下一步</td></tr>
 </tbody></table></div>
 <p><strong>Action chunking</strong> 值得单独记住：policy 不是每一步输出一个动作，而是一次输出未来 \(H\) 步的一整段。它对上面三个问题都有不同程度的帮助：决策次数变少，等效的任务长度变短；一段动作内部是连贯的，不会在两个 mode 之间来回跳；要预测的是未来一整段，"照抄上一步"这条捷径也没那么好走了。</p>
 <h3>DAgger：让专家给 policy 自己走到的状态打标签</h3>
@@ -1279,6 +1331,20 @@ Diffusion 或 flow 的 policy 在每次出动作时都要做一次迭代计算�
 <p>第二行特别重要：它是 state-based 和 vision-based 两条路线之间的桥（第 17 节）。还有两种用法用的是同一个词：把大模型压成小模型（最初的 knowledge distillation，student 学 teacher 输出的整个概率分布）；把需要很多步的 diffusion 模型压成一两步就能采样的模型。</p>
 <div class="note deep"><p><span class="q">深一层：蒸馏的是动作，还是 latent</span>
 RMA 的做法和上图略有不同，值得对比。它的 teacher 包含一个 encoder，把环境参数（质量、摩擦、地形等）压成一个 8 维的 latent \(z\)，policy 根据 \(z\) 和 proprioception 出动作。第二阶段不模仿动作，而是训练一个 adaptation module，从过去约半秒的状态和动作历史里回归出这个 \(z\)。部署时 policy 本身不变，只是 \(z\) 的来源从"真值经过 encoder"换成了"从历史里估计"。这其实是一个<strong>学出来的 system identification</strong>：它没有估计摩擦系数是多少，而是估计了一个对控制来说足够用的环境概括。这也是"latent 作为接口"的一个典型例子。</p></div>
+<h3>只知道"动作该是什么样"：inverse RL 与 adversarial imitation</h3>
+<p>Behavior cloning 需要专家的 action。如果只有 state 的轨迹（mocap、视频），或者想学的是专家的意图而不是逐帧照抄，就换一个问法：<strong>什么样的 reward 能解释专家的行为？</strong>先从 demonstration 里学出 reward，再用 RL 优化它，这叫 inverse RL。GAIL 把它做成了 GAN 的形式：discriminator 分辨一段行为来自专家还是来自 policy，它的输出就是 policy 的 reward。AMP 是这个想法在 humanoid 上最常用的版本：discriminator 只管动作像不像 mocap（style reward），任务另有一项 reward。它和 motion tracking 的区别在于，tracking 要求逐帧跟上某一条 reference，AMP 只要求动作的分布像数据。</p>
+<h3>Imitation 给起点，RL 往上提</h3>
+<p>Behavior cloning 的上限是示范者：它学不会比数据更快更稳，失败之后怎么恢复也只能来自数据。RL 能超过示范，但从零探索太贵。所以一条越来越重要的路线是把两者接起来，先模仿，再用自己的经验改进：</p>
+<div class="tw"><table>
+<thead><tr><th>做法</th><th>怎么做</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>Demonstration 放进 replay buffer</td><td>Off-policy RL，每个 batch 一半来自示范，一半来自 policy 自己的经验</td><td>RLPD</td></tr>
+<tr><td>Residual RL</td><td>保留一个 base policy（BC 或传统控制器），RL 只学加在它上面的小修正</td><td>Residual RL</td></tr>
+<tr><td>真机上的 human-in-the-loop RL</td><td>Policy 自己执行，人在快要失败时接管；接管的数据和自主的数据一起用 off-policy RL 学</td><td>HIL-SERL：1 到 2.5 小时的真机训练，在装配、双臂协作等多类任务上接近 100% 成功率</td></tr>
+<tr><td>用 RL fine-tune 生成式 policy</td><td>把 diffusion 的每一步去噪也看成决策的一部分，用 policy gradient 更新</td><td>DPPO</td></tr>
+<tr><td>Advantage-conditioned policy</td><td>训练一个 value function 给数据里的每段行为打分，把"这段比平均好"作为条件喂给 policy；推理时要求它按"好"的那一类出动作</td><td>π*0.6（RECAP），数据里包含自主执行和人工纠正</td></tr>
+</tbody></table></div>
+<p>最后一行值得注意：它的训练仍然是 supervised learning，只是多了一个条件。这是把 RL 改写成条件生成，和 distillation 把 RL 改写成有标签的问题是同一个思路（第 24 节的第 4 条）。</p>
 </section>
 
 <div class="part"><div class="tag">PART E</div><h2>把它们拼成机器人</h2><p>用前面的四个问题去拆 robot learning 的两条主线：state-based 的 sim-to-real RL，和 vision-based 的 imitation learning，以及它们怎么在 VLA 和 humanoid 上汇合。</p></div>
@@ -1337,8 +1403,17 @@ RMA 的做法和上图略有不同，值得对比。它的 teacher 包含一个 
   <li><strong>Distillation 是桥。</strong>先在仿真里用 state 训练一个 RL teacher，再蒸馏成只看图像的 student（第 16 节）。Parkour 和一部分灵巧手工作这样做，它把 RL 的"reward 驱动、能超过示范"和视觉的"真机可部署"接了起来。</li>
   <li><strong>分层是另一座桥。</strong>Humanoid 上，底层是 state-based RL 训练的 whole-body controller，上层是 vision-based 的 VLA 或 teleoperation，中间通过 keypoint、速度命令或 latent 连接。两条线各自做擅长的部分。</li>
   <li><strong>互相借数据。</strong>用仿真生成带图像的 manipulation 数据；反过来用真机数据修正仿真（system identification、real-to-sim）。</li>
+  <li><strong>Imitation 打底，RL 提高。</strong>先用 demonstration 得到一个能用的 policy，再用真机或仿真里的 RL 把成功率和速度推上去（第 16 节）。</li>
 </ul>
 <p>Humanoid 的 loco-manipulation 之所以是现在最难的问题，正是因为它同时需要两条线：腿和平衡需要 RL 的鲁棒性，手和任务需要视觉和 demonstration。</p>
+<h3>这张图没画的：navigation 与 mobile manipulation</h3>
+<p>上面的格子只排了 locomotion 和 manipulation。Navigation 的传统做法是 SLAM 建图加 planner（见 <a href="../robotics/planning-and-task-allocation-basics.html">Planning 与 Task Allocation 基础算法</a>），它的 learning 版本同样能填进这张图：</p>
+<ul>
+  <li><strong>端到端的视觉 navigation。</strong>给一张 goal image 或一个方向，policy 从相机图像直接出速度或 waypoint。GNM、ViNT、NoMaD 把多种机器人的 navigation 数据放在一起训练一个通用 policy，是 cross-embodiment 在 navigation 上的对应物；NoMaD 的输出头是 diffusion。</li>
+  <li><strong>Vision-and-language navigation（VLN）。</strong>按"穿过走廊，在第二个门右转"这样的指令走，需要把语言对到看见的东西上。</li>
+  <li><strong>分层。</strong>NaVILA 让 VLA 输出"向前走 75 cm"这种中层的语言命令，交给 RL 训练的 locomotion policy 执行，是第 20 节分层结构的 legged 版本。</li>
+  <li><strong>Mobile manipulation。</strong>Mobile ALOHA 把底盘速度和双臂关节一起当作 action 做 imitation；π0.5 的家庭任务也是移动底盘加双臂。</li>
+</ul>
 </section>
 
 <section id="state">
@@ -1424,11 +1499,24 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 <tr><td>Vision encoder</td><td>从头训练的小 CNN；预训练的大 ViT，冻住或 fine-tune</td><td>从头训练只留下任务相关的信息，但换个背景就可能失效。预训练的更鲁棒，但更慢，而且它保留的信息未必包含任务需要的精细位置。</td></tr>
 <tr><td>Action 表示什么</td><td>关节角；end-effector 的位姿。绝对值；相对当前的增量</td><td>End-effector 空间更容易跨机器人迁移，但需要 IK。旋转常用连续的 6D 表示，避开 quaternion 和 Euler angle 的不连续（见 <a href="../robotics/transforms-and-manipulation.html">Rigid Body Transforms</a>）。</td></tr>
 <tr><td>输出头</td><td>回归、CVAE、离散 token、diffusion、flow matching</td><td>第 14 节的对照表</td></tr>
+<tr><td>Normalization</td><td>Observation 和 action 的每一维，按数据集的统计量缩放到相近的范围</td><td>关节角是零点几 rad，夹爪开合是 0 到 1，不缩放的话 loss 被数值大的维度主导。Diffusion 和 flow 的噪声是单位方差的，action 更需要先缩放。统计量要和 checkpoint 一起保存；部署时用错统计量是最常见的 bug 之一。</td></tr>
 <tr><td>时间结构</td><td>看多少帧历史；一次预测多长；执行多少步后重新预测</td><td>见下</td></tr>
 </tbody></table></div>
 <h3>Action chunk 怎么执行：其实是 receding horizon</h3>
 <p>以 Diffusion Policy 为例：看最近 2 帧 observation，预测未来 16 步 action，执行其中前 8 步，然后重新预测。<strong>这和 MPC 的 receding horizon 是同一个结构</strong>，取舍也一样：执行得长，动作连贯但反应慢；执行得短，反应快但前后两次预测可能选了不同的 mode，动作会抖。ACT 的做法是每一步都重新预测一整段，然后把多次预测中对同一时刻的结果加权平均（temporal ensembling）。</p>
 <p>大模型推理一次要几十到上百毫秒，机器人在这段时间里还在动，所以新的一段 action 算出来时，它的开头已经过时了。怎么在两段之间平滑衔接，是 VLA 上真机时一个很实际的工程问题。</p>
+<p>一个代表做法是 real-time chunking（RTC）：新的一段不等旧的执行完就开始算（asynchronous inference）。推理期间必然会被执行掉的那几步直接沿用旧的 chunk，当作已知条件，让 flow matching 把剩下的部分补全成和它们连贯的轨迹，思路和图像的 inpainting 一样。</p>
+<h3>任务怎么告诉 policy</h3>
+<p>一个 policy 要做多个任务，就得把"现在做哪个"作为条件输入，写成 \(\pi(a\mid o, g)\)。\(g\) 的形式决定了能泛化到什么：</p>
+<div class="tw"><table>
+<thead><tr><th>指定方式</th><th>输入里多了什么</th><th>特点</th></tr></thead>
+<tbody>
+<tr><td>不指定</td><td>没有</td><td>一个 policy 一个任务，ACT 和 Diffusion Policy 的原始设定</td></tr>
+<tr><td>Task ID</td><td>One-hot 或可学习的 embedding</td><td>任务集合固定，新任务要重新训练</td></tr>
+<tr><td>Goal image</td><td>任务完成时的图像</td><td>不需要语言标注，可以用 hindsight relabeling 自动造标签；但图像把无关的细节也一起指定了</td></tr>
+<tr><td>语言</td><td>指令经过 text encoder，或直接进 VLM</td><td>最灵活，能组合；数据需要语言标注</td></tr>
+<tr><td>中间表示</td><td>图像上的 2D 轨迹、keypoint、子目标图像</td><td>比语言更精确地说明"怎么做"，例如 RT-Trajectory、SuSIE</td></tr>
+</tbody></table></div>
 <h3>数据从哪来</h3>
 <div class="tw"><table>
 <thead><tr><th>来源</th><th>怎么采</th><th>特点</th></tr></thead>
@@ -1440,6 +1528,27 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 <tr><td>Simulation</td><td>脚本或 RL policy 自动生成</td><td>量大；视觉和接触的 sim-to-real gap</td></tr>
 </tbody></table></div>
 <p>公开的大规模真机数据集包括 Open X-Embodiment（2023，汇集了 22 种机器人的一百多万条轨迹）和 DROID（2024，约 7.6 万条轨迹，覆盖几百个真实场景）。公开数据合起来是几百到几千小时的量级，和语言模型能用的互联网文本相比仍然少得多。</p>
+<h3>没有 action 标签的数据怎么用</h3>
+<p>人的视频量最大，但缺 action，本体也不同。现在主要有四种用法：</p>
+<div class="tw"><table>
+<thead><tr><th>做法</th><th>思路</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>Inverse dynamics model（IDM）</td><td>用少量带 action 的数据训练一个"看前后两帧，猜中间做了什么动作"的模型，再用它给没有标签的视频补上 pseudo-label</td><td>VPT（Minecraft 视频）；DreamGen 用它给生成的机器人视频标 action</td></tr>
+<tr><td>Latent action</td><td>完全没有 action 标签时，在相邻两帧之间学一个离散的 latent（VQ-VAE），它必须解释"这一帧到下一帧变了什么"。先让 policy 预测这个 latent action，再用少量真机数据把它对到真实的 action 上</td><td>LAPA；Genie；GR00T N1 用它处理人的视频</td></tr>
+<tr><td>提取人手的运动</td><td>从第一人称视频里估计手和手腕的 3D 位姿，retarget 成 end-effector 或灵巧手的 action</td><td>EgoMimic；各种头戴相机和数据手套的采集方案</td></tr>
+<tr><td>只用来学 representation</td><td>在视频上预训练 vision encoder，或让模型先学会预测未来的帧，之后再接 action</td><td>R3M；GR-1、GR-2</td></tr>
+</tbody></table></div>
+<p>IDM 比 policy 好学：它看得到"之后发生了什么"，答案基本是确定的；policy 要回答的"接下来该做什么"才是多峰的。所以用少量有标签的数据训练 IDM，再去标大量无标签的数据，是一个通用的放大办法。</p>
+<h3>视觉之外：tactile 与 force</h3>
+<p>插孔、拧瓶盖、擦桌子这类 contact-rich 的任务，关键信息在接触力里，图像上几乎看不出来，手指还经常把接触点挡住。能用的信号有三种：</p>
+<div class="tw"><table>
+<thead><tr><th>传感器</th><th>测的是什么</th></tr></thead>
+<tbody>
+<tr><td>腕部的 force/torque sensor</td><td>End-effector 受到的 6 维 wrench</td></tr>
+<tr><td>关节力矩（torque sensor，或由电机电流估计）</td><td>每个关节的受力，也是 impedance control 的基础</td></tr>
+<tr><td>视触觉传感器（GelSight、DIGIT）</td><td>用相机拍一层弹性体的形变，得到接触面的高分辨率"触觉图像"，可以直接交给 CNN 或 ViT</td></tr>
+</tbody></table></div>
+<p>它还没有成为标配，有两个原因。数据：常见的 teleoperation 没有力反馈，操作者自己感觉不到力，示范里的力信息质量就差；Open X-Embodiment、DROID 这些公开数据集基本只有图像和 proprioception。输出：position target 表达不了"用多大的力按住"，底层得是 impedance 或 compliance controller（见 <a href="../robotics/transforms-and-manipulation.html#impedance">Impedance control</a>），policy 除了目标位置还要给出 stiffness 或目标力。目前很多看起来很灵巧的任务，是靠低增益的 position control 和柔性的夹爪被动地适应接触完成的。</p>
 </section>
 
 <section id="vla">
@@ -1467,7 +1576,27 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 <tr><td>2025</td><td>GR00T N1</td><td>面向 humanoid 的双系统结构：一个 VLM 加一个 flow matching 的 action 模块；训练数据混合了真机、仿真合成和人的视频。</td></tr>
 <tr><td>2025</td><td>Helix（Figure）</td><td>双系统：慢的 VLM 每秒 7 到 9 次，快的 visuomotor policy 以 200 Hz 控制上半身。</td></tr>
 <tr><td>2025</td><td>π0.5</td><td>把多种来源的数据（多种机器人、网页数据、高层子任务标注）一起训练，目标是在没见过的家庭环境里工作。</td></tr>
+<tr><td>2025</td><td>Gemini Robotics</td><td>建在 Gemini 2.0 上的 VLA；同时发布了只做理解和规划、不出 action 的 Gemini Robotics-ER（第 21 节）。</td></tr>
+<tr><td>2025</td><td>SmolVLA</td><td>约 4.5 亿参数的小型开源 VLA，用社区贡献的 LeRobot 数据训练，消费级 GPU 就能跑。</td></tr>
+<tr><td>2025</td><td>Gemini Robotics 1.5</td><td>出 action 之前先用自然语言"想"一步；配一个 ER 模型当 orchestrator，负责拆任务和调用工具。</td></tr>
+<tr><td>2025</td><td>π*0.6</td><td>在 VLA 上加 RL：用 value function 给自主执行和人工纠正的数据打分，再做 advantage-conditioned 的训练（第 16 节）。</td></tr>
 </tbody></table></div>
+<h3>Cross-embodiment：一个模型怎么驱动不同的机器人</h3>
+<p>不同机器人的 state 和 action 维度、含义、控制频率都不一样。常见的处理有三种：</p>
+<ul>
+  <li><strong>统一到一个公共的 action 空间。</strong>都用 end-effector 的位姿增量加夹爪开合（RT-X、OpenVLA）。简单，但双臂、灵巧手、移动底盘放不进去。</li>
+  <li><strong>Padding。</strong>取所有机器人里最大的维度，不足的补零（π0）。</li>
+  <li><strong>每种 embodiment 一组小的输入输出层。</strong>共享一个大的 backbone，前后各接一组 embodiment 专用的 state encoder 和 action decoder（Octo、GR00T N1）。</li>
+</ul>
+<p>Cross-embodiment 的收益主要落在 backbone 学到的"看图、理解任务"上；动作的细节仍然依赖目标机器人自己的数据，所以换一台新机器人通常还要 fine-tune。</p>
+<h3>先想再动：embodied reasoning</h3>
+<p>直接从图像和指令映射到 action，要求模型在一次 forward 里同时理解任务、找到物体、决定下一步、算出动作。让它先把中间结论写出来，再出 action，在长任务和没见过的指令上更稳：</p>
+<ul>
+  <li><strong>Embodied chain-of-thought（ECoT）。</strong>训练 VLA 在 action token 之前先生成一段文字：任务计划、当前的子任务、相关物体的 bounding box、夹爪的位置。</li>
+  <li><strong>先预测子任务，再预测 action。</strong>π0.5 用同一个模型先输出高层的子任务（"拿起盘子"），再以它为条件生成 action chunk；Hi Robot 用上下两个模型做同样的事。</li>
+  <li><strong>Thinking before acting。</strong>Gemini Robotics 1.5 在动作之前用自然语言写出自己的推理。</li>
+</ul>
+<p>代价是延迟，所以"想"的部分通常比出 action 的部分跑得慢，这又回到了下面的分层。再往上走一步，让语言模型只负责想、完全不出 action，就是第 21 节的内容。</p>
 <h3>VLM 带来了什么，没带来什么</h3>
 <div class="two">
   <div><h4>带来的</h4><ul>
@@ -1486,6 +1615,7 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 <div class="tw"><table>
 <thead><tr><th>层</th><th>做什么</th><th>典型频率</th><th>怎么训练的</th></tr></thead>
 <tbody>
+<tr><td>Planner（LLM 或 embodied reasoning 模型，可选）</td><td>把长任务拆成子任务，调用工具，检查每一步有没有完成</td><td>几秒一次</td><td>通常不在 robot 数据上训练（第 21 节）</td></tr>
 <tr><td>慢的大模型（VLM）</td><td>看图、理解指令、决定现在该做哪一步</td><td>每秒 1 到 10 次</td><td>互联网预训练，加 robot 数据 fine-tune</td></tr>
 <tr><td>快的 action 模块</td><td>根据上层给的 latent 或子任务，结合最新的图像和 proprioception，生成 action chunk</td><td>每秒 10 到上百次</td><td>Imitation，diffusion 或 flow matching</td></tr>
 <tr><td>Whole-body controller（humanoid 才有）</td><td>把上层给的目标变成全身关节的 position target，保持平衡</td><td>约 50 Hz</td><td>仿真里的 RL，motion tracking</td></tr>
@@ -1493,11 +1623,77 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 </tbody></table></div>
 <p>每两层之间的接口都是一个 Q4 的设计选择：语言的子任务描述、一个 latent 向量、手和头的 keypoint、速度命令。这和 <a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a> 里"分层没有消失，接口在变"是同一个观察，只是这次从上往下看。</p>
 <div class="note deep"><p><span class="q">深一层：新模块的梯度会不会破坏预训练的知识</span>
-路线二里，action head 是随机初始化的，训练初期它传回 VLM 的梯度很大也很乱，可能把 VLM 原本的语义知识冲掉；只用 robot 数据 fine-tune 也会让模型逐渐忘记它在互联网上学到的东西。常见的对策有三类：和图文数据一起训练（co-training）；让 VLM 的主干用离散 action token 的 loss 学习，同时阻止 action head 的梯度流回主干；或者只训练一小部分参数（例如 LoRA）。这个问题说明"end-to-end"不是越彻底越好，梯度往哪流、不往哪流是需要设计的。</p></div>
+路线二里，action head 是随机初始化的，训练初期它传回 VLM 的梯度很大也很乱，可能把 VLM 原本的语义知识冲掉；只用 robot 数据 fine-tune 也会让模型逐渐忘记它在互联网上学到的东西。常见的对策有三类：和图文数据一起训练（co-training）；让 VLM 的主干用离散 action token 的 loss 学习，同时阻止 action head 的梯度流回主干（Physical Intelligence 把这叫 knowledge insulation）；或者只训练一小部分参数（例如 LoRA）。这个问题说明"end-to-end"不是越彻底越好，梯度往哪流、不往哪流是需要设计的。</p></div>
+</section>
+
+<section id="llmplan">
+<h2><span class="n">21</span>LLM 当 planner：不出 action，出 plan 或 code</h2>
+<p class="ask"><b>这一节回答：</b>不训练 VLA，直接拿现成的 LLM 或 VLM 来指挥机器人行不行？SayCan、Code as Policies 和 2026 年的 Gemini 4 做的是同一件事吗？</p>
+<p>VLA 把语言模型的 weight 拿来 fine-tune，让它直接输出 action。另一条更早、也一直并行的路线是<strong>不动 LLM 的 weight</strong>：让它做本来就会的事（推理、写代码、看图回答问题），输出一个机器人系统能执行的中间产物，底层的动作交给别的模块。各种做法的区别只在一个 Q4 的选择：<strong>LLM 和机器人之间的接口是什么。</strong></p>
+<div class="tw"><table>
+<thead><tr><th>LLM 输出什么</th><th>谁来执行</th><th>代表</th><th>上限在哪</th></tr></thead>
+<tbody>
+<tr><td>从 skill 列表里选一个</td><td>预先训练好的一组 skill policy</td><td>SayCan</td><td>能做的事被 skill 库限死</td></tr>
+<tr><td>一步步的语言子任务，并根据反馈重新规划</td><td>语言条件的 policy 或 VLA</td><td>Inner Monologue；Hi Robot；Gemini Robotics-ER 当 orchestrator</td><td>底层必须听得懂、做得到这些子任务</td></tr>
+<tr><td>一段调用感知和控制 API 的程序</td><td>解释器直接运行；API 背后是检测模型、IK、motion planner</td><td>Code as Policies；Gemini Robotics-ER；Gemini 4 Argon 和 Hydrogen</td><td>只能表达 API 能表达的动作</td></tr>
+<tr><td>空间上的目标或约束：3D value map、keypoint 之间的约束、图像上的点和轨迹</td><td>Motion planner 或 trajectory optimization</td><td>VoxPoser；ReKep；RoboPoint</td><td>感知要把 keypoint 找准并一直跟住</td></tr>
+<tr><td>Reward function 的代码</td><td>仿真里的 RL</td><td>Eureka；Language to Rewards</td><td>任务得能仿真</td></tr>
+</tbody></table></div>
+
+<h3>SayCan：把"该做什么"和"做得到什么"相乘</h3>
+<p>LLM 知道"要清理洒了的可乐，应该先去拿海绵"，但它不知道眼前有没有海绵，也不知道这台机器人会不会拿。SayCan 对 skill 库里的每个 skill 算两个分数再相乘，选最高的执行，执行完再问下一步：</p>
+<div class="eq">
+\[ k^\star = \arg\max_{k}\;\; \underbrace{p_{\text{LLM}}\big(\ell_k \mid \text{instruction},\ \text{history}\big)}_{\text{say：这一步有没有用}} \;\cdot\; \underbrace{V_k(s)}_{\text{can：现在做不做得成}} \]
+<div class="sym">
+  <span>\(\ell_k\)</span><span>第 \(k\) 个 skill 的语言描述，例如"pick up the sponge"</span>
+  <span>\(V_k(s)\)</span><span>这个 skill 自带的 value function：从当前状态出发它成功的概率，也叫 affordance</span>
+</div>
+</div>
+<div class="note"><p><span class="q">这一节最该记住的词：grounding</span>LLM 的知识来自文字，必须有某种机制把它接到<strong>眼前的场景</strong>和<strong>这台机器人的能力</strong>上，这叫 grounding。后面所有方法的差别，基本就是 grounding 怎么做：SayCan 用 value function，Code as Policies 用感知 API 的返回值，后来的 VLM 直接看图。</p></div>
+
+<h3>Code as Policies：让 LLM 写程序</h3>
+<p>在 prompt 里给出可用的 API 和几个例子，LLM 生成一段 Python，解释器直接执行。下面是示意，API 的名字是随手取的：</p>
+<pre># 指令：把红色方块放到蓝色碗左边 10 cm 的地方
+block = detect_object("red block")      # 感知 API：返回物体的位姿
+bowl  = detect_object("blue bowl")
+target = bowl.position + np.array([0.0, 0.10, 0.0])   # 用普通的算术做空间推理
+pick(block)                             # 控制 API：背后是 grasp、IK、motion planner
+place(target)</pre>
+<p>代码比"从列表里选一个 skill"强在三点。有循环和条件，能写出"每个方块都放进同色的碗"。能做算术，把"左边一点"变成具体的坐标。能定义新函数并复用，等于自己扩充 skill 库。代码还天然可读、可调试，出错时知道错在哪一行。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
+这是 task and motion planning（TAMP）的结构：上层决定做哪些离散的步骤，下层为每一步求连续的运动。LLM 替掉的是上层那个手写的状态机或 PDDL domain；它调用的 API 仍然是传统的 perception、IK 和 motion planning。所以 code as policy 不是"LLM 在控制机器人"，而是"LLM 在写调度传统模块的那段胶水代码"。</p></div>
+
+<h3>VoxPoser 和 ReKep：让 LLM 写 cost，让 optimizer 求解</h3>
+<p>几个固定的 API 表达不了"倒水时保持壶嘴对准杯口"这样的连续约束。VoxPoser 让 LLM 写代码去组合 3D 空间里的 value map（哪里该去，哪里要避开），再由 motion planner 在这张图上求轨迹。ReKep 让 VLM 在图像上选出一组 keypoint，把任务写成这些 keypoint 之间的约束函数（用 Python 写的 cost），交给优化器解出 end-effector 的轨迹，执行中不断重解。两者都不需要任何 robot demonstration。用控制的话说：<strong>LLM 负责写 cost function，trajectory optimization 负责解。</strong></p>
+
+<h3>2025 到 2026：通用模型自己变成了 embodied reasoning 模型</h3>
+<p>早期的做法是拿通用的 LLM 配外部的检测模型。2025 年起出现了专门为这一层训练的 VLM：Gemini Robotics-ER 能在图像上指出物体的点、给出 bounding box、抓取位姿和轨迹，判断任务的进度和成败，把长任务拆成子任务。2026 年 7 月的 <a href="https://blog.google/innovation-and-ai/models-and-research/google-deepmind/gemini-robotics-er-2/">Gemini Robotics ER 2</a> 明确定位成高层 planner：自己不控制电机，把 VLA 或 navigation API 声明成工具来调用。</p>
+<p>2026 年下半年，这些能力进了通用模型本身。按 Google 的发布文章，<a href="https://developers.googleblog.com/en/gemini-4-argon-for-robotics/">Gemini 4 Argon</a>（2026 年 10 月）zero-shot 控制机械臂的方式是一个多轮的闭环：每一轮先看相机图像，写出调用 <code>robot.grasp(...)</code>、<code>robot.goto(...)</code>、<code>robot.move_until_contact(...)</code> 这类 motion primitive 的代码，执行，再看图检查，抓空了就重试。它还会自己写 MuJoCo 的场景和控制器做 real-to-sim，在仿真里生成数据去 fine-tune VLA；文章报告这样生成的数据把一个真机任务的成功率从 56% 提到了 75%。<a href="https://developers.googleblog.com/en/gemini-hydrogen-for-robotics/">Gemini 4 Hydrogen</a>（2026 年 11 月）是更快、更便宜的版本，做的是同一个循环："规划任务，写并运行控制代码，不断调整直到完成"。</p>
+<p>这就是 code as policy，变化有两处：写代码的模型强了很多，而且循环是闭环的，模型每一轮都看得到自己上一步的结果。这部分是这一页里最新的内容，数字来自官方文章，引用前请核对。</p>
+
+<h3>和 VLA 怎么比</h3>
+<div class="tw"><table>
+<thead><tr><th></th><th>LLM 当 planner、code as policy</th><th>VLA</th></tr></thead>
+<tbody>
+<tr><td>需要 robot 数据吗</td><td>不需要，或很少</td><td>需要大量 demonstration</td></tr>
+<tr><td>动作从哪来</td><td>预先写好或训练好的 primitive 和 planner</td><td>模型直接输出，从数据里学</td></tr>
+<tr><td>擅长</td><td>长时程、需要常识和算术的任务；新任务 zero-shot；可读可调试</td><td>接触丰富、灵巧、难以用几何描述的技能，例如叠衣服</td></tr>
+<tr><td>反应速度</td><td>每一轮要调用一次大模型，秒级</td><td>Action chunk，10 到 50 Hz</td></tr>
+<tr><td>上限在哪</td><td>API 和 primitive 能表达什么；感知准不准</td><td>训练数据盖住了什么</td></tr>
+</tbody></table></div>
+<div class="note"><p><span class="q">两者是上下层，不是二选一</span>现在的系统越来越多是这样的组合：LLM 或 embodied reasoning 模型在上面拆任务、调工具、检查进度，VLA 在下面当一个"听得懂语言的通用 skill"。SayCan 里那个手工搭的 skill 库，被一个 VLA 换掉了。这就是第 20 节分层表最上面的那一行。</p></div>
+
+<h3>LLM 在训练流程里的其他位置</h3>
+<ul>
+  <li><strong>写 reward。</strong>Eureka 让 LLM 生成 reward 的代码，在仿真里并行训练，把训练结果的统计反馈给 LLM 再改，循环几轮；它用这个办法让灵巧手学会了转笔。这是第 15 节"reward 最花人力"的一个回答。</li>
+  <li><strong>标注数据。</strong>给 demonstration 自动补上语言指令、切分子任务，VLA 的语言标注大多是这样来的。</li>
+  <li><strong>当 success detector。</strong>看一段视频，判断任务完成了没有，用在自动评估和真机 RL 的 reward 上（第 23 节）。</li>
+  <li><strong>生成仿真。</strong>写场景、摆物体、定义任务，扩充仿真数据的多样性。</li>
+</ul>
 </section>
 
 <section id="wm">
-<h2><span class="n">21</span>World model 与 3D 表示</h2>
+<h2><span class="n">22</span>World model 与 3D 表示</h2>
 <p class="ask"><b>这一节回答：</b>World model 这个词在不同论文里指的是同一个东西吗？除了 2D 图像，机器人还能怎么表示场景？</p>
 <h3>World model：预测"做了这个动作之后会怎样"</h3>
 <p>最宽的定义：一个学出来的模型，输入当前的状态（或它的表示）和 action，输出下一个状态。训练它是 self-supervised 的：目标就是数据里的下一帧，不需要任何标注。但这个词在不同的工作里指的东西差别很大：</p>
@@ -1512,6 +1708,12 @@ PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当
 <p>所有 world model 共有一个问题，而且你已经见过它：<strong>把模型自己的输出再喂回去，多步之后误差会累积</strong>。这和第 06 节 behavior cloning 的 compounding error 是同一个机制。常见的对策也相似：只用短的 rollout；训练时就让模型从自己的预测出发多步展开（SuperMimic 用 8 步的窗口训练，用 32 步的 imagination）；用 value function 概括更远的未来。</p>
 <div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
 World model 加 planning 就是 MPC，只是模型是学的。World model 加 policy gradient 就是在学到的 simulator 里做 RL。对 world model 求导就是 differentiable simulation。Model-based 控制的结构都还在，变的是模型从哪来。</p></div>
+<h3>Video model 和 policy 的三种关系</h3>
+<ul>
+  <li><strong>当数据引擎。</strong>在机器人数据上 fine-tune 一个 video model，让它按新的指令生成视频，再用 inverse dynamics model 补上 action（第 19 节），得到真机上没采过的轨迹。DreamGen 这样做，把生成的数据叫 neural trajectory。</li>
+  <li><strong>当 policy 的一部分。</strong>先生成"任务完成过程"的视频或下一个子目标的图像，再用 inverse dynamics model 或 goal-conditioned policy 把它变成 action（UniPi、SuSIE）。</li>
+  <li><strong>当评估器。</strong>把 policy 输出的 action 喂给 action-conditioned 的 video model，在生成的视频里看任务有没有完成，代替一部分真机评估（第 23 节）。</li>
+</ul>
 <h3>3D 表示：把几何结构写进输入</h3>
 <p>2D 图像的问题是它依赖视角：相机挪一下，所有像素都变了。3D 表示把"世界是三维的"这个假设直接写进输入格式，是一种 inductive bias（第 10 节）。</p>
 <div class="tw"><table>
@@ -1524,14 +1726,60 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 <tr><td>3D Gaussian Splatting</td><td>用大量带颜色的 3D Gaussian 表示场景；渲染比 NeRF 快得多</td><td>Real-to-sim：把真实场景扫进仿真里</td></tr>
 </tbody></table></div>
 <p>取舍和第 10 节那张图一致：3D 表示对视角变化更鲁棒、需要的 demonstration 更少，但需要深度传感器和标定，而且用不上在海量 2D 图像上预训练的模型。数据越多，2D 加大模型的路线越占优；数据少、对几何精度要求高的时候，3D 更划算。</p>
+<p>还有两种把几何写进去的办法，不改输入的格式。<strong>Equivariance</strong>：把"物体平移或旋转之后，动作也跟着平移或旋转"直接写进网络结构（Transporter Networks、Equivariant Diffusion Policy），pick-and-place 这类任务用很少的 demonstration 就能学会。<strong>Object-centric 表示</strong>：先用感知模型把场景变成物体的位姿或 keypoint，policy 只看这些低维的量，等于回到了 state-based 的设定。</p>
 <h3>可以直接拿来用的感知模型</h3>
 <p>除了端到端的 policy，还有一类系统把感知拆成模块，每个模块用一个现成的 foundation model：分割用 SAM，开放词表的检测用 Grounding DINO，单目深度用 Depth Anything，物体 6D 位姿用 FoundationPose，点的跟踪用 CoTracker。它们输出有明确含义的中间结果（mask、bounding box、位姿），接传统的 planning 和控制。和端到端相比，好处是可调试、不需要 robot demonstration；坏处是模块之间的误差会传递，而且中间表示限制了能表达的任务。</p>
+<p>抓取有专门的模型：Contact-GraspNet、AnyGrasp 这类 grasp pose detection 网络从点云直接给出一批 6-DoF 的抓取位姿，是模块化 pick-and-place 系统的标准部件。DUSt3R、VGGT 这类前馈式的 3D 重建模型，可以从几张没有标定的照片直接给出点云和相机位姿。第 21 节的 LLM planner 调用的感知 API，背后就是这一段里的模型。</p>
+</section>
+
+<section id="eval">
+<h2><span class="n">23</span>评估与部署：从 checkpoint 到真机</h2>
+<p class="ask"><b>这一节回答：</b>一个 policy 训练完，怎么知道它好不好？从 checkpoint 到在真机上稳定地跑，中间还隔着什么？</p>
+<h3>量什么</h3>
+<p>最常用的是 <strong>success rate</strong>。它对长任务太粗，所以常再报 task progress（完成了几个子步骤）和完成时间。一个容易踩的坑：<strong>validation loss 不能用来选模型</strong>。它量的是在专家的状态上预测 action 的误差（open-loop），而部署是闭环的；第 06 节的 covariate shift 让这两者的相关性很弱。Validation loss 只适合查 overfitting 和 bug，checkpoint 的好坏要闭环跑了才知道。</p>
+<h3>试验次数少的时候，数字有多不可靠</h3>
+<p>每次试验是一次成败，成功率的标准误差是：</p>
+<div class="eq">\[ \mathrm{SE} = \sqrt{\frac{p\,(1-p)}{n}} \]</div>
+<p>\(p=0.8\)、\(n=20\) 时 SE 约 0.09，95% 置信区间大约是正负 18 个百分点。所以各跑 20 次得到的"80% 对 90%"不能说明任何问题；要可靠地分辨这两个数，每个方法需要两百次左右。实际评估时还要控制初始条件：物体的位置和朝向事先定好，几个方法在同一天、同一套位置上交替着测，否则光照和硬件状态的变化会混进结果里。</p>
+<h3>"泛化"要分开说</h3>
+<div class="tw"><table>
+<thead><tr><th>哪一种</th><th>变了什么</th><th>主要靠什么</th></tr></thead>
+<tbody>
+<tr><td>Visual</td><td>光照、背景、干扰物、相机位置</td><td>Data augmentation、预训练的 encoder、数据多样性</td></tr>
+<tr><td>Semantic</td><td>没见过的物体类别，没见过的说法</td><td>VLM 的互联网预训练</td></tr>
+<tr><td>Spatial</td><td>物体的位置和朝向超出了训练时的范围</td><td>数据覆盖；3D 或 equivariant 的结构</td></tr>
+<tr><td>Behavioral</td><td>需要一个没被示范过的动作</td><td>最难，目前基本只能靠更多的数据</td></tr>
+<tr><td>Embodiment</td><td>换了一台机器人</td><td>Cross-embodiment 预训练，加 fine-tune</td></tr>
+</tbody></table></div>
+<p>论文里说"泛化到新物体"，通常指前两行。读的时候先问清楚是哪一行。</p>
+<h3>Benchmark 速查</h3>
+<div class="tw"><table>
+<thead><tr><th>Benchmark</th><th>内容</th><th>注意</th></tr></thead>
+<tbody>
+<tr><td>LIBERO</td><td>仿真里的桌面操作，4 个 suite，每个 10 个任务</td><td>VLA 论文最常报的数字。训练和测试是同一批任务，主流方法已经到 95% 以上，区分度很低</td></tr>
+<tr><td>CALVIN</td><td>连续完成 5 条语言指令；ABC→D 的设定在没见过的环境里测试</td><td>量长时程和环境泛化</td></tr>
+<tr><td>Meta-World</td><td>50 个单臂操作任务</td><td>多任务 RL 和 imitation 的老 benchmark</td></tr>
+<tr><td>SIMPLER</td><td>把在真机数据上训练的 policy 放进仿真里评估</td><td>设计目标是仿真里的排序和真机上一致</td></tr>
+<tr><td>ManiSkill、RoboCasa、BEHAVIOR</td><td>更大规模的仿真任务集：GPU 并行、厨房场景、家庭活动</td><td>也用来生成训练数据</td></tr>
+<tr><td>RoboArena</td><td>分布在多个实验室的真机评估，两个 policy 成对比较</td><td>用同一种硬件平台（DROID）来解决跨实验室不可比的问题</td></tr>
+</tbody></table></div>
+<h3>部署时多出来的事</h3>
+<div class="tw"><table>
+<thead><tr><th>问题</th><th>具体是什么</th><th>常见的处理</th></tr></thead>
+<tbody>
+<tr><td>推理延迟</td><td>大模型一次推理要几十到几百毫秒</td><td>Action chunk；asynchronous inference 加 real-time chunking（第 19 节）；减少 diffusion 的步数；quantization，编译成 TensorRT 一类的推理引擎</td></tr>
+<tr><td>算力放哪</td><td>机载的嵌入式 GPU，还是外接工作站或云端</td><td>机载受功耗和散热限制；走网络会多一段不稳定的延迟。分层结构里慢的那层可以放远端，快的那层必须在机载</td></tr>
+<tr><td>训练和部署不一致</td><td>相机位置、图像的分辨率和裁剪、控制频率、normalization 的统计量、action 的定义（绝对还是相对，在哪个坐标系）</td><td>逐项对齐。先在真机上 replay 一条训练数据里的 action 序列，确认机器人复现了原来的轨迹</td></tr>
+<tr><td>安全</td><td>Policy 在分布外的输出没有任何保证</td><td>关节限位、速度和力矩限幅、workspace 边界、碰撞检测；低增益或 impedance 控制；急停</td></tr>
+<tr><td>失败之后</td><td>Policy 自己不知道失败了</td><td>Success detector（VLM 或专门的分类器）；重试；人工接管，并把接管的数据加回训练（第 16 节）</td></tr>
+</tbody></table></div>
+<div class="note"><p><span class="q">一个实用的排错顺序</span>真机上不 work 的时候，先 replay 训练数据里的 action（查接口、坐标系和 normalization），再在和训练时一样的初始条件下闭环跑（查 policy 本身），最后才改变环境（查泛化）。大部分"模型不行"其实停在第一步。</p></div>
 </section>
 
 <div class="part"><div class="tag">PART F</div><h2>讨论</h2><p>把前面的内容压缩成几条可以带进任何一篇论文的视角，以及一些目前没有答案的问题。</p></div>
 
 <section id="themes">
-<h2><span class="n">22</span>贯穿始终的六条主线</h2>
+<h2><span class="n">24</span>贯穿始终的六条主线</h2>
 <h3>1 · 几乎一切都是 prediction</h3>
 <p>语言模型预测下一个 token，MAE 预测被遮住的 patch，diffusion 预测噪声，world model 预测下一个 state，behavior cloning 预测专家的 action，critic 预测未来的 return。目标的差别只在于<strong>预测什么、以什么为条件</strong>。读一个新方法时，先把它写成"根据 A 预测 B"，大部分神秘感就没了。</p>
 <h3>2 · Representation 是被目标逼出来的</h3>
@@ -1547,7 +1795,7 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 </section>
 
 <section id="confuse">
-<h2><span class="n">23</span>容易混的十组词</h2>
+<h2><span class="n">25</span>容易混的十组词</h2>
 <div class="tw"><table>
 <thead><tr><th>这一组</th><th>区别</th></tr></thead>
 <tbody>
@@ -1569,11 +1817,12 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
   <li>"Diffusion 是在加噪声"。加噪声只是造训练样本的方式；模型学的是去噪，生成靠的是迭代。</li>
   <li>"Foundation model 就是大模型"。重点是在很宽的数据上预训练、然后能适配到很多下游任务；大只是结果。</li>
   <li>"RL 比 imitation 高级"。它们解决不同条件下的问题：有 reward 和 simulator 时用 RL，有 demonstration 时用 imitation。</li>
+  <li>"LLM 在控制机器人"。先问清楚它输出的是什么：action（VLA）、子任务的文字，还是一段调用 API 的代码。三者需要的数据、反应速度和上限完全不同（第 20、21 节）。</li>
 </ul>
 </section>
 
 <section id="open">
-<h2><span class="n">24</span>可以拿来讨论的问题</h2>
+<h2><span class="n">26</span>可以拿来讨论的问题</h2>
 <p>这些问题目前没有公认的答案。每一条下面是我的初步看法，用来引出讨论，不是结论。</p>
 <details class="qa"><summary>机器人为什么还没有它的"GPT 时刻"？缺的到底是什么？</summary><div class="a">
 <p>最直接的回答是数据。语言模型的训练数据是互联网上人类写下的全部文字，量级是万亿个 token，而且天然就是"输入和输出同一种格式"。机器人需要的是带 action 的数据，互联网上没有，只能一小时一小时地采。公开的大规模真机数据集是几百到几千小时的量级；π0 用了一万小时以上；也有公司自报的私有数据达到几十万小时（例如 Generalist AI 的 GEN-0，2025 年底报告 27 万小时）。和互联网文本相比，这仍然少得多，而且每多一个数量级都要靠真金白银的采集。</p>
@@ -1586,7 +1835,7 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 <p>离散 token 的好处是和语言模型的整套东西兼容：同一个 loss，可以和图文数据无缝混合训练，梯度不会干扰预训练的知识。连续的 head 的好处是精度和速度。两条路线一直在互相靠近：FAST 让 token 路线能处理高频数据；也有工作让主干用 token 的 loss 学、同时用 flow 的 head 来执行。可能最后的答案是"训练时两个都用，推理时用连续的"。更深的问题是：action 有没有一个像 subword 那样自然的"词"？</p>
 </div></details>
 <details class="qa"><summary>Vision encoder 应该冻住还是 fine-tune？用哪一种预训练？</summary><div class="a">
-<p>冻住能保留预训练带来的鲁棒性，但 encoder 当初丢掉的信息（比如为了语义不变性而丢掉的精确位置）再也拿不回来。Fine-tune 能找回任务需要的信息，但 robot 数据少，容易把泛化能力训掉。OpenVLA 的实验是 fine-tune 更好；把语义型和几何型的两个 encoder 拼起来也是一种回答。这个问题的本质是第 22 节的第 2 条：encoder 的 representation 是被它原来的训练目标逼出来的，而那个目标不是控制。</p>
+<p>冻住能保留预训练带来的鲁棒性，但 encoder 当初丢掉的信息（比如为了语义不变性而丢掉的精确位置）再也拿不回来。Fine-tune 能找回任务需要的信息，但 robot 数据少，容易把泛化能力训掉。OpenVLA 的实验是 fine-tune 更好；把语义型和几何型的两个 encoder 拼起来也是一种回答。这个问题的本质是第 24 节的第 2 条：encoder 的 representation 是被它原来的训练目标逼出来的，而那个目标不是控制。</p>
 </div></details>
 <details class="qa"><summary>Sim-to-real RL 能不能像征服 locomotion 一样征服 manipulation？</summary><div class="a">
 <p>障碍有三个：接触丰富的操作（尤其是软物体）仿真不准；视觉的 sim-to-real gap 比 dynamics 的大；reward 难写。但每一个都在被推进：更好的接触仿真和 real-to-sim；用 depth 或点云绕开 RGB 的 gap；用 demonstration 或语言模型来生成 reward。灵巧手的手内操作已经是 sim-to-real RL 的成功例子。我的看法是，刚体、短时程、可以用几何描述的技能会先被 RL 拿下，长时程和需要语义的部分仍然靠 imitation，两者通过分层结合。</p>
@@ -1606,7 +1855,7 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 </section>
 
 <section id="glossary">
-<h2><span class="n">25</span>术语速查</h2>
+<h2><span class="n">27</span>术语速查</h2>
 <p>读到不认识的词，先在这里定位它属于哪个问题，再去对应的小节。可以按类别筛选，或者直接搜索。</p>
 <div class="filters" id="gl-flt">
   <button type="button" class="pre on" data-c="all">全部</button>
@@ -1672,7 +1921,7 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 <tr data-c="q2"><td>Policy gradient</td><td><span class="qt c2">Q2</span></td><td>不对环境求导，通过提高好动作的概率来改进 policy</td><td><a href="#rl">15</a></td></tr>
 <tr data-c="q2"><td>Value function / critic / advantage</td><td><span class="qt c2">Q2</span></td><td>预测未来 return 的网络 / 某个动作比平均水平好多少</td><td><a href="#rl">15</a></td></tr>
 <tr data-c="q2"><td>PPO</td><td><span class="qt c2">Q2</span></td><td>限制每次更新幅度的 policy gradient 算法；sim-to-real 的默认选择</td><td><a href="#rl">15</a></td></tr>
-<tr data-c="q2"><td>World model</td><td><span class="qt c2">Q2</span></td><td>学出来的 dynamics：给定状态和 action，预测下一个状态</td><td><a href="#wm">21</a></td></tr>
+<tr data-c="q2"><td>World model</td><td><span class="qt c2">Q2</span></td><td>学出来的 dynamics：给定状态和 action，预测下一个状态</td><td><a href="#wm">22</a></td></tr>
 <tr data-c="q3"><td>Dataset / distribution</td><td><span class="qt c3">Q3</span></td><td>训练样本 / 产生这些样本的那个分布</td><td><a href="#shift">06</a></td></tr>
 <tr data-c="q3"><td>Distribution shift</td><td><span class="qt c3">Q3</span></td><td>部署时的数据分布和训练时不一样</td><td><a href="#shift">06</a></td></tr>
 <tr data-c="q3"><td>Data augmentation</td><td><span class="qt c3">Q3</span></td><td>对训练样本做随机变换，告诉模型这些变化不该影响输出</td><td><a href="#shift">06</a></td></tr>
@@ -1709,11 +1958,44 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 <tr data-c="rob"><td>Temporal ensembling / receding horizon</td><td><span class="qt c0">机器人</span></td><td>把多次预测对同一时刻的结果平均 / 只执行一段预测的前几步再重算</td><td><a href="#visuo">19</a></td></tr>
 <tr data-c="rob"><td>Dual-system（System 1 / System 2）</td><td><span class="qt c0">机器人</span></td><td>慢的大模型负责理解，快的小模型负责出动作</td><td><a href="#vla">20</a></td></tr>
 <tr data-c="rob"><td>Loco-manipulation</td><td><span class="qt c0">机器人</span></td><td>同时需要移动和操作的任务</td><td><a href="#lines">17</a></td></tr>
+<tr data-c="q1"><td>Equivariance</td><td><span class="qt c1">Q1</span></td><td>输入做一个变换，输出跟着做对应的变换；把对称性写进网络结构</td><td><a href="#wm">22</a></td></tr>
+<tr data-c="q2"><td>TD error / bootstrapping</td><td><span class="qt c2">Q2</span></td><td>一步的实际结果和 critic 预期的差 / 用自己的估计当回归目标</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>GAE</td><td><span class="qt c2">Q2</span></td><td>用 λ 在一步 TD 和 Monte Carlo 之间插值的 advantage 估计</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Q-function / Q-learning</td><td><span class="qt c2">Q2</span></td><td>在某个 state 做某个 action 的长期价值 / 用 Bellman optimality equation 学它</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Replay buffer / target network</td><td><span class="qt c2">Q2</span></td><td>存旧经验反复采样 / 算 TD 目标时用的慢更新参数拷贝</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Entropy bonus / maximum entropy RL</td><td><span class="qt c2">Q2</span></td><td>奖励 policy 保持随机性，用来维持 exploration</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Reward shaping / sparse reward</td><td><span class="qt c2">Q2</span></td><td>给 reward 加引导项让它好学 / 只在任务完成时才给的 reward</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Inverse RL / GAIL / AMP</td><td><span class="qt c2">Q2</span></td><td>从 demonstration 学出 reward 再做 RL；后两者用 discriminator 当 reward</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q2"><td>Residual RL</td><td><span class="qt c2">Q2</span></td><td>保留一个 base policy，RL 只学加在上面的修正量</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q2"><td>Advantage conditioning</td><td><span class="qt c2">Q2</span></td><td>把"这段行为比平均好"当作条件输入，用 supervised learning 做 policy improvement</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q2"><td>DDIM / classifier-free guidance</td><td><span class="qt c2">Q2</span></td><td>可以跳步的确定性采样 / 放大有条件和无条件预测之差</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q3"><td>Curriculum</td><td><span class="qt c3">Q3</span></td><td>训练的难度从易到难，随 policy 的表现上调</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q3"><td>Hindsight relabeling</td><td><span class="qt c3">Q3</span></td><td>把轨迹实际到达的地方改标成 goal，失败的数据变成有用的</td><td><a href="#rl">15</a>、<a href="#visuo">19</a></td></tr>
+<tr data-c="q3"><td>Inverse dynamics model</td><td><span class="qt c3">Q3</span></td><td>看前后两帧，猜中间的 action；用来给无标签视频补 action</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="q3"><td>Latent action</td><td><span class="qt c3">Q3</span></td><td>从相邻两帧的变化里学出来的离散 latent，代替缺失的 action 标签</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="q3"><td>Real-to-sim</td><td><span class="qt c3">Q3</span></td><td>把真实场景或真机数据搬进仿真，用来校准仿真或生成数据</td><td><a href="#lines">17</a>、<a href="#llmplan">21</a></td></tr>
+<tr data-c="q3"><td>Human-in-the-loop / intervention</td><td><span class="qt c3">Q3</span></td><td>Policy 执行时人随时接管，接管的数据用来继续训练</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q3"><td>Benchmark</td><td><span class="qt c3">Q3</span></td><td>固定的任务集和评估流程，例如 LIBERO、CALVIN、SIMPLER</td><td><a href="#eval">23</a></td></tr>
+<tr data-c="q4"><td>Goal conditioning</td><td><span class="qt c4">Q4</span></td><td>把要完成的目标（图像、语言、轨迹）作为 policy 的条件输入</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="q4"><td>Tactile sensing</td><td><span class="qt c4">Q4</span></td><td>接触面上的力和形变信息；GelSight 一类传感器把它变成图像</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="q4"><td>Skill / motion primitive</td><td><span class="qt c4">Q4</span></td><td>一个可以被上层按名字调用的底层动作，例如 pick、goto</td><td><a href="#llmplan">21</a></td></tr>
+<tr data-c="q4"><td>Affordance</td><td><span class="qt c4">Q4</span></td><td>在当前场景下某个动作做不做得成；也指物体上可以操作的位置</td><td><a href="#llmplan">21</a></td></tr>
+<tr data-c="rob"><td>Grounding</td><td><span class="qt c0">机器人</span></td><td>把语言模型的知识接到眼前的场景和这台机器人的能力上</td><td><a href="#llmplan">21</a></td></tr>
+<tr data-c="rob"><td>Code as policy</td><td><span class="qt c0">机器人</span></td><td>LLM 写一段调用感知和控制 API 的程序，由解释器执行</td><td><a href="#llmplan">21</a></td></tr>
+<tr data-c="rob"><td>Embodied reasoning</td><td><span class="qt c0">机器人</span></td><td>关于物理场景的推理：指点、定位、拆任务、判断进度，不直接出 action</td><td><a href="#vla">20</a>、<a href="#llmplan">21</a></td></tr>
+<tr data-c="rob"><td>TAMP</td><td><span class="qt c0">机器人</span></td><td>Task and motion planning：上层定离散步骤，下层求连续运动</td><td><a href="#llmplan">21</a></td></tr>
+<tr data-c="rob"><td>Real-time chunking / asynchronous inference</td><td><span class="qt c0">机器人</span></td><td>执行旧 chunk 的同时算新的，并让新旧两段连贯</td><td><a href="#visuo">19</a>、<a href="#eval">23</a></td></tr>
+<tr data-c="rob"><td>Knowledge insulation</td><td><span class="qt c0">机器人</span></td><td>不让 action head 的梯度流回 VLM 主干，保护预训练的知识</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="rob"><td>Success rate / task progress</td><td><span class="qt c0">机器人</span></td><td>闭环试验成功的比例 / 长任务完成了几个子步骤</td><td><a href="#eval">23</a></td></tr>
+<tr data-c="rob"><td>Success detector</td><td><span class="qt c0">机器人</span></td><td>判断任务有没有完成的模型，用于评估、重试和 reward</td><td><a href="#llmplan">21</a>、<a href="#eval">23</a></td></tr>
+<tr data-c="rob"><td>VLN</td><td><span class="qt c0">机器人</span></td><td>Vision-and-language navigation：按语言指令在环境里走</td><td><a href="#lines">17</a></td></tr>
+<tr data-c="rob"><td>Mobile manipulation</td><td><span class="qt c0">机器人</span></td><td>移动底盘加机械臂，一边走一边操作</td><td><a href="#lines">17</a></td></tr>
+<tr data-c="rob"><td>Grasp pose detection</td><td><span class="qt c0">机器人</span></td><td>从点云或图像直接预测一批可行的 6-DoF 抓取位姿</td><td><a href="#wm">22</a></td></tr>
 </tbody></table></div>
 </section>
 
 <section id="papers">
-<h2><span class="n">26</span>学习路径与代表工作</h2>
+<h2><span class="n">28</span>学习路径与代表工作</h2>
 <h3>建议的顺序</h3>
 <p>每一步都对应一个你在机器人论文里已经见过的词，并且有一个能亲手做的小实验。</p>
 <ol>
@@ -1723,6 +2005,8 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
   <li><strong>Diffusion 或 flow matching。</strong>在二维的 toy 数据上训练一个 flow matching 模型，就是把实验 5 里的解析速度场换成一个 MLP。对应第 14 节。</li>
   <li><strong>RL。</strong>在一个现成的 legged 环境里跑通 PPO，改一项 reward 看行为怎么变。对应第 15 节。</li>
   <li><strong>回到机器人。</strong>读 Diffusion Policy 和 ACT 的代码，对照第 19 节把每个模块认出来；再读一篇 VLA（OpenVLA 或 π0），对照第 20 节。</li>
+  <li><strong>走一遍完整的 pipeline。</strong>用 LeRobot 这类开源框架，下载一个公开数据集，训练 ACT，在仿真里闭环评估，按第 23 节的方法报成功率和置信区间。</li>
+  <li><strong>写一次 code as policy。</strong>在仿真里准备 detect、pick、place 几个 API，让 LLM 写程序完成桌面任务，看它在哪里失败。对应第 21 节。</li>
 </ol>
 <h3>代表工作</h3>
 <div class="filters" id="pp-flt">
@@ -1733,6 +2017,7 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
   <button type="button" class="pre" data-c="rl">RL 与 sim-to-real</button>
   <button type="button" class="pre" data-c="il">Imitation</button>
   <button type="button" class="pre" data-c="vla">VLA 与数据</button>
+  <button type="button" class="pre" data-c="lp">LLM planner 与评估</button>
   <button type="button" class="pre" data-c="wm">World model 与 3D</button>
 </div>
 <p class="cnt" id="pp-cnt" aria-live="polite"></p>
@@ -1788,6 +2073,34 @@ World model 加 planning 就是 MPC，只是模型是学的。World model 加 po
 <tr data-c="wm"><td>2020</td><td>Mildenhall：NeRF</td><td>3D</td><td>用神经网络表示 3D 场景</td></tr>
 <tr data-c="wm"><td>2023</td><td>Kerbl：3D Gaussian Splatting</td><td>3D</td><td>可实时渲染的显式 3D 表示</td></tr>
 <tr data-c="wm"><td>2023</td><td>Kirillov：SAM</td><td>感知</td><td>通用的分割模型</td></tr>
+<tr data-c="rl"><td>2015</td><td>Schulman：GAE</td><td>RL</td><td>在 bias 和 variance 之间插值的 advantage 估计，PPO 的标配</td></tr>
+<tr data-c="rl"><td>2017</td><td>Andrychowicz：Hindsight Experience Replay</td><td>RL</td><td>把失败的轨迹改标成到达了另一个 goal</td></tr>
+<tr data-c="rl"><td>2018–19</td><td>OpenAI：Dactyl、Rubik's Cube</td><td>RL</td><td>灵巧手的 sim-to-real；automatic domain randomization</td></tr>
+<tr data-c="rl"><td>2023</td><td>Ball：RLPD</td><td>RL</td><td>把 demonstration 和在线数据混在一起做 off-policy RL</td></tr>
+<tr data-c="rl"><td>2024</td><td>Luo：HIL-SERL</td><td>RL</td><td>带人工接管的真机 RL，一两个小时学会精细操作</td></tr>
+<tr data-c="il"><td>2016</td><td>Ho、Ermon：GAIL</td><td>Imitation</td><td>用 discriminator 当 reward 的 adversarial imitation</td></tr>
+<tr data-c="il"><td>2021</td><td>Mandlekar：robomimic</td><td>Imitation</td><td>系统比较 imitation 的各个设计选择；指出 validation loss 选不出好 policy</td></tr>
+<tr data-c="il"><td>2024</td><td>Fu：Mobile ALOHA</td><td>Imitation</td><td>底盘加双臂的 whole-body teleoperation 和 imitation</td></tr>
+<tr data-c="il"><td>2025</td><td>Black：Real-Time Chunking</td><td>Imitation</td><td>推理有延迟时让前后两段 action chunk 连贯</td></tr>
+<tr data-c="vla"><td>2022</td><td>Baker：VPT</td><td>数据</td><td>用 inverse dynamics model 给无标签视频补 action</td></tr>
+<tr data-c="vla"><td>2024</td><td>Ye：LAPA</td><td>数据</td><td>从没有 action 的视频里学 latent action 来预训练 VLA</td></tr>
+<tr data-c="vla"><td>2024</td><td>Zawalski：Embodied Chain-of-Thought</td><td>VLA</td><td>出 action 之前先生成计划、子任务和物体位置</td></tr>
+<tr data-c="vla"><td>2025</td><td>Google DeepMind：Gemini Robotics、Gemini Robotics 1.5</td><td>VLA</td><td>VLA 加 embodied reasoning 模型的组合</td></tr>
+<tr data-c="vla"><td>2025</td><td>Shukor：SmolVLA</td><td>VLA</td><td>小型开源 VLA，用社区数据训练</td></tr>
+<tr data-c="vla"><td>2025</td><td>Physical Intelligence：π*0.6</td><td>VLA</td><td>用 advantage conditioning 让 VLA 从自己的经验里改进</td></tr>
+<tr data-c="lp"><td>2022</td><td>Ahn：SayCan</td><td>LLM planner</td><td>LLM 的打分乘上 skill 的 value function，做 grounding</td></tr>
+<tr data-c="lp"><td>2022</td><td>Huang：Inner Monologue</td><td>LLM planner</td><td>把成败检测和场景描述作为文字反馈给 LLM，闭环地重新规划</td></tr>
+<tr data-c="lp"><td>2022</td><td>Liang：Code as Policies</td><td>LLM planner</td><td>LLM 写调用感知和控制 API 的程序</td></tr>
+<tr data-c="lp"><td>2023</td><td>Huang：VoxPoser</td><td>LLM planner</td><td>LLM 写代码组合 3D value map，交给 motion planner</td></tr>
+<tr data-c="lp"><td>2023</td><td>Ma：Eureka</td><td>LLM planner</td><td>LLM 写 reward function 并根据训练结果迭代</td></tr>
+<tr data-c="lp"><td>2024</td><td>Huang：ReKep</td><td>LLM planner</td><td>VLM 把任务写成 keypoint 之间的约束，交给优化器</td></tr>
+<tr data-c="lp"><td>2026</td><td>Google：Gemini Robotics ER 2；Gemini 4 Argon、Hydrogen</td><td>LLM planner</td><td>通用模型用闭环的 code as policy 直接 zero-shot 控制机械臂</td></tr>
+<tr data-c="lp"><td>2023</td><td>Liu：LIBERO</td><td>评估</td><td>VLA 论文最常用的仿真 benchmark</td></tr>
+<tr data-c="lp"><td>2024</td><td>Li：SIMPLER</td><td>评估</td><td>在仿真里评估真机 policy，并检验和真机结果的相关性</td></tr>
+<tr data-c="lp"><td>2025</td><td>Atreya：RoboArena</td><td>评估</td><td>分布式的真机成对比较评估</td></tr>
+<tr data-c="wm"><td>2023</td><td>Du：UniPi</td><td>World model</td><td>先生成视频，再用 inverse dynamics model 得到 action</td></tr>
+<tr data-c="wm"><td>2025</td><td>Jang：DreamGen</td><td>World model</td><td>用 video model 生成机器人数据来训练 policy</td></tr>
+<tr data-c="wm"><td>2021–23</td><td>Sundermeyer：Contact-GraspNet；Fang：AnyGrasp</td><td>感知</td><td>从点云直接预测 6-DoF 抓取位姿</td></tr>
 </tbody></table></div>
 <h3>读一篇 learning 论文时问的六个问题</h3>
 <ol>
