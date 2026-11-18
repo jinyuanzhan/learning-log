@@ -18,3 +18,8 @@ Read online: **[jinyuanzhan.github.io/learning-log](https://jinyuanzhan.github.i
 
 **Locomotion & Whole-Body Control**
 - [Whole-Body Control Paradigms: From ZMP to World Models](https://jinyuanzhan.github.io/learning-log/notes/robotics/whole-body-control-paradigms.html)
+
+## ML & LLM
+
+**Foundations**
+- [A Knowledge Framework for Robot Learning: From First Principles to VLA](https://jinyuanzhan.github.io/learning-log/notes/ml-llm/robot-learning-foundations.html)

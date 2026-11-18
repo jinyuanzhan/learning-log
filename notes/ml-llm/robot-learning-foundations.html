@@ -1,0 +1,2452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="created" content="2026-11-17">
+<meta name="tags" content="deep-learning, representation-learning, transformer, tokenizer, autoencoder, diffusion, flow-matching, reinforcement-learning, imitation-learning, distillation, VLA, robot-learning">
+<title>Robot Learning 的知识框架</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 与 planning-and-task-allocation-basics.html 同一套样式：左侧固定目录 + 右侧单栏笔记 */
+  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5A6578; --line:#DCE1E9; --line-strong:#B9C1CE;
+  --accent:#4F46C8; --accent-soft:#ECEBFA;
+  --a1:#2B78D0; --a2:#C97F12; --on-agent:#FFFFFF;
+  --bad:#D2413C; --bad-soft:#FBE4E2;
+  --ok:#1F7A4D; --warn:#A8620A; --warn-soft:#FBF1DF;
+  --display:"Noto Serif SC","Songti SC",Georgia,serif;
+  --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+    --accent:#A39BF7; --accent-soft:#25234A;
+    --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+    --bad:#F0706A; --bad-soft:#4A2422;
+    --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11151C; --surface:#191E28; --ink:#E7EAF1; --muted:#9BA5B7; --line:#2B3341; --line-strong:#475163;
+  --accent:#A39BF7; --accent-soft:#25234A;
+  --a1:#62A6F2; --a2:#E7A84A; --on-agent:#11151C;
+  --bad:#F0706A; --bad-soft:#4A2422;
+  --ok:#5CCB95; --warn:#E5A852; --warn-soft:#33290F;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.75}
+.page{display:grid;grid-template-columns:230px minmax(0,1fr);gap:40px;max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+nav.toc{position:sticky;top:16px;align-self:start;font-size:13.5px;max-height:calc(100vh - 32px);overflow-y:auto;padding-right:4px}
+nav.toc .toc-title{font-family:var(--display);font-size:15px;margin:0 0 8px}
+nav.toc .toc-part{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--accent);margin:12px 0 4px 8px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+nav.toc a{display:flex;gap:10px;padding:3px 8px;border-radius:6px;color:var(--muted);text-decoration:none;line-height:1.5}
+nav.toc a .k{font-family:var(--mono);font-size:12px;color:var(--line-strong);padding-top:1px}
+nav.toc a:hover{background:var(--accent-soft);color:var(--ink)}
+main a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{min-width:0;max-width:880px}
+header.top h1{font-family:var(--display);font-size:34px;line-height:1.25;margin:0 0 12px;text-wrap:balance}
+header.top p{color:var(--muted);margin:0 0 10px;max-width:42em}
+section{margin-top:56px;scroll-margin-top:20px}
+.part{margin-top:80px;padding-top:22px;border-top:2px solid var(--ink)}
+.part .tag{font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;color:var(--accent)}
+.part h2{font-size:30px;margin:4px 0 10px;display:block}
+.part p{color:var(--muted)}
+h2{font-family:var(--display);font-size:24px;line-height:1.35;margin:0 0 14px;text-wrap:balance;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent)}
+h3{font-size:17px;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:44em}
+ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code,.m{font-family:var(--mono);font-size:.92em}
+.eq{padding:6px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+/* KaTeX 公式 */
+.katex{font-size:1.08em}
+.katex-display{margin:.7em 0;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14.5px;line-height:1.6;margin:0 0 10px;padding-top:10px;border-top:1px dashed var(--line)}
+.sym>span:nth-child(2n+1){text-align:right}
+.sym>span:nth-child(2n){color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:620px}
+.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+.opts output{font-family:var(--mono);font-size:13px;min-width:3em}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 560px;max-width:100%;min-width:0}
+.stage-side{flex:1 1 220px;min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.cv{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;touch-action:none}
+.w-grid{stroke:var(--line);stroke-width:1}
+.w-poly{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.w-traj{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.w-dot{fill:var(--accent)}
+.w-wp circle{fill:var(--a2);stroke:var(--surface);stroke-width:2;cursor:grab}
+.w-wp.stop circle{fill:var(--bad)}
+.w-wp text{fill:var(--on-agent);font-family:var(--mono);font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.w-wp .w-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.s-ax{stroke:var(--line-strong);stroke-width:1}
+.s-lim{stroke:var(--bad);stroke-width:1.2;stroke-dasharray:5 4}
+.s-tick{stroke:var(--a2);stroke-width:1;stroke-dasharray:2 3}
+.s-v{fill:none;stroke:var(--accent);stroke-width:2.2}
+.s-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:10px 0 0}
+.live p{margin:0 0 8px}
+.pill{display:inline-block;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body);margin-left:6px}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){.page{padding-left:16px;padding-right:16px}}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
+
+</style>
+<style>
+/* 这一页新增 */
+:root{--q1:var(--accent);--q2:var(--a2);--q3:var(--ok);--q4:var(--a1)}
+.c1{--c:var(--q1)}.c2{--c:var(--q2)}.c3{--c:var(--q3)}.c4{--c:var(--q4)}.c0{--c:var(--muted)}
+.q4{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px;margin:0 0 14px}
+.q4>div{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:8px;padding:12px 14px}
+.q4 h4{margin:0 0 2px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.05em;color:var(--c)}
+.q4 b{display:block;font-size:16px;margin-bottom:4px}
+.q4 p{margin:0;font-size:14px;color:var(--muted);max-width:none}
+.qt{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:0 8px;border-radius:999px;border:1px solid var(--c);color:var(--c);white-space:nowrap;line-height:1.7}
+.ask{font-size:15px;color:var(--muted);margin:-6px 0 16px;max-width:44em}
+.ask b{color:var(--ink);font-weight:600}
+.note.rb{border-left-color:var(--a1);background:color-mix(in srgb,var(--a1) 9%,var(--surface))}
+.note.deep{border-left-color:var(--a2);background:color-mix(in srgb,var(--a2) 10%,var(--surface))}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:var(--muted);margin:0 0 14px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--c)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.mapdef{min-height:4.6em;font-size:14.5px;margin:10px 0 0;padding:10px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);max-width:none}
+.mapdef b{display:block}
+.m-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1.2}
+.m-grad{stroke:var(--a2);fill:none;stroke-width:1.6;stroke-dasharray:6 4}
+#mapsvg.on g[data-p]{opacity:.28;transition:opacity .15s}
+#mapsvg.on g[data-p].hl{opacity:1}
+#mapsvg g.hl .m-box{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.t-q1{fill:var(--q1)}.t-q2{fill:var(--q2)}.t-q3{fill:var(--q3)}.t-q4{fill:var(--q4)}
+.d-m{fill:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.d-warm{stroke:var(--a2);fill:none;stroke-width:1.6}
+.d-blue{stroke:var(--a1);fill:none;stroke-width:1.6}
+.d-bad{stroke:var(--bad);fill:none;stroke-width:2}
+.d-okl{stroke:var(--ok);fill:none;stroke-width:2}
+.f-q1{fill:color-mix(in srgb,var(--q1) 16%,var(--surface));stroke:var(--q1);stroke-width:1.2}
+.f-q2{fill:color-mix(in srgb,var(--q2) 18%,var(--surface));stroke:var(--q2);stroke-width:1.2}
+.f-q3{fill:color-mix(in srgb,var(--q3) 16%,var(--surface));stroke:var(--q3);stroke-width:1.2}
+.f-q4{fill:color-mix(in srgb,var(--q4) 16%,var(--surface));stroke:var(--q4);stroke-width:1.2}
+.f-on{fill:var(--accent);stroke:var(--accent)}
+.f-off{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.fig.sm svg{min-width:0;max-width:600px;margin:0 auto}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:0 0 14px}
+.two>div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.two h4{margin:0 0 4px;font-size:14.5px}
+.two p,.two ul{margin:0;font-size:14.5px;max-width:none}
+.two ul{padding-left:1.2em}
+select.sel{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:4px 8px}
+input.find{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:6px 12px;width:min(320px,100%)}
+.grid-map{border-collapse:separate;border-spacing:6px;font-size:13.5px}
+.grid-map th{border:0;white-space:normal;vertical-align:bottom;font-size:12.5px}
+.grid-map td{border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:170px;line-height:1.55}
+.grid-map td.rowh{background:none;border:0;font-weight:600;min-width:110px;color:var(--ink)}
+.grid-map td.hot{border-color:var(--accent);background:var(--accent-soft)}
+.grid-map td.none{background:none;border-style:dashed;color:var(--muted)}
+.grid-map td b{display:block;font-weight:600}
+.gl td:first-child{font-weight:600;white-space:nowrap}
+.gl tr[hidden]{display:none}
+.gl td:nth-child(2){white-space:nowrap}
+.l-ax{stroke:var(--line-strong);stroke-width:1}
+.l-grid{stroke:var(--line);stroke-width:1}
+.l-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.l-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.l-true{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.l-fit{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round}
+.l-pt{fill:var(--a2);stroke:var(--surface);stroke-width:1}
+.l-train{fill:none;stroke:var(--accent);stroke-width:2}
+.l-val{fill:none;stroke:var(--a2);stroke-width:2}
+.l-floor{stroke:var(--ok);stroke-width:1.2;stroke-dasharray:4 4}
+.sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}
+.bar-p{fill:var(--a1)}.bar-q{fill:var(--a2)}
+.bar-p,.bar-q{cursor:ns-resize}
+.attn-row{display:grid;grid-template-columns:104px 44px minmax(0,1fr) 46px;gap:8px;align-items:center;font-size:13px;margin-bottom:6px}
+.attn-row .trk{height:14px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.attn-row .trk i{display:block;height:100%}
+.attn-row span:nth-child(2),.attn-row span:nth-child(4){font-family:var(--mono);font-size:12.5px;text-align:right}
+.swatch{display:flex;align-items:center;gap:10px;font-size:13.5px;margin-top:10px}
+.swatch i{display:inline-block;width:44px;height:28px;border-radius:6px;border:1px solid var(--line-strong)}
+.stage-side svg.cv{max-width:440px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.cnt{font-size:13px;color:var(--muted);margin:0 0 8px}
+.papers td:first-child{font-family:var(--mono);font-size:13px;white-space:nowrap;color:var(--muted)}
+.papers td:nth-child(2){font-weight:500}
+.papers td:nth-child(3){white-space:nowrap;font-size:12.5px;color:var(--accent)}
+.papers tr[hidden]{display:none}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false})"></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+  <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+  <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--a2)"/></marker>
+  <marker id="arrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--a1)"/></marker>
+</defs></svg>
+
+<div class="page">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">目录</p>
+  <ol>
+    <li><a href="#map"><span class="k">01</span>总图：四个问题</a></li>
+  </ol>
+  <p class="toc-part">PART A · FIRST PRINCIPLES</p>
+  <ol>
+    <li><a href="#fit"><span class="k">02</span>Learning 就是拟合函数</a></li>
+    <li><a href="#backprop"><span class="k">03</span>Gradient descent 与 backprop</a></li>
+    <li><a href="#mle"><span class="k">04</span>Loss 从哪来</a></li>
+    <li><a href="#info"><span class="k">05</span>信息论与压缩</a></li>
+    <li><a href="#shift"><span class="k">06</span>Generalization 与 distribution shift</a></li>
+  </ol>
+  <p class="toc-part">PART B · REPRESENTATION</p>
+  <ol>
+    <li><a href="#repr"><span class="k">07</span>Representation 是什么</a></li>
+    <li><a href="#ae"><span class="k">08</span>Autoencoder 家族</a></li>
+    <li><a href="#token"><span class="k">09</span>Token 与 tokenizer</a></li>
+  </ol>
+  <p class="toc-part">PART C · ARCHITECTURE</p>
+  <ol>
+    <li><a href="#bias"><span class="k">10</span>Inductive bias</a></li>
+    <li><a href="#attn"><span class="k">11</span>Attention 与 Transformer</a></li>
+  </ol>
+  <p class="toc-part">PART D · OBJECTIVE</p>
+  <ol>
+    <li><a href="#paradigm"><span class="k">12</span>范式的三条轴</a></li>
+    <li><a href="#ssl"><span class="k">13</span>Self-supervised 与 contrastive</a></li>
+    <li><a href="#generative"><span class="k">14</span>Generative model</a></li>
+    <li><a href="#rl"><span class="k">15</span>Reinforcement learning</a></li>
+    <li><a href="#il"><span class="k">16</span>Imitation 与 distillation</a></li>
+  </ol>
+  <p class="toc-part">PART E · ROBOT</p>
+  <ol>
+    <li><a href="#lines"><span class="k">17</span>两条主线</a></li>
+    <li><a href="#state"><span class="k">18</span>State-based policy 的解剖</a></li>
+    <li><a href="#visuo"><span class="k">19</span>Visuomotor policy 的解剖</a></li>
+    <li><a href="#vla"><span class="k">20</span>VLA</a></li>
+    <li><a href="#wm"><span class="k">21</span>World model 与 3D 表示</a></li>
+  </ol>
+  <p class="toc-part">PART F · 讨论</p>
+  <ol>
+    <li><a href="#themes"><span class="k">22</span>贯穿始终的六条主线</a></li>
+    <li><a href="#confuse"><span class="k">23</span>容易混的十组词</a></li>
+    <li><a href="#open"><span class="k">24</span>可以拿来讨论的问题</a></li>
+    <li><a href="#glossary"><span class="k">25</span>术语速查</a></li>
+    <li><a href="#papers"><span class="k">26</span>学习路径与代表工作</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="top">
+  <h1>Robot Learning 的知识框架</h1>
+  <p>Encoder、decoder、latent space、token、transformer、distillation、diffusion、VLA。这些词看起来各自很深，其实背后只有很少几个想法，而且大部分能对应到你在控制、估计和线性代数里已经会的东西。这一页不把任何一种方法讲完，只做一件事：给出一个框架，让每个词都有固定的位置，每个 robot learning 系统都能用同一套问题拆开。</p>
+  <p>读完应该能做到三件事。看到一个新词，能说出它在回答四个问题里的哪一个。看到一个系统（locomotion policy、Diffusion Policy、VLA），能画出数据怎么流、loss 是什么、数据从哪来。知道哪些结论有数学支撑，哪些只是经验上好用。</p>
+</header>
+
+<div class="note"><p><span class="q">一句话版本</span><strong>Learning 的所有方法共用一个模板：选一个带参数的函数，定义什么叫"好"，喂数据，用梯度下降调参数。</strong>术语之间的差别只出现在四个地方：函数的形状、"好"的定义、数据的来源、输入输出的格式。</p></div>
+
+<div class="note warn"><p><span class="q">怎么用这一页</span>这是地图，不是教材。第一遍只读第 01 节、每节标题下那句灰色的问题、以及图。第二遍做五个实验。第三遍带着一篇具体论文回来查。年份和数字以论文公开时为准，引用前请核对原文；2026 年年中以后的进展基本没有覆盖。五个实验都在浏览器里真实计算（真的在训练小网络，真的在积分 ODE），标了"手工设定"的地方除外。</p></div>
+
+<p class="legend"><span class="c1"><i></i>紫色框：这一节最该记住的一句</span><span class="c4"><i></i>蓝色框：对应到你熟悉的机器人概念</span><span class="c2"><i></i>橙色框：深一层的讨论，第一遍可以跳过</span></p>
+
+<section id="map">
+<h2><span class="n">01</span>总图：四个问题</h2>
+<p class="ask"><b>这一节回答：</b>那么多术语，有没有一张图能把它们全部放进去？</p>
+<p>几乎所有 deep learning 方法都在解同一个优化问题：</p>
+<div class="eq">
+\[ \theta^\star = \arg\min_\theta \; \mathbb{E}_{(x,\,y)\sim \mathcal{D}} \Big[\, \mathcal{L}\big(f_\theta(x),\; y\big) \Big] \]
+<div class="sym">
+  <span>\(f_\theta\)</span><span>带参数的函数，也就是神经网络；\(\theta\) 是它的全部参数（weights）</span>
+  <span>\(x,\ y\)</span><span>输入，以及希望的输出（target）</span>
+  <span>\(\mathcal{D}\)</span><span>数据的分布；实际中用采到的有限个样本代替</span>
+  <span>\(\mathcal{L}\)</span><span>loss，衡量输出和目标差多少</span>
+</div>
+</div>
+<p>这个式子里有四样东西可以选。每个术语都是其中一个选择的名字：</p>
+<div class="q4">
+  <div class="c1"><h4>Q1 · ARCHITECTURE</h4><b>函数 \(f_\theta\) 长什么样</b><p>MLP、CNN、Transformer。Encoder、decoder、backbone、head 是函数内部各部分的角色名。→ Part C</p></div>
+  <div class="c2"><h4>Q2 · OBJECTIVE</h4><b>"好"怎么定义</b><p>Supervised、self-supervised、contrastive、generative、imitation、RL、distillation。区别在于 \(y\) 从哪来、\(\mathcal{L}\) 怎么写。→ Part D</p></div>
+  <div class="c3"><h4>Q3 · DATA</h4><b>数据 \(\mathcal{D}\) 从哪来</b><p>人工标注、互联网、simulation、teleoperation、机器人自己的经验。对机器人来说这通常是最紧的约束。→ Part E</p></div>
+  <div class="c4"><h4>Q4 · INTERFACE</h4><b>\(x\) 和 \(y\) 是什么格式</b><p>Token、patch、embedding、latent、action chunk。把图像、语言、动作变成网络能处理的统一格式。→ Part B</p></div>
+</div>
+<p>第五件事所有方法都一样，所以不算一个选择：<strong>怎么解这个优化问题</strong>。答案永远是 backpropagation 算梯度，SGD 或 Adam 更新参数（Part A）。</p>
+
+<p>下面这张图是同一个式子画成数据流。点一个词，看它在图上的位置。</p>
+<div class="lab">
+  <div class="chips" id="mapchips" role="group" aria-label="选择一个术语"></div>
+  <figure style="overflow-x:auto">
+  <svg id="mapsvg" viewBox="0 0 960 292" role="img" aria-label="通用的 learning 数据流：数据提供输入 x 和目标 y；x 依次经过 tokenizer、encoder、latent z、decoder 得到输出，和目标 y 一起算出 loss；梯度从 loss 沿原路返回更新每个模块" style="display:block;width:100%;height:auto;min-width:680px">
+    <g data-p="data"><rect class="m-box" x="16" y="30" width="104" height="44" rx="8"/><text class="d-t" x="68" y="50" text-anchor="middle">数据 𝒟</text><text class="d-s" x="68" y="66" text-anchor="middle">成对的 (x, y)</text>
+      <text class="d-a t-q3" x="68" y="20" text-anchor="middle">Q3 · data</text>
+      <line class="d-ln" x1="68" y1="74" x2="68" y2="108" marker-end="url(#arr)"/>
+      <line class="d-ln" x1="120" y1="52" x2="852" y2="52" marker-end="url(#arr)"/>
+      <text class="d-s" x="486" y="44" text-anchor="middle">y 的来源决定范式的名字：人工 label · 数据自身 · 专家动作 · 另一个模型</text></g>
+    <g data-p="y"><rect class="m-box" x="854" y="30" width="90" height="44" rx="8"/><text class="d-t" x="899" y="57" text-anchor="middle">目标 y</text>
+      <line class="d-ln" x1="899" y1="74" x2="899" y2="108" marker-end="url(#arr)"/></g>
+    <g data-p="x"><rect class="m-box" x="16" y="110" width="104" height="70" rx="8"/><text class="d-t" x="68" y="140" text-anchor="middle">输入 x</text><text class="d-s" x="68" y="158" text-anchor="middle">图像·文字·状态</text>
+      <line class="d-ln" x1="120" y1="145" x2="148" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="tok"><rect class="m-box" x="150" y="110" width="120" height="70" rx="8"/><text class="d-t" x="210" y="140" text-anchor="middle">Tokenizer</text><text class="d-s" x="210" y="158" text-anchor="middle">切成统一的单元</text>
+      <text class="d-a t-q4" x="210" y="100" text-anchor="middle">Q4 · interface</text>
+      <line class="d-ln" x1="270" y1="145" x2="298" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="enc"><rect class="m-box" x="300" y="110" width="130" height="70" rx="8"/><text class="d-t" x="365" y="140" text-anchor="middle">Encoder</text><text class="d-s" x="365" y="158" text-anchor="middle">输入 → 向量</text>
+      <line class="d-ln" x1="430" y1="145" x2="458" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="z"><rect class="m-box" x="460" y="122" width="90" height="46" rx="8"/><text class="d-t" x="505" y="143" text-anchor="middle">z</text><text class="d-s" x="505" y="159" text-anchor="middle">latent</text>
+      <text class="d-a t-q1" x="505" y="100" text-anchor="middle">Q1 · architecture（从 encoder 到 decoder）</text>
+      <line class="d-ln" x1="550" y1="145" x2="578" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="dec"><rect class="m-box" x="580" y="110" width="130" height="70" rx="8"/><text class="d-t" x="645" y="140" text-anchor="middle">Decoder / Head</text><text class="d-s" x="645" y="158" text-anchor="middle">向量 → 输出</text>
+      <line class="d-ln" x1="710" y1="145" x2="738" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="yhat"><rect class="m-box" x="740" y="110" width="84" height="70" rx="8"/><text class="d-t" x="782" y="140" text-anchor="middle">输出 ŷ</text><text class="d-s" x="782" y="158" text-anchor="middle">= f(x)</text>
+      <line class="d-ln" x1="824" y1="145" x2="852" y2="145" marker-end="url(#arr)"/></g>
+    <g data-p="loss"><rect class="m-box" x="854" y="110" width="90" height="70" rx="8"/><text class="d-t" x="899" y="140" text-anchor="middle">Loss</text><text class="d-s" x="899" y="158" text-anchor="middle">ℒ(ŷ, y)</text>
+      <text class="d-a t-q2" x="846" y="98" text-anchor="end">Q2 · objective</text></g>
+    <g data-p="grad">
+      <path class="m-grad" d="M899,180 V226 H210"/>
+      <line class="m-grad" x1="645" y1="226" x2="645" y2="184" marker-end="url(#arrG)"/>
+      <line class="m-grad" x1="365" y1="226" x2="365" y2="184" marker-end="url(#arrG)"/>
+      <line class="m-grad" x1="210" y1="226" x2="210" y2="184" marker-end="url(#arrG)"/>
+      <text class="d-s" x="555" y="246" text-anchor="middle" style="fill:var(--a2)">backprop：∂ℒ/∂θ 从 loss 沿原路往回传，每个模块的参数都被更新</text>
+      <text class="d-s" x="555" y="264" text-anchor="middle">所有范式共用这一步；RL 是例外的一半：它没有目标 y，梯度要靠采样估计（第 15 节）</text></g>
+  </svg>
+  </figure>
+  <p class="mapdef" id="mapdef" aria-live="polite"><b>点上面任意一个词</b>图上对应的部分会亮起来，这里显示它的含义。</p>
+</div>
+
+<h3>同一张图，四个实例</h3>
+<p>把四个你见过名字的系统填进这张图，差别一目了然：</p>
+<div class="tw"><table>
+<thead><tr><th></th><th>输入 x</th><th>Encoder</th><th>Decoder / head</th><th>目标 y</th><th>Loss</th><th>数据</th></tr></thead>
+<tbody>
+<tr><td><strong>LLM</strong></td><td>文字</td><td>Tokenizer + embedding</td><td>Transformer + softmax</td><td>下一个 token</td><td>Cross-entropy</td><td>互联网文本</td></tr>
+<tr><td><strong>Locomotion RL policy</strong></td><td>Proprioception，几十维</td><td colspan="2">一个小 MLP，输出 joint position target</td><td>没有；只有 reward</td><td>PPO 的 policy gradient</td><td>Simulator</td></tr>
+<tr><td><strong>Diffusion Policy</strong></td><td>图像 + proprioception</td><td>ResNet 或 ViT</td><td>Denoising network，迭代去噪后得到一段 action</td><td>专家的 action</td><td>预测噪声的 MSE</td><td>Teleoperation</td></tr>
+<tr><td><strong>VLA</strong></td><td>图像 + 语言 + proprioception</td><td>ViT + tokenizer</td><td>LLM backbone + action head</td><td>专家的 action</td><td>Cross-entropy 或 flow matching</td><td>互联网预训练 + teleoperation</td></tr>
+</tbody></table></div>
+<p>读后面的内容时，随时回到这张表：任何新系统都只是在这几列里换了选项。</p>
+</section>
+
+<div class="part"><div class="tag">PART A</div><h2>First principles</h2><p>所有范式共用的地基：拟合、梯度、likelihood、信息量、泛化。数学上需要的只有链式法则、高斯分布和三个信息论的量。</p></div>
+
+<section id="fit">
+<h2><span class="n">02</span>Learning 就是拟合函数</h2>
+<p class="ask"><b>这一节回答：</b>"训练一个网络"到底在做什么，和我做过的参数辨识有什么不同？</p>
+<p>你其实已经做过 learning。Camera calibration 是：选一个带参数的模型（pinhole model 的内参和畸变系数），定义误差（reprojection error），找让误差最小的参数。System identification 是同一件事，模型换成了动力学方程，参数换成了质量、惯量和摩擦。</p>
+<p>Deep learning 只改了一处：<strong>模型不再从物理推出来，而是换成一个非常灵活的通用函数</strong>，参数从几个变成几十万到几十亿个。这一处改动带来三个后果：</p>
+<ul>
+  <li><strong>没有 closed-form 解。</strong>线性的 least squares 可以用 SVD 一步解出来，因为误差对参数是二次的。Calibration 这类 nonlinear least squares 其实已经要迭代了，用的是 Gauss–Newton 或 Levenberg–Marquardt。神经网络的 loss 对参数高度非凸，参数又多到用不起二阶方法，只能从一个初值出发沿梯度迭代，也就是 gradient descent。</li>
+  <li><strong>参数没有物理含义。</strong>你不能检查"质量估得对不对"，只能看输出对不对。这是 learning 方法难以解释、难以给保证的根源。</li>
+  <li><strong>函数灵活到能拟合任何东西，包括噪声。</strong>所以"在没见过的数据上还行不行"（generalization）成了核心问题，这在参数辨识里几乎不用担心。</li>
+</ul>
+<h3>最简单的通用函数：MLP</h3>
+<p>MLP（multilayer perceptron）就是线性变换和 nonlinearity 交替叠起来：</p>
+<div class="eq">
+\[ h_{l} = \sigma\big(W_l\, h_{l-1} + b_l\big),\qquad h_0 = x,\qquad f_\theta(x) = W_L\, h_{L-1} + b_L \]
+<div class="sym">
+  <span>\(W_l,\ b_l\)</span><span>第 \(l\) 层的 weight 矩阵和 bias 向量；所有层的 \(W, b\) 合起来就是 \(\theta\)</span>
+  <span>\(h_l\)</span><span>第 \(l\) 层的输出，叫 hidden activation，也就是后面说的 feature</span>
+  <span>\(\sigma\)</span><span>逐元素的 nonlinearity，例如 ReLU \(\max(0,\cdot)\)、tanh、GELU</span>
+</div>
+</div>
+<p>Nonlinearity 不能省：没有它，多层矩阵相乘还是一个矩阵，整个网络退化成线性回归。</p>
+<p><strong>Universal approximation theorem</strong> 说：只有一个 hidden layer、但足够宽的 MLP，可以在有界的区域上把任何连续函数逼近到任意精度（要求 nonlinearity 不是多项式，ReLU 和 tanh 都满足）。这句话经常被过度解读。它只说"存在这样一组参数"，没有说需要多宽，没有说 gradient descent 能找到它，也没有说找到的函数在训练点之外是对的。这三件事要分开看：</p>
+<div class="tw"><table>
+<thead><tr><th>问题</th><th>名字</th><th>由什么决定</th></tr></thead>
+<tbody>
+<tr><td>函数族里有没有足够好的函数</td><td>Capacity / expressivity</td><td>网络的大小和结构</td></tr>
+<tr><td>优化能不能找到它</td><td>Optimization</td><td>初始化、learning rate、normalization、residual connection（第 03 节）</td></tr>
+<tr><td>找到的函数在新数据上对不对</td><td>Generalization</td><td>数据量和覆盖范围、inductive bias、regularization（第 06 节）</td></tr>
+</tbody></table></div>
+
+<h3>实验 1：亲手训练一个 MLP</h3>
+<p>下面是一个真的在你浏览器里训练的 MLP：输入一个数 \(x\)，输出一个数 \(y\)，两个 hidden layer，tanh，用 Adam（learning rate 逐渐衰减）最小化 MSE。虚线是产生数据的真实函数，橙色点是带噪声的训练样本，紫色线是网络当前学到的函数。</p>
+<div class="lab" id="lab-mlp">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="under">网络太小</button>
+    <button type="button" class="pre" data-p="ok">大小合适</button>
+    <button type="button" class="pre" data-p="over">网络大、数据少</button>
+    <button type="button" class="pre" data-p="more">同一个大网络，数据加到 200</button>
+  </div>
+  <div class="opts">
+    <label>Hidden width <select class="sel" id="mlp-h"><option>2</option><option>8</option><option>16</option><option>32</option><option>64</option></select></label>
+    <label>训练点数 <input type="range" id="mlp-n" min="6" max="200" step="1"><output id="mlp-n-o"></output></label>
+    <label>噪声 σ <input type="range" id="mlp-s" min="0" max="0.4" step="0.01"><output id="mlp-s-o"></output></label>
+    <button type="button" class="pre" id="mlp-run">开始训练</button>
+    <button type="button" class="pre" id="mlp-reset">重置参数</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main"><svg class="cv" id="mlp-fit" viewBox="0 0 560 300" role="img" aria-label="训练点、真实函数和网络当前拟合出的曲线"></svg></div>
+    <div class="stage-side">
+      <svg class="cv" id="mlp-loss" viewBox="0 0 300 190" role="img" aria-label="训练过程中 train loss 和 validation loss 的曲线，纵轴为对数"></svg>
+      <p style="font-size:12.5px;margin:6px 0 8px;color:var(--muted)"><span class="sw" style="background:var(--accent)"></span>train loss　<span class="sw" style="background:var(--a2)"></span>validation loss　<span class="sw" style="background:var(--ok)"></span>噪声方差 σ²</p>
+      <div class="kv">
+        <span>Step</span><span id="mlp-step">0</span>
+        <span>参数个数</span><span id="mlp-np"></span>
+        <span>Train loss</span><span id="mlp-tl"></span>
+        <span>Validation loss</span><span id="mlp-vl"></span>
+        <span>噪声方差 σ²</span><span id="mlp-nf"></span>
+      </div>
+      <div class="live" id="mlp-msg" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试看：</b>① "网络太小"：只有 13 个参数，train loss 停在噪声方差的两倍左右就不动了，曲线弯不过来。这是 capacity 不够（underfitting）。② "网络大、数据少"：1153 个参数拟合 10 个带噪声的点，train loss 一路降到接近 0，曲线穿过每一个点；validation loss 却停在噪声方差的三四倍。这是 overfitting。③ 最后一个预设：同一个网络、同样的噪声，数据从 10 个加到 200 个，两条曲线都贴着 σ²。<b>数据是最有效的 regularizer。</b>④ 回到"大小合适"，把 hidden width 改成 16 再训练：到后期 validation loss 会掉头向上。Capacity 够、训练够久，小数据集里的噪声迟早会被记住，所以实际训练要盯着 validation loss，在它最低的时候停下（early stopping）。</p>
+</div>
+<p>绿色虚线是噪声的方差 \(\sigma^2\)。它是 validation loss 的理论下限：就算网络学到了完全正确的函数，新样本上的平均误差也有这么大。Train loss 掉到这条线以下，唯一的解释是网络记住了训练样本里的噪声。</p>
+<div class="note"><p><span class="q">记住这三句</span>Loss 降不下去，先怀疑 capacity 或 optimization。Train loss 低而 validation loss 高，是 generalization 的问题，先加数据。这两种病的药方相反，所以每次训练都要同时看两条曲线。</p></div>
+</section>
+
+<section id="backprop">
+<h2><span class="n">03</span>Gradient descent 与 backpropagation</h2>
+<p class="ask"><b>这一节回答：</b>几十亿个参数的梯度是怎么算出来的，为什么深的网络曾经训不动？</p>
+<h3>Gradient descent 和它的两个变体</h3>
+<div class="eq">\[ \theta \leftarrow \theta - \eta\, \nabla_\theta \mathcal{L}(\theta) \]</div>
+<p>沿着 loss 下降最快的方向走一小步，\(\eta\) 是 learning rate，是最重要的一个超参数。实际用的是两个变体：</p>
+<ul>
+  <li><strong>SGD（stochastic gradient descent）</strong>：每一步只用一小批样本（minibatch）估计梯度。便宜得多，估计带噪声，但期望是对的。</li>
+  <li><strong>Adam</strong>：给每个参数维护梯度的滑动平均和梯度平方的滑动平均，用后者归一化步长。效果是每个参数有自己的有效 learning rate，对梯度尺度不敏感。Transformer 几乎都用它的变体 AdamW。</li>
+</ul>
+<h3>Backpropagation 就是链式法则，按一个特定的顺序算</h3>
+<p>把网络写成一串函数的复合：\(h_l = f_l(h_{l-1};\theta_l)\)，最后 \(\mathcal{L} = \ell(h_L, y)\)。链式法则给出：</p>
+<div class="eq">
+\[ \frac{\partial \mathcal{L}}{\partial \theta_l} \;=\; \underbrace{\frac{\partial \mathcal{L}}{\partial h_L}\, J_L\, J_{L-1} \cdots J_{l+1}}_{\delta_l \;=\; \partial \mathcal{L}/\partial h_l}\; \frac{\partial h_l}{\partial \theta_l}, \qquad J_k = \frac{\partial h_k}{\partial h_{k-1}} \]
+<div class="sym">
+  <span>\(J_k\)</span><span>第 \(k\) 层的 Jacobian：这一层的输出对输入的导数</span>
+  <span>\(\delta_l\)</span><span>loss 对第 \(l\) 层输出的梯度，一个 row vector</span>
+</div>
+</div>
+<p>关键在计算顺序。从右往左算，每一步都是"一个 row vector 乘一个矩阵"：\(\delta_{l-1} = \delta_l\, J_l\)。整个过程从不需要把 Jacobian 矩阵显式写出来，只需要每一层会算 vector-Jacobian product。</p>
+<figure class="fig">
+<svg viewBox="0 0 960 196" role="img" aria-label="Backpropagation：forward 从左到右计算并保存每层的输出 h；backward 从右到左传递梯度 delta，每经过一层乘一次该层的 Jacobian，并顺带算出该层参数的梯度">
+  <text class="d-s" x="40" y="20">Forward：从左到右算输出，把每一层的 h 存下来</text>
+  <text class="d-s" x="920" y="20" text-anchor="end" style="fill:var(--a2)">Backward：δ 从右到左，每过一层乘一次这一层的 Jacobian</text>
+  <g text-anchor="middle">
+    <rect class="d-box" x="110" y="36" width="120" height="58" rx="6"/><text class="d-t" x="170" y="60">f₁（参数 θ₁）</text><text class="d-s" x="170" y="80">J₁ = ∂h₁/∂x</text>
+    <rect class="d-box" x="330" y="36" width="120" height="58" rx="6"/><text class="d-t" x="390" y="60">f₂（参数 θ₂）</text><text class="d-s" x="390" y="80">J₂ = ∂h₂/∂h₁</text>
+    <rect class="d-box" x="550" y="36" width="120" height="58" rx="6"/><text class="d-t" x="610" y="60">f₃（参数 θ₃）</text><text class="d-s" x="610" y="80">J₃ = ∂h₃/∂h₂</text>
+    <rect class="d-hbox" x="770" y="36" width="120" height="58" rx="6"/><text class="d-t" x="830" y="60">loss ℓ(h₃, y)</text><text class="d-s" x="830" y="80">输出一个数 ℒ</text>
+  </g>
+  <g>
+    <line class="d-ln" x1="40" y1="54" x2="108" y2="54" marker-end="url(#arr)"/><text class="d-s" x="74" y="46" text-anchor="middle">x</text>
+    <line class="d-ln" x1="230" y1="54" x2="328" y2="54" marker-end="url(#arr)"/><text class="d-s" x="280" y="46" text-anchor="middle">h₁</text>
+    <line class="d-ln" x1="450" y1="54" x2="548" y2="54" marker-end="url(#arr)"/><text class="d-s" x="500" y="46" text-anchor="middle">h₂</text>
+    <line class="d-ln" x1="670" y1="54" x2="768" y2="54" marker-end="url(#arr)"/><text class="d-s" x="720" y="46" text-anchor="middle">h₃</text>
+  </g>
+  <g>
+    <line class="d-warm" x1="768" y1="78" x2="672" y2="78" marker-end="url(#arrG)"/><text class="d-s" x="720" y="110" text-anchor="middle" style="fill:var(--a2)">δ₃ = ∂ℒ/∂h₃</text>
+    <line class="d-warm" x1="548" y1="78" x2="452" y2="78" marker-end="url(#arrG)"/><text class="d-s" x="500" y="110" text-anchor="middle" style="fill:var(--a2)">δ₂ = δ₃ · J₃</text>
+    <line class="d-warm" x1="328" y1="78" x2="232" y2="78" marker-end="url(#arrG)"/><text class="d-s" x="280" y="110" text-anchor="middle" style="fill:var(--a2)">δ₁ = δ₂ · J₂</text>
+  </g>
+  <g text-anchor="middle">
+    <line class="d-warm" x1="170" y1="94" x2="170" y2="138" marker-end="url(#arrG)"/><rect class="d-box" x="90" y="140" width="160" height="34" rx="6"/><text class="d-s" x="170" y="162">∂ℒ/∂θ₁ = δ₁ · ∂h₁/∂θ₁</text>
+    <line class="d-warm" x1="390" y1="94" x2="390" y2="138" marker-end="url(#arrG)"/><rect class="d-box" x="310" y="140" width="160" height="34" rx="6"/><text class="d-s" x="390" y="162">∂ℒ/∂θ₂ = δ₂ · ∂h₂/∂θ₂</text>
+    <line class="d-warm" x1="610" y1="94" x2="610" y2="138" marker-end="url(#arrG)"/><rect class="d-box" x="530" y="140" width="160" height="34" rx="6"/><text class="d-s" x="610" y="162">∂ℒ/∂θ₃ = δ₃ · ∂h₃/∂θ₃</text>
+  </g>
+</svg>
+<figcaption class="cap">一次 forward 加一次 backward，就得到 loss 对所有参数的梯度。Backward 的计算量是 forward 的一个小的常数倍，这个倍数不随参数个数增长。</figcaption>
+</figure>
+<p>为什么这个顺序重要：loss 是<strong>一个数</strong>，参数有几十亿个。从输出端往回传（reverse mode），一趟就拿到全部梯度。如果从输入端往前推（forward mode），每个参数都要单独推一趟。Deep learning 在计算上可行，靠的就是这个不对称。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span></p>
+<ul>
+  <li><strong>机械臂的 Jacobian。</strong>\(\dot{x} = J(q)\,\dot{q}\) 是 forward mode：把输入端的扰动推到输出端。\(\tau = J(q)^\top F\) 是 reverse mode：把输出端的量拉回输入端。Backprop 就是一连串的 \(J^\top\)。</li>
+  <li><strong>Optimal control 的 costate。</strong>把时间步当成层，backward 递推 \(\lambda_t = \partial \ell/\partial x_t + (\partial f/\partial x_t)^\top \lambda_{t+1}\) 和 backprop 是同一个算法。控制领域在 1960 年代初就在用它（Kelley、Bryson），比它在神经网络里流行早二十多年。iLQR 的 backward pass 也是这个结构。</li>
+  <li><strong>BPTT（backpropagation through time）。</strong>对 RNN 或对一段 dynamics rollout 求导，就是把网络层和时间步串成一条更长的链。Differentiable simulation 和 SuperMimic 里对 world model 求导都是这件事。</li>
+</ul></div>
+<h3>为什么深网络曾经训不动：一长串 Jacobian 的乘积</h3>
+<p>\(\delta_0 = \delta_L\, J_L J_{L-1}\cdots J_1\)。这和线性系统 \(x_{t+1} = A x_t\) 是同一个问题：如果每个 \(J\) 都把向量缩小一点，乘几十次以后梯度趋近于零（vanishing gradient），前面的层学不动；如果都放大一点，梯度爆炸（exploding gradient）。现代网络能做到上百层，靠的是三个专门控制这个乘积的设计：</p>
+<div class="tw"><table>
+<thead><tr><th>设计</th><th>做了什么</th><th>为什么有用</th></tr></thead>
+<tbody>
+<tr><td>Residual connection</td><td>\(h_l = h_{l-1} + g_l(h_{l-1})\)</td><td>Jacobian 变成 \(I + \partial g_l/\partial h\)，梯度始终有一条 identity 的直通路径。ResNet（2015）让上百层的网络变得容易训练；Transformer 的每个 block 都是这个结构。</td></tr>
+<tr><td>Normalization</td><td>把每层的输出重新缩放到固定的尺度（BatchNorm、LayerNorm）</td><td>阻止 activation 的尺度逐层漂移，间接控制 Jacobian 的增益。</td></tr>
+<tr><td>Initialization</td><td>按层的宽度选初始 weight 的方差（Xavier、He）</td><td>让训练开始时每层的增益接近 1。</td></tr>
+</tbody></table></div>
+<p>LSTM 和 GRU 里的 gate 是同一个想法在时间方向上的版本。BPTT 的 horizon 不能随便加长也是同一类原因：SuperMimic 里 imagination horizon 从 32 加到 64、128，训练反而更慢、return 更低。</p>
+<div class="note deep"><p><span class="q">深一层：非凸优化为什么能行</span>
+Loss 对参数是非凸的，gradient descent 理论上只能保证找到一个 stationary point。但实践中，足够大的网络几乎总能把 train loss 降到很低，而且不同随机种子找到的解性能相近。目前的解释都是部分的：高维空间里的 stationary point 大多是 saddle point，SGD 的噪声能离开它们；overparameterized 的网络有大量等价的好解。这是一个"工程上可靠、理论上没讲完"的地方，坦率接受就行。</p></div>
+</section>
+
+<section id="mle">
+<h2><span class="n">04</span>Loss 从哪来：maximum likelihood</h2>
+<p class="ask"><b>这一节回答：</b>MSE、cross-entropy 这些 loss 是随手选的吗？选错了会怎样？</p>
+<p>不是随手选的。几乎所有 loss 都来自同一个原则：<strong>让网络输出一个概率分布 \(p_\theta(y\mid x)\)，然后选参数，使得真实数据在这个分布下出现的概率最大</strong>（maximum likelihood estimation，MLE）。取负对数把连乘变成求和，就得到要最小化的 loss：</p>
+<div class="eq">\[ \theta^\star = \arg\max_\theta \prod_i p_\theta(y_i\mid x_i) \;=\; \arg\min_\theta \sum_i -\log p_\theta(y_i\mid x_i) \]</div>
+<p>你假设输出服从什么分布，就得到什么 loss：</p>
+<div class="tw"><table>
+<thead><tr><th>假设的分布</th><th>网络输出什么</th><th>\(-\log p\) 化简后</th><th>最优解是数据的</th><th>机器人里出现在</th></tr></thead>
+<tbody>
+<tr><td>Gaussian，方差固定</td><td>均值 \(\mu_\theta(x)\)</td><td>\(\lVert y-\mu_\theta(x)\rVert^2\)，即 <strong>MSE</strong></td><td>条件均值 \(\mathbb{E}[y\mid x]\)</td><td>早期的 behavior cloning；world model 预测下一个 state；distillation</td></tr>
+<tr><td>Laplace</td><td>中位数</td><td>\(\lvert y-\mu_\theta(x)\rvert\)，即 <strong>L1</strong></td><td>条件中位数</td><td>ACT</td></tr>
+<tr><td>Categorical（离散）</td><td>每个类别的 logit，过 softmax</td><td>\(-\log p_\theta(y\mid x)\)，即 <strong>cross-entropy</strong></td><td>给定 \(x\) 时各类别的真实频率</td><td>LLM 预测下一个 token；RT-2、OpenVLA 预测 action token</td></tr>
+<tr><td>Gaussian，均值和方差都学</td><td>\(\mu_\theta(x),\ \sigma_\theta\)</td><td>带方差权重的平方误差加 \(\log\sigma\)</td><td>均值和不确定度</td><td>PPO 的 stochastic policy</td></tr>
+</tbody></table></div>
+<p>Softmax 把任意一组实数（logits）\(z\) 变成概率：\(p_i = e^{z_i}/\sum_j e^{z_j}\)。它是"离散分布的输出层"，后面在 attention 和 contrastive learning 里会反复出现。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
+State estimation 里"Gaussian 噪声下的 MLE 等于 weighted least squares"是同一个推导。再进一步：给参数加一个 Gaussian prior 做 MAP，就多出一项 \(\lambda\lVert\theta\rVert^2\)，这就是 L2 regularization，也是 weight decay 的来源（两者在普通 SGD 下等价，在 Adam 下不等价，所以才有 AdamW）。</p></div>
+<h3>选错分布的后果：MSE 会把多个答案平均掉</h3>
+<p>MSE 背后的假设是"给定输入，正确输出只有一个，其余是 Gaussian 噪声"。当数据里同一个输入对应<strong>多个都正确</strong>的输出时，这个假设就错了。经典例子：机械臂要绕过正前方的障碍物，示范里一半从左绕，一半从右绕。MSE 的最优解是两者的平均，也就是直直撞上去。</p>
+<p>这叫 <strong>mode averaging</strong>，是 2022 到 2023 年起 robot policy 的输出端从"回归一个向量"换成 diffusion、flow matching 和离散 token 的直接原因。第 14 节的实验 5 会让你亲眼看到它，以及 generative model 是怎么避开它的。</p>
+<div class="note"><p><span class="q">记住这一句</span><strong>选 loss 就是在选"我假设输出的分布长什么样"。</strong>看到一个 policy 的输出头（Gaussian、256 个 bin、diffusion），先问它假设的 action 分布是单峰还是多峰。</p></div>
+</section>
+
+<section id="info">
+<h2><span class="n">05</span>信息论与压缩</h2>
+<p class="ask"><b>这一节回答：</b>为什么大家说 learning 和压缩有关？Entropy、cross-entropy、KL 各自在量什么？</p>
+<p>你的直觉是对的，而且这个联系可以说得很精确。需要的只有三个量。先定义"意外程度"：一个概率为 \(p(x)\) 的事件发生了，它带来的信息量是 \(-\log_2 p(x)\) bit。概率越小越意外，信息量越大。</p>
+<div class="eq">
+\[ H(p) = -\sum_x p(x)\log p(x) \qquad H(p,q) = -\sum_x p(x)\log q(x) \qquad D_{\mathrm{KL}}(p\,\Vert\, q) = \sum_x p(x)\log\frac{p(x)}{q(x)} \]
+<div class="sym">
+  <span>\(H(p)\)</span><span><strong>Entropy</strong>：按真实分布 \(p\) 取样，平均的意外程度。也是给这些样本编码所需的最少平均 bit 数。</span>
+  <span>\(H(p,q)\)</span><span><strong>Cross-entropy</strong>：数据来自 \(p\)，但你按模型 \(q\) 来编码，平均要用多少 bit。</span>
+  <span>\(D_{\mathrm{KL}}(p\Vert q)\)</span><span><strong>KL divergence</strong>：因为用了错的分布 \(q\) 而多花的 bit。恒 \(\ge 0\)，当且仅当 \(q=p\) 时为 0。</span>
+</div>
+</div>
+<p>三者的关系只有一条：\(H(p,q) = H(p) + D_{\mathrm{KL}}(p\Vert q)\)。训练时 \(p\) 是数据，\(q_\theta\) 是模型，\(H(p)\) 和 \(\theta\) 无关，所以：</p>
+<div class="note"><p><strong>最小化 cross-entropy ＝ 最小化 KL(数据 ‖ 模型) ＝ maximum likelihood。</strong>三个名字，同一件事。</p></div>
+
+<h3>实验 2：拖动分布，看三个量怎么变</h3>
+<p>设想模型要预测 "pick up the red ___" 的下一个词。蓝色是数据里的真实分布 \(p\)，橙色是模型的预测 \(q\)。上下拖动任意一根柱子。</p>
+<div class="lab" id="lab-info">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="start">初始</button>
+    <button type="button" class="pre" data-p="match">让 q = p</button>
+    <button type="button" class="pre" data-p="unif">q 是均匀分布</button>
+    <button type="button" class="pre" data-p="conf">q 很自信但错了</button>
+    <button type="button" class="pre" data-p="onehot">p 是确定的（one-hot label）</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main"><svg class="cv" id="info-svg" viewBox="0 0 560 260" role="img" aria-label="两个离散分布 p 和 q 的柱状图，可拖动"></svg>
+      <p style="font-size:12.5px;margin:6px 0 0;color:var(--muted)"><span class="sw" style="background:var(--a1);height:10px"></span>p：数据的真实分布　<span class="sw" style="background:var(--a2);height:10px"></span>q：模型的预测</p></div>
+    <div class="stage-side">
+      <svg class="cv" id="info-bar" viewBox="0 0 300 96" role="img" aria-label="cross-entropy 分解为 entropy 加 KL divergence 的条形图"></svg>
+      <div class="kv" style="margin-top:10px">
+        <span>Entropy \(H(p)\)</span><span id="info-h"></span>
+        <span>Cross-entropy \(H(p,q)\)</span><span id="info-ce"></span>
+        <span>\(D_{\mathrm{KL}}(p\Vert q)\)</span><span id="info-kl"></span>
+        <span>\(D_{\mathrm{KL}}(q\Vert p)\)</span><span id="info-rkl"></span>
+      </div>
+      <div class="live" id="info-msg" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试看：</b>① "让 q = p"：KL 变成 0，但 cross-entropy 不是 0，剩下的就是 \(H(p)\)，数据本身的不确定性，任何模型都消不掉。② "q 很自信但错了"：模型给真实答案的概率接近 0，cross-entropy 急剧变大。Cross-entropy 对"自信的错误"惩罚极重。③ "one-hot label"：\(H(p)=0\)，cross-entropy 退化成 \(-\log q(\text{正确答案})\)，这就是分类任务里你看到的 loss。④ 两个方向的 KL 不相等。</p>
+</div>
+
+<h3>Prediction 就是 compression</h3>
+<p>Shannon 的 source coding theorem 给出无损压缩的下限 \(H(p)\)。而任何一个概率模型 \(q\) 配上 arithmetic coding 就是一个无损压缩器，平均码长约等于 cross-entropy \(H(p,q)\)。所以：</p>
+<ul>
+  <li>语言模型的 training loss 可以直接读成"平均每个 token 要多少 bit"。<strong>训练语言模型，字面意义上就是在找能把文本压得最短的编码方式。</strong></li>
+  <li>想压得更短，模型必须利用数据里的规律：语法、事实、因果。对视频来说是物体的持续存在和运动规律。这是"预测得好就必须在某种程度上理解"这个说法的精确版本。</li>
+</ul>
+<p>无损压缩有下限 \(H(p)\)。如果允许丢信息（lossy compression），问题变成 <strong>rate–distortion</strong>：给定只能用多少 bit（rate），重建误差（distortion）最小能到多少。Autoencoder 的 bottleneck 就是在限制 rate，第 08 节会看到 VAE 的 loss 正好是"distortion 加 rate"两项。</p>
+<div class="note deep"><p><span class="q">深一层：压缩得好，不等于对控制有用</span>
+压缩衡量的是"对<strong>整个数据分布</strong>建模得多好"。但对控制有用的信息只占输入的极小一部分：一张 224×224 的图有 15 万个数，而抓方块只需要它的位姿，6 个数。像素级的重建会把模型的 capacity 花在桌面纹理和光照上。这是 self-supervised learning 里一条长期的分歧：重建像素（MAE、video generation）还是只在 latent space 里预测（JEPA、contrastive）。它也解释了为什么很多 robot policy 的 vision encoder 最终要用 action loss 来 fine-tune：只有任务本身知道哪些信息该留。</p></div>
+<h3>KL 是不对称的，两个方向行为不同</h3>
+<p>假设真实分布 \(p\) 有两个峰，而模型 \(q\) 只能是一个单峰的 Gaussian：</p>
+<div class="two">
+  <div><h4>Forward KL：\(D_{\mathrm{KL}}(p\Vert q)\)</h4><p>\(p\) 有质量的地方 \(q\) 必须也有，否则惩罚无穷大。结果 \(q\) 变得很宽，盖住两个峰，均值落在中间。叫 <strong>mode-covering</strong>。Maximum likelihood 和 behavior cloning 做的是这个，这也是 mode averaging 的另一种说法。</p></div>
+  <div><h4>Reverse KL：\(D_{\mathrm{KL}}(q\Vert p)\)</h4><p>\(q\) 只需要待在 \(p\) 高的地方，漏掉一个峰不受罚。结果 \(q\) 选一个峰贴上去。叫 <strong>mode-seeking</strong>。Variational inference 和一部分 RL 算法做的是这个。</p></div>
+</div>
+<p>KL 之后会出现在这些地方：VAE 把 latent 的分布拉向 prior（第 08 节）；TRPO 和 PPO 限制每次 policy 更新不能离旧 policy 太远（第 15 节）；distillation 让 student 的输出分布靠近 teacher（第 16 节）。</p>
+</section>
+
+<section id="shift">
+<h2><span class="n">06</span>Generalization 与 distribution shift</h2>
+<p class="ask"><b>这一节回答：</b>训练好的模型在什么条件下可以信？为什么机器人上这个问题特别严重？</p>
+<p>Supervised learning 的全部理论保证都建立在一个假设上：<strong>测试时的数据和训练数据来自同一个分布，而且样本之间相互独立（i.i.d.）</strong>。在这个假设下，训练样本越多，train loss 和真实误差就越接近。</p>
+<p>一个经验上很可靠的说法是：网络在训练数据覆盖到的范围内表现可预期，在范围之外的行为没有任何保证。它擅长在见过的样本之间插值，不擅长外推。所以 robot learning 的大部分工程实践，都可以理解成同一个动作：<strong>想办法把训练分布扩大到能盖住部署时会遇到的情况。</strong></p>
+<h3>机器人上分布不匹配的三个来源</h3>
+<div class="tw"><table>
+<thead><tr><th>来源</th><th>发生了什么</th><th>对应的办法</th></tr></thead>
+<tbody>
+<tr><td><strong>闭环造成的 covariate shift</strong></td><td>Policy 的输出决定了它下一步看到什么。一个小误差把机器人带到示范里没有的状态，在那里它错得更多。</td><td>DAgger；action chunking；采集带纠错动作的数据；给示范加扰动（第 16 节）</td></tr>
+<tr><td><strong>Sim-to-real gap</strong></td><td>Simulator 里的 dynamics、延迟、传感器噪声、图像和真机不一样。</td><td>Domain randomization；system identification；actuator network；privileged teacher 加 student</td></tr>
+<tr><td><strong>环境、物体、本体的变化</strong></td><td>新的光照、背景、相机位置、没见过的物体，或者换了一台机器人。</td><td>更多样的数据；data augmentation；在互联网数据上预训练的 encoder；cross-embodiment 数据</td></tr>
+</tbody></table></div>
+<p>第一行是机器人特有的，值得单独看。Supervised learning 假设样本独立，但闭环控制里，这一步的输出就是下一步的输入的原因。</p>
+<figure class="fig">
+<svg viewBox="0 0 960 250" role="img" aria-label="Behavior cloning 的 compounding error：浅色带是示范数据覆盖的状态；纯 behavior cloning 的 policy 因为小误差偏离，离开覆盖范围后误差越来越大；如果数据里有从偏离状态回到中心的样本，policy 能自己纠正回来">
+  <path d="M40,150 C260,120 440,170 640,140 S860,130 930,150" style="fill:none;stroke:var(--accent-soft);stroke-width:74;stroke-linecap:round"/>
+  <path class="d-ln" d="M40,150 C260,120 440,170 640,140 S860,130 930,150" style="stroke-dasharray:6 5"/>
+  <path class="d-bad" d="M40,150 C160,134 250,128 330,122 C420,114 480,96 560,66 C620,44 680,30 760,18" marker-end="url(#arr)"/>
+  <path class="d-okl" d="M40,150 C160,138 250,132 330,128 C400,124 430,118 470,124 C520,132 560,144 640,140 S860,130 930,150"/>
+  <circle cx="330" cy="125" r="4" style="fill:var(--ink)"/>
+  <text class="d-s" x="330" y="196" text-anchor="middle">① 一个小误差</text><line class="d-ln" x1="330" y1="182" x2="330" y2="133" marker-end="url(#arr)"/>
+  <text class="d-s" x="560" y="40" text-anchor="end" style="fill:var(--bad)">② 到了示范没覆盖的状态，输出不可预期</text>
+  <text class="d-s" x="772" y="34" style="fill:var(--bad)">③ 误差继续放大</text>
+  <text class="d-s" x="700" y="176" style="fill:var(--ok)">数据里有"偏了以后怎么回来"：自己纠正</text>
+  <text class="d-s" x="50" y="216">浅色带：示范数据覆盖到的状态</text>
+  <text class="d-s" x="50" y="234">虚线：专家的轨迹</text>
+</svg>
+<figcaption class="cap">假设 policy 在专家访问过的状态上每步出错的概率是 ε，任务长 T 步。纯 behavior cloning 最坏情况下的累计代价按 εT² 增长，因为一次出错之后每一步都可能继续错。DAgger 这类让数据覆盖 policy 自己会到达的状态的方法，在一定的假设下可以把它降到按 εT 增长（Ross &amp; Bagnell 2010；Ross、Gordon、Bagnell 2011）。</figcaption>
+</figure>
+<h3>Inductive bias：数据之外的知识从哪来</h3>
+<p>有限的数据可以被无穷多个函数完美拟合，它们在数据之外各不相同。模型选了哪一个，取决于它自带的偏好，叫 inductive bias。来源有三个：<strong>architecture</strong>（CNN 假设平移不变，第 10 节）、<strong>data augmentation</strong>（把图像随机裁剪、调色，等于告诉模型这些变化不该影响输出）、<strong>优化过程本身</strong>（SGD 倾向于找到某一类解）。没有任何 inductive bias 的学习是不可能的；问题只在于偏好是否符合真实世界。</p>
+<div class="note deep"><p><span class="q">深一层：为什么参数比数据还多的网络不 overfit</span>
+经典的统计学习理论说，参数太多一定 overfit。实验 1 也确实展示了这一点。但现代大模型的参数量远超数据量，泛化却很好；甚至存在 double descent 现象：模型继续变大，test error 先升后降。目前的解释包括 SGD 的 implicit regularization（在所有能拟合数据的解里偏好"简单"的那些）和 overparameterization 让优化变容易。这仍然是活跃的研究问题，没有完整的理论。实用的结论是：<strong>现在很少靠缩小网络来防 overfit，而是靠增加数据的量和多样性。</strong></p></div>
+</section>
+
+<div class="part"><div class="tag">PART B</div><h2>Representation</h2><p>Encoder、latent、feature、embedding、token 都在回答同一个问题：把原始输入变成什么样的向量，后面的计算才好做。</p></div>
+
+<section id="repr">
+<h2><span class="n">07</span>Representation 是什么</h2>
+<p class="ask"><b>这一节回答：</b>Feature、embedding、latent 到底是不是一回事？什么叫"好的" representation？</p>
+<p>它们是一回事：<strong>网络中间的一个向量，用来概括输入</strong>。下游的计算只能通过这个向量看到输入。不同的名字只反映它出现的场合：</p>
+<div class="tw"><table>
+<thead><tr><th>名字</th><th>通常在什么场合用</th></tr></thead>
+<tbody>
+<tr><td>Feature</td><td>感知网络中间层的输出。"image feature"指 vision backbone 输出的向量或向量网格。</td></tr>
+<tr><td>Embedding</td><td>一个离散对象（一个 token、一张图、一段文字）对应的向量。也指"查表得到向量"这个操作。</td></tr>
+<tr><td>Latent</td><td>生成模型或 autoencoder 里那个没有被直接观测到的变量，通常是 bottleneck 处的向量。</td></tr>
+<tr><td>Hidden state</td><td>RNN 沿时间传递的向量；也泛指任意中间层的 activation。</td></tr>
+<tr><td>Representation</td><td>上面所有东西的统称。</td></tr>
+<tr><td>Latent space / embedding space</td><td>这些向量所在的空间。说"两个东西在 latent space 里很近"，就是它们的向量距离小。</td></tr>
+</tbody></table></div>
+<h3>好的 representation：让后面的问题变简单</h3>
+<p>判断标准很实用：<strong>在这个表示上，下游任务用很简单的函数就能解决。</strong>常用的度量叫 linear probe：把 encoder 冻住，只在它输出的 feature 上训练一个线性分类器，看能做到多好。原始像素上线性分类器几乎没用，好的 feature 上它能接近完整网络的水平。Deep learning 可以整体理解为：前面所有层负责把输入一步步变形，直到最后一层只需要做线性运算。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西：state</span>
+控制里的 state 有一个精确的定义：它是历史的 sufficient statistic，知道了它，过去的输入输出对预测未来就不再提供额外信息。好的 representation 是同一个意思的推广：<strong>保留对任务有用的一切，丢掉其余的</strong>。</p>
+<p>Kalman filter 把全部历史观测压缩成均值和协方差，这就是一个人工设计的 encoder。机器人只能拿到 observation（POMDP）时，policy 需要从历史里估计出它需要的 state。RNN 的 hidden state、把过去 50 帧 proprioception 喂给一个小网络得到的向量，都是<strong>学出来的 state estimator</strong>，只是输出的不是有物理含义的量，而是一个只有下游网络看得懂的 latent。</p></div>
+<h3>为什么能压缩：manifold hypothesis</h3>
+<p>一张 224×224 的 RGB 图是 150,528 维空间里的一个点。但随机取一个点，得到的几乎一定是噪声。真实的图像只占这个空间里极小的一部分，而且这一部分可以用少得多的坐标来描述：对一个桌面场景，就是相机位姿、每个物体的位姿、光照等几十到几百个量。这个猜想叫 <strong>manifold hypothesis</strong>：高维的真实数据集中在一个低维 manifold 附近。</p>
+<p>用机器人的话说：图像是 configuration \(q\) 和环境参数的一个非线性函数，encoder 在学这个函数的近似逆映射。Latent space 就是这个 manifold 上的一套坐标。下一节的实验 3 会把这句话画出来。</p>
+<h3>Embedding space 的几何</h3>
+<p>训练好的 embedding space 里，<strong>距离对应语义相似度</strong>，常用 cosine similarity 来量。这不是设计出来的，而是训练目标的副产品：如果两个输入在任务里可以互相替换，把它们映射到相近的向量就能降低 loss。CLIP 训练完以后，一张图片和描述它的文字的向量夹角很小，所以可以把"分类"做成"找最近的文字向量"，不需要任何分类数据（zero-shot）。</p>
+<div class="note deep"><p><span class="q">深一层：representation 不一定更小</span>
+"Encoder 就是压缩"这个说法不完全对。ViT-B/16 把一张 224×224 的图变成 196 个 768 维的 token，一共 150,528 个数，和输入的数值个数（224×224×3）完全相同（没算额外的 [CLS] token）。它没有降维，但信息被<strong>重新组织</strong>了：原来分散在像素里的"这是一个杯子"变成了可以被线性读出的方向。是否丢信息由训练目标决定，不由维度决定。真正的 bottleneck（故意限制信息量）是下一节的内容。</p></div>
+</section>
+
+<section id="ae">
+<h2><span class="n">08</span>Autoencoder 家族：从 PCA 到 VAE 到 VQ</h2>
+<p class="ask"><b>这一节回答：</b>Encoder–decoder–bottleneck 这个结构为什么能学到有用的东西？VAE、VQ-VAE 各加了什么？</p>
+<h3>起点是你已经会的 PCA</h3>
+<p>PCA 取数据协方差最大的 \(k\) 个方向 \(U_k\)，把（减去均值之后的）数据投影上去再乘回来：</p>
+<div class="eq">\[ \underbrace{z = U_k^\top x}_{\text{encoder}} \qquad \underbrace{\hat{x} = U_k\, z}_{\text{decoder}} \qquad \min \sum_i \lVert x_i - \hat{x}_i\rVert^2 \]</div>
+<p>这已经是一个完整的 autoencoder：encoder 和 decoder 都是线性的，loss 是重建误差，\(k\) 小于输入维度就是 bottleneck。Eckart–Young 定理保证 SVD 给出的是最优的线性解。反过来也成立：一个线性的 autoencoder 用 MSE 训练，学到的子空间就是 PCA 的子空间。</p>
+<p><strong>Autoencoder 是把这两个线性映射换成神经网络</strong>：\(z = E_\phi(x)\)，\(\hat{x} = D_\theta(z)\)，仍然最小化重建误差。PCA 只能用一个平面去贴数据；nonlinear autoencoder 可以用一个弯曲的面。</p>
+
+<h3>实验 3：一维的 bottleneck，直线和曲线</h3>
+<p>下面的二维数据点分布在一条弯曲的线附近（一个一维的 manifold）。两种方法都只允许用<strong>一个数</strong> \(z\) 来表示每个点。PCA 的重建只能落在一条直线上。Autoencoder（2 → 12 → 1 → 12 → 2，tanh）在你点"开始训练"后现场训练。</p>
+<div class="lab" id="lab-ae">
+  <div class="opts">
+    <button type="button" class="pre" id="ae-run">开始训练</button>
+    <button type="button" class="pre" id="ae-reset">重置</button>
+    <label>拖动 latent z <input type="range" id="ae-z" min="0" max="1" step="0.005" value="0.5" style="width:200px"></label>
+  </div>
+  <div class="stage">
+    <div class="stage-main"><svg class="cv" id="ae-svg" viewBox="0 0 560 320" role="img" aria-label="二维数据点、PCA 的一维重建直线、autoencoder 的一维重建曲线"></svg>
+      <p style="font-size:12.5px;margin:6px 0 0;color:var(--muted)"><span class="sw" style="background:var(--muted)"></span>PCA 的重建（直线）　<span class="sw" style="background:var(--accent)"></span>Autoencoder 的 decoder 画出的曲线　● 数据点，颜色表示 encoder 给它的 z</p></div>
+    <div class="stage-side">
+      <div class="kv">
+        <span>Step</span><span id="ae-step">0</span>
+        <span>PCA 重建 MSE</span><span id="ae-pca"></span>
+        <span>Autoencoder 重建 MSE</span><span id="ae-mse"></span>
+        <span>当前 z</span><span id="ae-zv"></span>
+      </div>
+      <div class="live" id="ae-msg" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试看：</b>① 训练前，decoder 的曲线是随机的。训练中看它怎么从一小段变成贴着数据的弯线。② 训练后，数据点的颜色沿着曲线平滑变化：<b>encoder 学到的 z 就是"沿着这条线走了多远"</b>，没有人告诉它这件事。③ 拖动 z 的滑块，大圆点沿曲线移动：<b>decoder 把一个数变回一个合理的二维点</b>。这就是"在 latent space 里移动，输出在数据 manifold 上移动"。</p>
+</div>
+
+<h3>没有约束的 autoencoder 什么都学不到</h3>
+<p>如果 \(z\) 的维度不比 \(x\) 小，网络可以直接把输入原样抄过去，重建误差为零，representation 毫无用处。所以每一种 autoencoder 都要加一个<strong>约束</strong>，逼它不能照抄。整个家族的区别就在于用什么约束：</p>
+<div class="tw"><table>
+<thead><tr><th>变体</th><th>约束</th><th>得到什么</th><th>机器人和视觉里出现在</th></tr></thead>
+<tbody>
+<tr><td>Undercomplete AE</td><td>\(z\) 的维度小</td><td>低维表示</td><td>Policy 里的低维 latent 接口</td></tr>
+<tr><td>Denoising AE</td><td>输入加噪声，要求重建干净的</td><td>对扰动鲁棒的表示；也是 diffusion 的前身</td><td>Diffusion model 的每一步</td></tr>
+<tr><td>Masked AE（MAE）</td><td>遮住大部分输入，要求补全</td><td>必须理解整体结构才能补</td><td>ViT 的预训练；BERT 是文字版</td></tr>
+<tr><td>VAE</td><td>\(z\) 的分布要靠近一个固定的 prior</td><td>连续、可以采样和插值的 latent space</td><td>ACT 的 style variable；Dreamer 的 world model；latent diffusion 的图像压缩</td></tr>
+<tr><td>VQ-VAE、FSQ</td><td>\(z\) 只能取有限个离散值</td><td>离散的 token</td><td>图像、视频、音频、action 的 tokenizer</td></tr>
+</tbody></table></div>
+<h3>VAE：给 latent space 加一个概率结构</h3>
+<p>普通 autoencoder 的 latent space 可能有很多"空洞"：两个训练样本的 \(z\) 之间的点，decoder 从没见过，解出来可能是垃圾。VAE（variational autoencoder）的目的是让 latent space 处处可用，于是能从中采样来<strong>生成</strong>新数据。做法是两处改动：encoder 输出的不是一个点，而是一个 Gaussian 的均值和方差；loss 多一项，把这个 Gaussian 拉向标准正态分布 \(\mathcal{N}(0,I)\)。</p>
+<div class="eq">
+\[ \mathcal{L}_{\text{VAE}} = \underbrace{\mathbb{E}_{z\sim q_\phi(z\mid x)}\big[-\log p_\theta(x\mid z)\big]}_{\text{重建误差（distortion）}} \;+\; \beta\,\underbrace{D_{\mathrm{KL}}\big(q_\phi(z\mid x)\,\Vert\, \mathcal{N}(0,I)\big)}_{\text{latent 携带的信息量（rate）}} \]
+<div class="sym">
+  <span>\(q_\phi(z\mid x)\)</span><span>encoder：给定输入，输出 \(z\) 的分布 \(\mathcal{N}(\mu_\phi(x), \sigma_\phi(x)^2)\)</span>
+  <span>\(p_\theta(x\mid z)\)</span><span>decoder：给定 \(z\)，输出 \(x\) 的分布；取 Gaussian 时第一项就是 MSE</span>
+  <span>\(\beta\)</span><span>两项的权重；\(\beta=1\) 时这个 loss 是 \(-\log p_\theta(x)\) 的上界，它的相反数叫 ELBO</span>
+</div>
+</div>
+<p>这两项正好是第 05 节说的 rate–distortion：第二项限制 \(z\) 能携带多少关于 \(x\) 的信息，第一项要求在这个限制下重建得尽量好。\(\beta\) 越大，压缩越狠，latent 越规整，重建越模糊。</p>
+<p>一个技术细节：从 \(q_\phi\) 里采样这个操作不可导。<strong>Reparameterization trick</strong> 把采样写成 \(z = \mu + \sigma\odot\epsilon\)，\(\epsilon\sim\mathcal{N}(0,I)\)，随机性被移到了输入端，梯度就能通过 \(\mu\) 和 \(\sigma\) 传回 encoder。</p>
+<h3>VQ-VAE 和 FSQ：离散的 latent</h3>
+<p>VQ-VAE 维护一个 codebook，里面有 \(K\) 个向量。Encoder 的输出被替换成 codebook 里离它最近的那个，编号就是一个 token：</p>
+<div class="eq">\[ k = \arg\min_j \lVert z_e - e_j \rVert, \qquad z_q = e_k \]</div>
+<p>取最近邻不可导，训练时用 straight-through estimator：forward 用 \(z_q\)，backward 把梯度当作直接传给 \(z_e\)。<strong>FSQ</strong>（finite scalar quantization）更简单：不学 codebook，直接把 latent 的每一维四舍五入到少数几个固定的值，避免了 VQ 训练中一部分 code 永远用不上的问题。</p>
+<p>离散化的意义在下一节：一旦图像、声音、动作都能变成编号，就能用训练语言模型的那一套方法来处理它们。</p>
+<div class="note"><p><span class="q">Bottleneck 的三种"货币"</span>限制 latent 信息量有三种办法：<strong>降低维度</strong>（autoencoder）、<strong>加噪声并用 KL 约束</strong>（VAE）、<strong>离散化</strong>（VQ）。第三种最容易数清楚：codebook 有 1024 个 code，一个 token 就是 10 bit。把一张 256×256 的图编码成 16×16 个这样的 token，总共 2560 bit，也就是 320 字节，而原图是约 19.7 万字节。</p></div>
+<div class="note rb"><p><span class="q">在 policy 里：latent 是上下层之间的接口</span>
+SuperMimic 的 policy 是"每种命令接口一个 goal encoder，加一个共享的 decoder"，中间的 \(z\) 是 32 维并经过 tanh。这是一个 bottleneck：不管上层给的是 reference motion 还是 velocity command，都必须先变成这 32 个有界的数，decoder 只根据它和 proprioception 出动作。可以这样理解它的作用：tanh 把 \(z\) 限制在一个有界的范围里，不同的 encoder 更容易落在 decoder 训练时见过的区域内。RMA 里那个 8 维的 extrinsics 向量是同一类东西，它概括的是环境参数（第 18 节）。</p></div>
+</section>
+
+<section id="token">
+<h2><span class="n">09</span>Token 与 tokenizer：把一切变成序列</h2>
+<p class="ask"><b>这一节回答：</b>为什么所有东西都要变成 token？图像和动作是怎么变的？</p>
+<p>原因很实际：Transformer 处理的是<strong>一串向量</strong>。只要把图像、文字、关节状态、动作都变成一串向量，同一个网络就能处理所有模态，还能把它们拼在一个序列里。Tokenizer 就是做这个转换的模块，它回答的是第 01 节的 Q4。</p>
+<figure class="fig">
+<svg viewBox="0 0 960 372" role="img" aria-label="三种模态的 tokenization：图像切成 patch 后线性投影成连续向量；文字用 BPE 切成 subword 再查 embedding 表；动作按每个维度离散成 256 个 bin 的编号；三者拼成一个序列交给 Transformer">
+  <!-- image row -->
+  <text class="d-t" x="20" y="24">图像</text>
+  <g>
+    <rect class="f-off" x="20" y="36" width="88" height="88"/>
+    <path class="d-ln" d="M42,36V124 M64,36V124 M86,36V124 M20,58H108 M20,80H108 M20,102H108" style="stroke-width:1"/>
+    <rect class="f-q4" x="64" y="58" width="22" height="22"/>
+  </g>
+  <line class="d-ln" x1="118" y1="80" x2="298" y2="80" marker-end="url(#arr)"/>
+  <text class="d-s" x="208" y="70" text-anchor="middle">切成 16×16 的 patch</text><text class="d-s" x="208" y="98" text-anchor="middle">每块展平后过一个线性层</text>
+  <g><rect class="f-q4" x="304" y="66" width="28" height="28" rx="4"/><rect class="f-q4" x="338" y="66" width="28" height="28" rx="4"/><rect class="f-q4" x="372" y="66" width="28" height="28" rx="4"/><rect class="f-q4" x="406" y="66" width="28" height="28" rx="4"/><text class="d-t" x="452" y="86">…</text><rect class="f-q4" x="476" y="66" width="28" height="28" rx="4"/></g>
+  <text class="d-s" x="524" y="78">224×224 的图 → 14×14 = 196 个 token</text>
+  <text class="d-s" x="524" y="96">连续向量，没有编号；再加上 position embedding</text>
+  <!-- text row -->
+  <text class="d-t" x="20" y="156">文字</text>
+  <text class="d-m" x="20" y="186" style="font-size:13px">"pick up the red block"</text>
+  <line class="d-ln" x1="212" y1="182" x2="298" y2="182" marker-end="url(#arr)"/>
+  <text class="d-s" x="255" y="172" text-anchor="middle">BPE</text><text class="d-s" x="255" y="200" text-anchor="middle">查 embedding 表</text>
+  <g text-anchor="middle"><rect class="f-q2" x="304" y="168" width="40" height="28" rx="4"/><text class="d-m" x="324" y="187">pick</text><rect class="f-q2" x="350" y="168" width="32" height="28" rx="4"/><text class="d-m" x="366" y="187">up</text><rect class="f-q2" x="388" y="168" width="36" height="28" rx="4"/><text class="d-m" x="406" y="187">the</text><rect class="f-q2" x="430" y="168" width="36" height="28" rx="4"/><text class="d-m" x="448" y="187">red</text><rect class="f-q2" x="472" y="168" width="46" height="28" rx="4"/><text class="d-m" x="495" y="187">block</text></g>
+  <text class="d-s" x="538" y="178">每个 subword 一个整数编号</text>
+  <text class="d-s" x="538" y="196">编号 → 表里的一行向量（可学习）</text>
+  <!-- action row -->
+  <text class="d-t" x="20" y="238">动作</text>
+  <g>
+    <path class="d-ln" d="M20,256H180 M20,270H180 M20,284H180 M20,298H180" style="stroke-width:1;stroke-dasharray:2 3"/>
+    <path class="d-okl" d="M22,292 C50,290 60,262 90,262 S130,286 178,268" style="stroke-width:1.8"/>
+  </g>
+  <line class="d-ln" x1="196" y1="277" x2="298" y2="277" marker-end="url(#arr)"/>
+  <text class="d-s" x="247" y="267" text-anchor="middle">每一维分成</text><text class="d-s" x="247" y="295" text-anchor="middle">256 个 bin</text>
+  <g text-anchor="middle"><rect class="f-q3" x="304" y="263" width="40" height="28" rx="4"/><text class="d-m" x="324" y="282">137</text><rect class="f-q3" x="350" y="263" width="40" height="28" rx="4"/><text class="d-m" x="370" y="282">92</text><rect class="f-q3" x="396" y="263" width="40" height="28" rx="4"/><text class="d-m" x="416" y="282">201</text><text class="d-t" x="454" y="283">…</text></g>
+  <text class="d-s" x="478" y="273">7 维 action → 7 个 token（OpenVLA；RT-2 多一个 terminate token）</text>
+  <text class="d-s" x="478" y="291">也可以用 VQ、FAST，或者干脆不离散（第 14、20 节）</text>
+  <!-- sequence -->
+  <rect class="d-box" x="20" y="320" width="920" height="40" rx="6"/>
+  <text class="d-s" x="34" y="345">拼成一个序列：</text>
+  <g><rect class="f-q4" x="130" y="328" width="22" height="24" rx="3"/><rect class="f-q4" x="156" y="328" width="22" height="24" rx="3"/><rect class="f-q4" x="182" y="328" width="22" height="24" rx="3"/><text class="d-s" x="210" y="345">…</text><rect class="f-q4" x="228" y="328" width="22" height="24" rx="3"/>
+  <rect class="f-q2" x="262" y="328" width="22" height="24" rx="3"/><rect class="f-q2" x="288" y="328" width="22" height="24" rx="3"/><rect class="f-q2" x="314" y="328" width="22" height="24" rx="3"/><rect class="f-q2" x="340" y="328" width="22" height="24" rx="3"/><rect class="f-q2" x="366" y="328" width="22" height="24" rx="3"/>
+  <rect class="f-q3" x="400" y="328" width="22" height="24" rx="3"/><rect class="f-q3" x="426" y="328" width="22" height="24" rx="3"/><rect class="f-q3" x="452" y="328" width="22" height="24" rx="3"/></g>
+  <line class="d-acc" x1="486" y1="340" x2="560" y2="340" marker-end="url(#arrA)"/>
+  <text class="d-a" x="572" y="345">Transformer 只看到一串向量，不知道也不关心它们原来是什么</text>
+</svg>
+<figcaption class="cap">三种模态变成 token 的方式不同，但出来的东西格式相同：一串固定维度的向量。</figcaption>
+</figure>
+<h3>两个经常被混在一起的区别</h3>
+<div class="two">
+  <div><h4>Token 这个词有两个意思</h4><p>有时指那个<strong>离散的编号</strong>（"这句话有 5 个 token"），有时指序列里某个位置上的<strong>向量</strong>（"196 个 image token"）。图像 patch 的 token 是后者：它是连续向量，根本没有编号。</p></div>
+  <div><h4>输入可以连续，自回归的输出必须离散</h4><p>作为输入，任何向量都能当 token。但如果要用 cross-entropy 让模型"预测下一个 token"，输出必须来自一个有限的词表。所以想让 LLM 直接吐出动作，就必须把动作离散化；否则就得换一种输出头（diffusion、flow matching、回归）。</p></div>
+</div>
+<h3>Action tokenization：VLA 的关键设计选择</h3>
+<div class="tw"><table>
+<thead><tr><th>做法</th><th>怎么做</th><th>优点</th><th>代价</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>逐维 binning</td><td>每个 action 维度在取值范围内均匀分成 256 份，取编号</td><td>最简单，直接复用 LLM 的训练方式</td><td>有量化误差；每个时间步要多个 token，高频控制时序列很长，推理慢</td><td>RT-1、RT-2、OpenVLA</td></tr>
+<tr><td>VQ 类</td><td>用 VQ-VAE 把一小段 action 压成几个 code</td><td>一个 token 表示一段动作</td><td>要先训练 tokenizer；重建有损</td><td>VQ-BeT</td></tr>
+<tr><td>频域压缩</td><td>对一段 action 做 DCT，量化系数，再用 BPE 压缩</td><td>高频、灵巧的数据也能用离散 token 学好</td><td>解码多一步</td><td>FAST（π0-FAST）</td></tr>
+<tr><td>不离散</td><td>Action 保持连续，用 diffusion 或 flow matching 的 head 生成</td><td>没有量化误差；一次生成一整段</td><td>多了一个新的模块和迭代采样</td><td>Diffusion Policy、π0、GR00T N1</td></tr>
+</tbody></table></div>
+<div class="note deep"><p><span class="q">深一层：为什么逐维 binning 在高频数据上会失效</span>
+FAST 论文给的解释和第 05 节直接相关。控制频率高（例如 50 Hz）时，相邻时间步的 action 几乎一样，于是"下一个 token"几乎总是等于上一个。模型只要学会照抄就能把 cross-entropy 降得很低，但没学到任何关于任务的东西。问题不在离散化本身，而在这种表示里<strong>每个 token 携带的新信息太少</strong>。DCT 把一段平滑的轨迹变成少数几个低频系数，去掉了冗余，每个 token 才重新变得"难预测、有信息"。Tokenizer 设计的本质是压缩。</p></div>
+<p>Tokenizer 还决定了序列长度 \(n\)，而 Transformer 的计算量按 \(n^2\) 增长（第 11 节）。三个相机、每个 256 个 token，再加语言和动作，序列轻易上千。这是 VLA 推理慢的直接原因之一。</p>
+</section>
+
+<div class="part"><div class="tag">PART C</div><h2>Architecture</h2><p>函数的形状。不同的网络结构是对数据做了不同的假设；Transformer 胜出是因为它假设得最少。</p></div>
+
+<section id="bias">
+<h2><span class="n">10</span>Inductive bias：每种结构假设了什么</h2>
+<p class="ask"><b>这一节回答：</b>MLP、CNN、RNN、Transformer 的本质区别是什么？为什么 locomotion policy 还在用 MLP？</p>
+<p>每一种 architecture 都是把一条关于数据的假设写进了网络的连接方式里。假设对了，同样的数据能学得更好；假设错了，它就成了限制。</p>
+<div class="tw"><table>
+<thead><tr><th>结构</th><th>写进去的假设</th><th>怎么实现的</th><th>适合</th></tr></thead>
+<tbody>
+<tr><td>MLP</td><td>没有。输入就是一个固定长度的向量，各维之间没有已知的结构。</td><td>全连接</td><td>低维、定长的输入：proprioception、物理状态</td></tr>
+<tr><td>CNN</td><td>相邻的像素相关（locality）；同一个图案出现在哪里都是同一个东西（translation equivariance）。</td><td>小的卷积核在整张图上滑动，所有位置共用同一组 weight</td><td>图像、深度图、height map</td></tr>
+<tr><td>RNN、LSTM、GRU</td><td>信息沿时间一步步传递；每一步用同样的更新规则。</td><td>一个 hidden state 反复被同一个函数更新</td><td>序列；现在主要在需要小而快的 policy 里用</td></tr>
+<tr><td>GNN</td><td>数据是一张图；节点的编号顺序无关紧要。</td><td>节点沿着边交换信息</td><td>多物体、多机器人、关节结构</td></tr>
+<tr><td>Transformer</td><td>几乎没有。输入是一组 token，任意两个都可能相关，相关程度从数据里学。</td><td>Attention（下一节）</td><td>任意序列和多模态，前提是数据够多</td></tr>
+</tbody></table></div>
+<h3>假设和数据之间的交换</h3>
+<figure class="fig sm">
+<svg viewBox="0 0 600 250" role="img" aria-label="示意图：强假设的模型在数据少时更好但很快饱和；弱假设的模型在数据少时更差，但数据足够多以后超过前者">
+  <line class="l-ax" x1="60" y1="204" x2="570" y2="204" marker-end="url(#arr)"/><line class="l-ax" x1="60" y1="204" x2="60" y2="24" marker-end="url(#arr)"/>
+  <text class="d-s" x="566" y="222" text-anchor="end">训练数据量（对数）</text>
+  <text class="d-s" x="24" y="114" text-anchor="middle" transform="rotate(-90 24 114)">性能</text>
+  <path class="d-blue" d="M70,170 C150,110 240,96 340,92 S500,88 560,87" style="stroke-width:2.4"/>
+  <path class="d-acc" d="M70,196 C180,180 260,140 340,98 S480,46 560,36" style="stroke-width:2.4"/>
+  <text class="d-s" x="190" y="86" style="fill:var(--a1)">强假设（CNN、物理模型）</text>
+  <text class="d-s" x="430" y="42" text-anchor="end" style="fill:var(--accent)">弱假设（Transformer）</text>
+  <line class="d-ln" x1="344" y1="204" x2="344" y2="100" style="stroke-dasharray:3 4;stroke-width:1"/>
+  <text class="d-s" x="344" y="220" text-anchor="middle">交叉点</text>
+  <text class="d-s" x="120" y="222">机器人数据多数在交叉点左侧</text>
+  <text class="d-s" x="556" y="176" text-anchor="end">语言和图像在这一侧</text>
+</svg>
+<figcaption class="cap">示意图，不是实测数据。定性的依据：ViT 论文里，只用 ImageNet-1k 训练时 ViT 不如 ResNet，换成 3 亿张图的 JFT-300M 预训练后超过它。</figcaption>
+</figure>
+<p>这就是 Sutton 所说的 <em>bitter lesson</em>：长期来看，能利用更多计算和数据的通用方法，总会胜过把人的知识写进模型的方法。但要注意前提是<strong>数据足够多</strong>。机器人领域的数据比语言少好几个数量级，所以写进去的结构（simulator 里的物理、3D 几何、action chunking、分层控制）现在仍然非常值钱。这是理解 robot learning 现状最重要的一个判断。</p>
+<div class="note rb"><p><span class="q">为什么 locomotion policy 用的是三层 MLP</span>
+输入只有几十维，长度固定，没有空间结构可以利用，所以 CNN 和 Transformer 的假设帮不上忙。Policy 要在机载 CPU 上以 50 Hz 以上运行，网络必须小。用 PPO 训练时，更大的网络通常也不会更好。需要用到历史时，常见做法是把过去若干帧拼起来直接喂给 MLP，或者用一个小的 1D CNN 或 GRU 先把历史压成一个 latent。一旦输入里有图像，或者要一个 policy 覆盖大量动作和任务，结构就会换成 CNN、Transformer。</p></div>
+</section>
+
+<section id="attn">
+<h2><span class="n">11</span>Attention 与 Transformer</h2>
+<p class="ask"><b>这一节回答：</b>Attention 具体算了什么？Transformer 的 encoder 和 decoder 和 autoencoder 的是一回事吗？</p>
+<h3>Attention：一个可微的、按内容查找的操作</h3>
+<p>普通的查表是：拿一个 key 去找，命中哪一条就返回哪一条的 value。Attention 是它的"软"版本：<strong>拿一个 query 和所有的 key 比相似度，按相似度把所有 value 加权平均</strong>。</p>
+<div class="eq">
+\[ \alpha_i = \frac{\exp(q^\top k_i)}{\sum_j \exp(q^\top k_j)}, \qquad \text{output} = \sum_i \alpha_i\, v_i \]
+<div class="sym">
+  <span>\(q\)</span><span>query：我在找什么</span>
+  <span>\(k_i\)</span><span>第 \(i\) 个 token 的 key：我这里有什么</span>
+  <span>\(v_i\)</span><span>第 \(i\) 个 token 的 value：如果你选了我，我给你什么</span>
+  <span>\(\alpha_i\)</span><span>attention weight：内积相似度过 softmax，非负，加起来等于 1</span>
+</div>
+</div>
+
+<h3>实验 4：拖动 query，看 attention 怎么分配</h3>
+<p>四个 token 各有一个 key（灰色箭头）和一个 value（用颜色表示它携带的信息）。紫色箭头是 query，拖动它的端点，或者选中后用方向键。这里的向量是<strong>手工设定</strong>的二维向量，只为了让几何关系看得见；真实模型里它们是几十到上千维，由训练得到。</p>
+<div class="lab" id="lab-attn">
+  <div class="presets"><span>预设：</span>
+    <button type="button" class="pre" data-p="red">query 对准"红色方块"</button>
+    <button type="button" class="pre" data-p="bowl">对准"蓝色碗"</button>
+    <button type="button" class="pre" data-p="short">把 query 缩短</button>
+    <button type="button" class="pre" data-p="long">把 query 拉长</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main" style="flex:0 1 340px"><svg class="cv" id="attn-svg" viewBox="0 0 340 340" role="application" tabindex="0" aria-label="二维平面上的 key 向量和可拖动的 query 向量。方向键左右旋转 query，上下改变长度。"></svg></div>
+    <div class="stage-side" style="flex:1 1 300px">
+      <h4>每个 token：内积 \(q^\top k_i\)，以及 softmax 之后的权重 \(\alpha_i\)</h4>
+      <div id="attn-rows"></div>
+      <div class="swatch"><i id="attn-out"></i><span>输出 \(=\sum_i \alpha_i v_i\)：按权重混合的 value</span></div>
+      <div class="live" id="attn-msg" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试看：</b>① 把 query 转向某个 key：那个 token 的权重变大，输出的颜色靠近它的 value。② <b>把 query 拉长</b>：内积整体变大，softmax 变尖锐，几乎只选一个 token，接近普通的查表。③ <b>把 query 缩短</b>：权重趋于均匀，输出接近所有 value 的平均。所以 attention 能在"精确查找"和"求平均"之间连续变化，而且用哪一种是学出来的。</p>
+</div>
+<p>三个要点：整个操作只有内积、softmax 和加权求和，处处可导，所以"该看谁"可以用梯度学。相似度由内容决定，不由位置决定，所以第 1 个 token 可以直接看第 500 个。输出是 value 的加权平均，所以每一层 attention 做的事是<strong>在 token 之间搬运信息</strong>。</p>
+<h3>Self-attention：每个 token 同时是 query、key 和 value</h3>
+<p>把 \(n\) 个 token 的向量排成矩阵 \(X\in\mathbb{R}^{n\times d}\)。每个 token 用三个可学习的线性映射分别产生自己的 query、key、value，然后所有 token 同时做一次上面的操作：</p>
+<div class="eq">\[ \mathrm{Attention}(X) = \mathrm{softmax}\!\left(\frac{(XW_Q)(XW_K)^\top}{\sqrt{d_k}}\right) XW_V \]</div>
+<p>中间那个 \(n\times n\) 的矩阵就是"谁看谁、看多少"。除以 \(\sqrt{d_k}\) 是为了数值稳定：维度越高内积的方差越大，不缩放的话 softmax 一开始就饱和，梯度很小。<strong>Multi-head attention</strong> 是把这件事并行做几遍，每一遍用不同的 \(W_Q, W_K, W_V\)，让模型能同时关注几种不同的关系。计算量按 \(n^2\) 增长（朴素实现的内存也是），这是 Transformer 最主要的代价。</p>
+<p>Attention 本身不知道顺序：把输入的 token 打乱，输出只是跟着打乱。所以必须把位置信息加进 token 里，叫 <strong>position embedding</strong>（可学习的向量、正弦函数，或者现在常用的 rotary 形式 RoPE）。</p>
+<h3>Transformer block 和三种用法</h3>
+<figure class="fig">
+<svg viewBox="0 0 960 330" role="img" aria-label="左：一个 Transformer block，residual stream 贯穿上下，attention 和 MLP 各自读出再加回去。右：三种 attention mask，encoder 全部可见，decoder 只能看到自己和之前的 token，cross-attention 的 query 和 key 来自不同的序列">
+  <!-- block -->
+  <text class="d-t" x="24" y="24">一个 Transformer block（重复 L 次）</text>
+  <line class="d-acc" x1="90" y1="306" x2="90" y2="40" marker-end="url(#arrA)" style="stroke-width:3"/>
+  <text class="d-a" x="78" y="322" text-anchor="middle">输入的 token</text>
+  <text class="d-a" x="102" y="52">到下一个 block</text>
+  <text class="d-s" x="76" y="170" text-anchor="middle" transform="rotate(-90 76 170)">residual stream</text>
+  <g text-anchor="middle">
+    <path class="d-ln" d="M90,270 H190" marker-end="url(#arr)"/>
+    <rect class="d-box" x="192" y="252" width="90" height="36" rx="6"/><text class="d-s" x="237" y="274">LayerNorm</text>
+    <line class="d-ln" x1="282" y1="270" x2="308" y2="270" marker-end="url(#arr)"/>
+    <rect class="d-hbox" x="310" y="246" width="150" height="48" rx="6"/><text class="d-t" x="385" y="266">Multi-head attention</text><text class="d-s" x="385" y="284">token 之间交换信息</text>
+    <path class="d-ln" d="M385,246 V216 H106" marker-end="url(#arr)"/>
+    <circle cx="90" cy="216" r="11" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/><text class="d-t" x="90" y="221" style="fill:var(--accent)">+</text>
+    <path class="d-ln" d="M90,152 H190" marker-end="url(#arr)"/>
+    <rect class="d-box" x="192" y="134" width="90" height="36" rx="6"/><text class="d-s" x="237" y="156">LayerNorm</text>
+    <line class="d-ln" x1="282" y1="152" x2="308" y2="152" marker-end="url(#arr)"/>
+    <rect class="d-hbox" x="310" y="128" width="150" height="48" rx="6"/><text class="d-t" x="385" y="148">MLP</text><text class="d-s" x="385" y="166">每个 token 各自加工</text>
+    <path class="d-ln" d="M385,128 V98 H106" marker-end="url(#arr)"/>
+    <circle cx="90" cy="98" r="11" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/><text class="d-t" x="90" y="103" style="fill:var(--accent)">+</text>
+  </g>
+  <!-- masks -->
+  <text class="d-t" x="520" y="24">Attention mask：行 = 谁在看，列 = 能看到谁</text>
+  <g id="mk1">
+    <text class="d-t" x="577" y="62" text-anchor="middle">Encoder</text><text class="d-s" x="577" y="80" text-anchor="middle">bidirectional，全部可见</text>
+    <g transform="translate(522,92)">
+      <rect class="f-on" x="0" y="0" width="110" height="110" rx="3"/>
+      <path d="M22,0V110 M44,0V110 M66,0V110 M88,0V110 M0,22H110 M0,44H110 M0,66H110 M0,88H110" style="stroke:var(--surface);stroke-width:1.5"/>
+    </g>
+    <text class="d-s" x="577" y="226" text-anchor="middle">用来得到 representation</text>
+    <text class="d-m" x="577" y="244" text-anchor="middle">BERT · ViT</text>
+  </g>
+  <g id="mk2">
+    <text class="d-t" x="722" y="62" text-anchor="middle">Decoder</text><text class="d-s" x="722" y="80" text-anchor="middle">causal，只能看过去</text>
+    <g transform="translate(667,92)">
+      <rect class="f-off" x="0" y="0" width="110" height="110" rx="3"/>
+      <path class="f-on" d="M0,0H22V22H44V44H66V66H88V88H110V110H0Z"/>
+      <path d="M22,0V110 M44,0V110 M66,0V110 M88,0V110 M0,22H110 M0,44H110 M0,66H110 M0,88H110" style="stroke:var(--surface);stroke-width:1.5"/>
+      <rect x="0" y="0" width="110" height="110" rx="3" style="fill:none;stroke:var(--line-strong)"/>
+    </g>
+    <text class="d-s" x="722" y="226" text-anchor="middle">用来逐个生成 token</text>
+    <text class="d-m" x="722" y="244" text-anchor="middle">GPT · 各种 LLM</text>
+  </g>
+  <g id="mk3">
+    <text class="d-t" x="872" y="62" text-anchor="middle">Cross-attention</text><text class="d-s" x="872" y="80" text-anchor="middle">query 和 key 来自两个序列</text>
+    <g transform="translate(817,114)">
+      <rect class="f-on" x="0" y="0" width="110" height="66" rx="3"/>
+      <path d="M22,0V66 M44,0V66 M66,0V66 M88,0V66 M0,22H110 M0,44H110" style="stroke:var(--surface);stroke-width:1.5"/>
+    </g>
+    <text class="d-s" x="872" y="106" text-anchor="middle">列：5 个 image token</text>
+    <text class="d-s" x="872" y="198" text-anchor="middle">行：3 个 action token</text>
+    <text class="d-s" x="872" y="226" text-anchor="middle">以另一个序列为条件</text>
+    <text class="d-m" x="872" y="244" text-anchor="middle">ACT · Diffusion Policy</text>
+  </g>
+  <text class="d-s" x="520" y="274">Encoder 和 decoder 只差一个 mask，block 的结构一样。</text>
+  <text class="d-s" x="520" y="292">Cross-attention 是额外加的一层，query 和 key/value 来自不同序列。</text>
+  <text class="d-s" x="520" y="310">"Encoder-only""decoder-only""encoder–decoder"说的就是用了哪几种。</text>
+</svg>
+<figcaption class="cap">Residual stream 是贯穿所有层的一条主干：每个 token 有一个向量，attention 和 MLP 从它读出、算完再加回去。因为是相加，梯度有一条不衰减的直通路径（第 03 节）。</figcaption>
+</figure>
+<p>一个 block 里的两个部件分工明确：<strong>attention 负责 token 之间的通信，MLP 负责每个 token 内部的计算</strong>。大部分参数其实在 MLP 里。</p>
+<div class="note warn"><p><span class="q">"Encoder / decoder"有两套含义，不要混</span>
+在 autoencoder 里，encoder 是"压缩"，decoder 是"重建"。在 Transformer 里，encoder 指"每个 token 能看到所有 token"的那种堆叠，decoder 指"只能看到过去、用来逐个生成"的那种。两套说法有历史渊源，但不等价：GPT 是 decoder-only，却完全没有压缩和重建；ViT 是 encoder-only，后面也不一定接 decoder。读论文时先分清作者用的是哪一套。</p></div>
+<h3>怎么让网络"以某个东西为条件"</h3>
+<p>Policy 要根据图像和语言来决定动作，生成模型要根据 observation 来生成动作。把条件信息送进网络，常见的只有四种办法，它们在论文的结构图里反复出现：</p>
+<div class="tw"><table>
+<thead><tr><th>办法</th><th>怎么做</th><th>出现在</th></tr></thead>
+<tbody>
+<tr><td>Concatenation</td><td>把条件直接拼到输入向量上</td><td>MLP policy：把 command 拼到 proprioception 后面</td></tr>
+<tr><td>Prefix token</td><td>把条件变成 token，放在序列前面，让 self-attention 去看</td><td>VLM、VLA：image token 和语言 token 放在最前面</td></tr>
+<tr><td>Cross-attention</td><td>主序列的 token 作为 query，去看条件序列的 key 和 value</td><td>ACT 的 decoder；transformer 版的 Diffusion Policy</td></tr>
+<tr><td>FiLM</td><td>用条件算出一组缩放和平移系数，逐通道调制中间层的 feature</td><td>CNN 版的 Diffusion Policy；RT-1 里用语言调制视觉 feature</td></tr>
+</tbody></table></div>
+<h3>Transformer 为什么胜出，代价是什么</h3>
+<div class="two">
+  <div><h4>优势</h4><ul>
+    <li>训练时整个序列并行计算；RNN 必须一步一步算。</li>
+    <li>任意两个 token 之间只隔一层 attention，梯度不用穿过很多时间步。</li>
+    <li>假设少，数据和算力越多效果越好，目前没有看到明显的上限。</li>
+    <li>只认 token，不认模态。图像、语言、动作可以放进同一个模型。</li>
+  </ul></div>
+  <div><h4>代价</h4><ul>
+    <li>计算量按序列长度的平方增长。</li>
+    <li>数据少的时候不如带强假设的结构。</li>
+    <li>逐个生成 token 时每个 token 都要一次 forward，推理慢。</li>
+    <li>没有内部状态，"记忆"只有 context window 里的东西。</li>
+  </ul></div>
+</div>
+<p>右边一列正是 Transformer 用在机器人上的难点：控制要求低延迟和高频率，而大的 Transformer 做不到。后面会看到这直接导致了 action chunking 和"慢的大模型加快的小模型"的分层设计（第 19、20 节）。</p>
+</section>
+
+<div class="part"><div class="tag">PART D</div><h2>Objective</h2><p>监督信号从哪来。这是真正区分"范式"的地方，也是术语最容易乱的地方，因为这些词其实不在同一条轴上。</p></div>
+
+<section id="paradigm">
+<h2><span class="n">12</span>范式的三条轴</h2>
+<p class="ask"><b>这一节回答：</b>Supervised、self-supervised、generative、imitation、RL 这些词是并列的吗？</p>
+<p>不是并列的，这是很多困惑的来源。Diffusion Policy 同时是 imitation learning、generative model、supervised regression，三个说法都对，因为它们在描述三件不同的事。把它们拆成三条独立的轴：</p>
+<div class="q4">
+  <div class="c2"><h4>轴 1 · 信号来源</h4><b>目标 \(y\) 是谁给的</b><p>人工 label → supervised。数据自身的一部分 → self-supervised。配对关系 → contrastive。专家的动作 → imitation。另一个模型的输出 → distillation。只有一个打分 → RL。</p></div>
+  <div class="c1"><h4>轴 2 · 建模对象</h4><b>输出一个值，还是一个分布</b><p>只输出最可能的那个答案 → regression、classification（有时叫 discriminative）。输出一个可以采样的分布 → generative。</p></div>
+  <div class="c3"><h4>轴 3 · 数据和 policy 的关系</h4><b>数据是固定的，还是自己产生的</b><p>在一个固定的数据集上训练 → offline。模型的输出会影响接下来采到的数据 → online、interactive（RL、DAgger）。</p></div>
+</div>
+<div class="tw"><table>
+<thead><tr><th>范式</th><th>目标 y 从哪来</th><th>典型的 loss</th><th>需要什么</th><th>机器人里的例子</th></tr></thead>
+<tbody>
+<tr><td>Supervised</td><td>人工标注</td><td>Cross-entropy、MSE</td><td>标注好的数据</td><td>物体检测、分割</td></tr>
+<tr><td>Self-supervised</td><td>数据自身被遮住的部分，或未来的部分</td><td>同上</td><td>大量无标注数据</td><td>LLM；MAE、DINO；world model 预测下一个 state</td></tr>
+<tr><td>Contrastive</td><td>哪些样本是一对</td><td>InfoNCE</td><td>成对的数据</td><td>CLIP、SigLIP 的 vision encoder</td></tr>
+<tr><td>Imitation</td><td>专家在同一个状态下做的动作</td><td>上面任意一种，或 diffusion、flow matching</td><td>Demonstration</td><td>ACT、Diffusion Policy、VLA</td></tr>
+<tr><td>Distillation</td><td>另一个（更强或有特权信息的）模型的输出</td><td>MSE、KL</td><td>一个可以随时查询的 teacher</td><td>Privileged teacher → 可部署的 student</td></tr>
+<tr><td>RL</td><td>没有 y；只有 reward</td><td>Policy gradient、TD error</td><td>能交互的环境，通常是 simulator</td><td>Locomotion、motion tracking、灵巧手</td></tr>
+</tbody></table></div>
+<div class="note"><p><span class="q">一条分界线</span>表里除了最后一行，<strong>所有范式的数学形式都是"根据一些东西预测另一些东西"</strong>，区别只在预测目标从哪来。它们有一个明确的"正确答案"，梯度直接告诉参数该往哪个方向改。RL 是唯一不同的：它只知道刚才做得有多好，不知道怎样做会更好，方向得靠试出来。这就是为什么 RL 需要的样本多几个数量级，也是为什么只要有 demonstration，大家就优先用 imitation。</p></div>
+</section>
+
+<section id="ssl">
+<h2><span class="n">13</span>Self-supervised 与 contrastive：没有标签怎么学</h2>
+<p class="ask"><b>这一节回答：</b>没有人标注，监督信号从哪来？CLIP、DINO、MAE 学到的 feature 有什么不同？</p>
+<p>办法是<strong>从数据本身造出一个预测任务</strong>。标注是瓶颈，而无标注的数据几乎无限，所以这是过去几年最重要的变化，也是 foundation model 这个词的来源：先用 self-supervised 的方式在海量数据上训练一个大模型，再把它适配到各种下游任务。三类做法：</p>
+<div class="tw"><table>
+<thead><tr><th>做法</th><th>造出来的任务</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>预测被遮住的部分</td><td>遮住一部分输入，用剩下的预测它</td><td>GPT（预测下一个 token）；BERT（预测被遮住的词）；MAE（遮住 75% 的 image patch，重建像素）</td></tr>
+<tr><td>Contrastive</td><td>判断哪两个样本是"一对"：配对的 embedding 拉近，不配对的推远</td><td>CLIP、SigLIP（图片和它的文字说明）；SimCLR（同一张图的两种裁剪）</td></tr>
+<tr><td>Self-distillation</td><td>同一张图的两种不同裁剪，让 student 网络的输出去匹配 teacher 网络的输出；teacher 是 student 参数的滑动平均</td><td>DINO、DINOv2</td></tr>
+</tbody></table></div>
+<h3>CLIP：contrastive learning 的标准例子</h3>
+<p>一个 batch 里有 \(N\) 对"图片和文字"。图片过 image encoder 得到 \(u_i\)，文字过 text encoder 得到 \(v_j\)，算出所有 \(N\times N\) 个相似度。训练目标是让对角线上的（真正配对的）相似度高，其余的低：</p>
+<figure class="fig">
+<svg viewBox="0 0 960 268" role="img" aria-label="CLIP 的训练：N 张图片和 N 段文字分别编码，得到 N 乘 N 的相似度矩阵，对角线是真正配对的，训练目标是把对角线拉高、其余压低">
+  <g text-anchor="middle">
+    <rect class="d-box" x="20" y="82" width="150" height="34" rx="6"/><text class="d-s" x="95" y="104">图 1：红色方块在桌上</text>
+    <rect class="d-box" x="20" y="124" width="150" height="34" rx="6"/><text class="d-s" x="95" y="146">图 2：机械臂抓杯子</text>
+    <rect class="d-box" x="20" y="166" width="150" height="34" rx="6"/><text class="d-s" x="95" y="188">图 3：一只狗</text>
+    <rect class="d-box" x="20" y="208" width="150" height="34" rx="6"/><text class="d-s" x="95" y="230">图 4：厨房</text>
+    <rect class="f-q4" x="200" y="82" width="92" height="160" rx="6"/><text class="d-t" x="246" y="158">Image</text><text class="d-t" x="246" y="176">encoder</text>
+    <rect class="f-q2" x="356" y="16" width="176" height="34" rx="6"/><text class="d-t" x="444" y="38">Text encoder</text>
+  </g>
+  <line class="d-ln" x1="170" y1="162" x2="198" y2="162" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="292" y1="162" x2="324" y2="162" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="444" y1="50" x2="444" y2="62" marker-end="url(#arr)"/>
+  <g class="d-m" text-anchor="middle"><text x="340" y="104">u₁</text><text x="340" y="146">u₂</text><text x="340" y="188">u₃</text><text x="340" y="230">u₄</text>
+    <text x="378" y="76">v₁</text><text x="422" y="76">v₂</text><text x="466" y="76">v₃</text><text x="510" y="76">v₄</text></g>
+  <g>
+    <rect class="f-on" x="358" y="82" width="40" height="34" rx="3"/><rect class="f-off" x="402" y="82" width="40" height="34" rx="3"/><rect class="f-off" x="446" y="82" width="40" height="34" rx="3"/><rect class="f-off" x="490" y="82" width="40" height="34" rx="3"/>
+    <rect class="f-off" x="358" y="124" width="40" height="34" rx="3"/><rect class="f-on" x="402" y="124" width="40" height="34" rx="3"/><rect class="f-off" x="446" y="124" width="40" height="34" rx="3"/><rect class="f-off" x="490" y="124" width="40" height="34" rx="3"/>
+    <rect class="f-off" x="358" y="166" width="40" height="34" rx="3"/><rect class="f-off" x="402" y="166" width="40" height="34" rx="3"/><rect class="f-on" x="446" y="166" width="40" height="34" rx="3"/><rect class="f-off" x="490" y="166" width="40" height="34" rx="3"/>
+    <rect class="f-off" x="358" y="208" width="40" height="34" rx="3"/><rect class="f-off" x="402" y="208" width="40" height="34" rx="3"/><rect class="f-off" x="446" y="208" width="40" height="34" rx="3"/><rect class="f-on" x="490" y="208" width="40" height="34" rx="3"/>
+  </g>
+  <text class="d-s" x="444" y="262" text-anchor="middle">第 i 行第 j 列：uᵢ 和 vⱼ 的 cosine similarity</text>
+  <g>
+    <text class="d-t" x="580" y="92">对角线：真正配对的，拉高</text>
+    <text class="d-t" x="580" y="118">其余：不配对的，压低</text>
+    <text class="d-s" x="580" y="152">每一行是一道"N 选 1"的选择题：</text>
+    <text class="d-s" x="580" y="170">给定这张图，哪段文字是它的说明？</text>
+    <text class="d-s" x="580" y="188">Loss 就是这道题的 cross-entropy，</text>
+    <text class="d-s" x="580" y="206">每一列反过来再做一遍。</text>
+    <text class="d-a" x="580" y="236">训练完：图和文字落在同一个 embedding space</text>
+  </g>
+</svg>
+<figcaption class="cap">不配对的样本（negatives）不需要标注，batch 里其他样本天然就是。CLIP 用了 4 亿对从网上收集的图片和文字。</figcaption>
+</figure>
+<div class="eq">\[ \mathcal{L}_i = -\log \frac{\exp\big(\mathrm{sim}(u_i, v_i)/\tau\big)}{\sum_{j=1}^{N}\exp\big(\mathrm{sim}(u_i, v_j)/\tau\big)} \]</div>
+<p>这个 loss 叫 InfoNCE，就是第 04 节的 softmax 加 cross-entropy，只是"类别"换成了 batch 里的其他样本。SigLIP 把它换成对每一对独立做二分类的 sigmoid loss，不再依赖很大的 batch。</p>
+<h3>Collapse：所有 self-supervised 方法都要防的捷径</h3>
+<p>"让两个相关样本的 embedding 靠近"有一个平凡解：把所有输入都映射到同一个向量。这叫 representation collapse。每种方法的不同之处，很大程度上就是用什么办法堵住它：contrastive 靠 negatives 把不相关的推开；DINO 靠 teacher 的滑动平均、centering 和 sharpening；MAE 的目标是具体的像素，天然不会 collapse。</p>
+<h3>预训练方式决定了 feature 擅长什么</h3>
+<p>这对机器人很重要，因为机器人自己的数据太少，vision encoder 几乎都借用在互联网数据上预训练的模型。<strong>Policy 能"看见"什么，由这个 encoder 的训练目标决定。</strong></p>
+<div class="tw"><table>
+<thead><tr><th>Encoder</th><th>训练目标</th><th>Feature 的特点</th><th>在 robot policy 里</th></tr></thead>
+<tbody>
+<tr><td>CLIP、SigLIP</td><td>图片和文字对齐</td><td>语义强，知道"这是什么"，和语言在同一个空间；精细的空间位置信息较弱</td><td>VLM 和 VLA 的默认 vision encoder</td></tr>
+<tr><td>DINOv2</td><td>只用图像的 self-distillation，加上 masked patch 预测</td><td>几何和局部对应关系强，适合 depth、分割、keypoint；没有和语言对齐</td><td>和 SigLIP 拼在一起用（OpenVLA）；dense 的感知任务</td></tr>
+<tr><td>MAE</td><td>重建被遮住的像素</td><td>Fine-tune 之后很强；冻住直接用（linear probe）不如 contrastive 的</td><td>早期的 robot 视觉预训练（MVP、VC-1）</td></tr>
+<tr><td>从头训练的 ResNet</td><td>直接用 policy 的 action loss</td><td>只保留对这个任务有用的信息；不泛化到新场景</td><td>ACT、Diffusion Policy 这类单任务 policy 常用 ResNet-18</td></tr>
+</tbody></table></div>
+<div class="note deep"><p><span class="q">深一层：预测像素，还是预测 latent</span>
+MAE 和 video generation 在像素空间里预测，好处是目标明确，不会 collapse；坏处是模型要花力气预测无法预测也无关紧要的细节（每片树叶的位置）。JEPA 一类的方法（I-JEPA、V-JEPA）主张只在 latent space 里预测，让模型自己决定丢掉哪些细节。DINO 的 self-distillation 也可以归入这个思路。目前没有定论，两条路线都有很强的结果。对机器人来说这个问题很具体：world model 应该生成未来的视频，还是只预测未来的 latent（第 21 节）。</p></div>
+</section>
+
+<section id="generative">
+<h2><span class="n">14</span>Generative model：学一个分布，而不是一个答案</h2>
+<p class="ask"><b>这一节回答：</b>Diffusion 和 flow matching 到底在做什么？为什么 robot policy 需要它们？</p>
+<p>Generative model 学的是数据的分布 \(p(x)\) 或条件分布 \(p(x\mid c)\)，并且能从中<strong>采样</strong>。机器人需要它，是因为第 04 节的那个问题：同一个 observation 下合理的 action 常常不止一种，只输出一个"平均答案"的网络会给出一个谁都没示范过的动作。</p>
+<p>难点在于：怎么用一个神经网络表示一个任意形状、高维、多峰的分布？各个家族给了不同的答案：</p>
+<div class="tw"><table>
+<thead><tr><th>家族</th><th>核心想法</th><th>优点</th><th>缺点</th><th>机器人里</th></tr></thead>
+<tbody>
+<tr><td>Autoregressive</td><td>把 \(x\) 拆成一串离散 token，用概率的链式法则 \(p(x)=\prod_i p(x_i\mid x_{\lt i})\)，每次预测一个</td><td>Loss 就是 cross-entropy；能表示任意离散分布</td><td>必须先离散化；一个一个生成，慢</td><td>RT-2、OpenVLA、π0-FAST 输出 action token</td></tr>
+<tr><td>VAE</td><td>先采一个 latent \(z\)，再由 decoder 生成（第 08 节）</td><td>采样只要一次 forward</td><td>样本偏模糊</td><td>ACT 用 conditional VAE</td></tr>
+<tr><td>GAN</td><td>Generator 生成样本，discriminator 分辨真假，两者对抗</td><td>样本清晰，一次 forward</td><td>训练不稳定，容易只学到部分 mode</td><td>GAIL；AMP 用 discriminator 的输出当 style reward</td></tr>
+<tr><td>Diffusion</td><td>学会给加了噪声的数据去噪；采样时从纯噪声出发一步步去噪</td><td>训练稳定，能表示复杂的多峰分布</td><td>采样要迭代多步</td><td>Diffusion Policy；motion generation</td></tr>
+<tr><td>Flow matching</td><td>学一个速度场，沿着它积分，把噪声搬运成数据</td><td>同上；形式更简单，步数通常更少</td><td>同上</td><td>π0、GR00T N1 的 action head</td></tr>
+</tbody></table></div>
+<h3>Diffusion：把"生成"变成一连串的"去噪"</h3>
+<p>训练时不需要真的一步步加噪声，直接按下面的式子造一个带噪声的样本，让网络猜加进去的噪声是什么：</p>
+<div class="eq">
+\[ x_t = \sqrt{\bar\alpha_t}\, x_0 + \sqrt{1-\bar\alpha_t}\;\epsilon, \qquad \mathcal{L} = \mathbb{E}_{x_0,\,\epsilon,\,t}\,\big\lVert \epsilon - \epsilon_\theta(x_t, t)\big\rVert^2 \]
+<div class="sym">
+  <span>\(x_0\)</span><span>一个干净的数据样本；对 policy 来说是一段专家的 action</span>
+  <span>\(\epsilon\)</span><span>标准 Gaussian 噪声</span>
+  <span>\(t,\ \bar\alpha_t\)</span><span>噪声等级及其对应的系数；\(t\) 越大，\(\bar\alpha_t\) 越接近 0，样本越接近纯噪声</span>
+  <span>\(\epsilon_\theta\)</span><span>网络：输入带噪声的样本和噪声等级，输出对噪声的估计</span>
+</div>
+</div>
+<p>这个 loss 是一个普通的 MSE regression。采样时从 \(x_T\sim\mathcal{N}(0,I)\) 出发，反复用网络估计噪声并去掉一部分，几步到上百步之后得到 \(x_0\)。为什么这样可行：可以证明，最优的噪声预测和 \(\nabla_x \log p_t(x)\)（叫 score，指向数据密度变大的方向）只差一个系数。所以<strong>每一步去噪，都是沿着"数据更可能出现"的方向走一小步</strong>；噪声等级从大到小，对应先定大致形状、再补细节。</p>
+<h3>Flow matching：直接学一个速度场</h3>
+<p>取一个噪声样本 \(x_0\sim\mathcal{N}(0,I)\) 和一个数据样本 \(x_1\)，用直线把它们连起来，让网络在线上的任意一点预测这条线的方向：</p>
+<div class="eq">
+\[ x_t = (1-t)\,x_0 + t\,x_1, \qquad \mathcal{L} = \mathbb{E}_{x_0,\,x_1,\,t}\,\big\lVert v_\theta(x_t, t) - (x_1 - x_0)\big\rVert^2 \]
+</div>
+<p>采样时从噪声出发，积分一个 ODE：\(\dot{x} = v_\theta(x, t)\)，从 \(t=0\) 到 \(t=1\)。用你熟悉的话说：<strong>网络学的是一个时变的向量场，生成就是从一个随机初值出发做一次数值积分</strong>。当噪声是 Gaussian、路径是这种线性插值时，diffusion 和 flow matching 的训练目标可以互相转换，差别只在参数化、噪声的时间安排和 loss 的权重。</p>
+
+<h3>实验 5：MSE 的平均化，和多步积分怎么把它解开</h3>
+<p>这个实验把第 04 节的 mode averaging 和上面的 flow matching 接在一起。设想一个一维的 action：示范数据集中在两个值附近（比如"从左绕"和"从右绕"）。左边 \(t=0\) 是噪声，右边 \(t=1\) 是数据分布，每条细线是一个样本沿速度场走过的轨迹。因为目标分布是已知的 Gaussian mixture，这里的速度场是<strong>解析算出来的精确解</strong>；真实训练中由网络 \(v_\theta\) 来近似它。</p>
+<div class="lab" id="lab-flow">
+  <div class="opts">
+    <span>Euler 积分步数：</span>
+    <span class="filters" id="flow-n" style="margin:0">
+      <button type="button" class="pre" data-n="1">1</button>
+      <button type="button" class="pre" data-n="2">2</button>
+      <button type="button" class="pre" data-n="4">4</button>
+      <button type="button" class="pre" data-n="8">8</button>
+      <button type="button" class="pre" data-n="32">32</button>
+      <button type="button" class="pre" data-n="128">128</button>
+    </span>
+    <label>上方那个 mode 占的比例 <input type="range" id="flow-w" min="0.1" max="0.9" step="0.05" value="0.5"><output id="flow-w-o"></output></label>
+    <button type="button" class="pre" id="flow-seed">换一批噪声</button>
+  </div>
+  <div class="stage">
+    <div class="stage-main" style="flex:0 1 640px"><svg class="cv" id="flow-svg" viewBox="0 0 640 330" role="img" aria-label="一维 flow matching：样本从 t=0 的 Gaussian 噪声沿速度场流到 t=1 的双峰数据分布"></svg></div>
+    <div class="stage-side">
+      <div class="kv">
+        <span>积分步数</span><span id="flow-nv"></span>
+        <span>落在上方 mode</span><span id="flow-a"></span>
+        <span>落在下方 mode</span><span id="flow-b"></span>
+        <span>落在两个 mode 之间</span><span id="flow-mid"></span>
+        <span>数据的均值</span><span id="flow-mean"></span>
+      </div>
+      <div class="live" id="flow-msg" aria-live="polite"></div>
+    </div>
+  </div>
+  <p class="try"><b>试试看：</b>① 步数选 <b>1</b>：所有样本落在同一个点上，而且这个点正好是数据的均值，也就是 MSE regression 的答案，落在两个 mode 中间的"撞墙"位置。② 步数加到 2、4：样本开始分成两群，但还有一些停在中间。③ 步数 8 以上：干净的两个峰，比例和数据一致。④ 改变比例：1 步的落点跟着均值移动，多步的结果始终是两个峰。</p>
+</div>
+<p>第 ① 步不是巧合，可以直接推出来。在 \(t=0\)，\(x_t\) 就是纯噪声，和它将要去的数据点无关，所以 MSE 的最优解是 \(v^\star(x, 0) = \mathbb{E}[x_1] - x\)。走一整步就到了 \(x + v^\star = \mathbb{E}[x_1]\)。也就是说：</p>
+<div class="note"><p><span class="q">这个实验的结论</span><strong>只走一步的 flow matching 就是 MSE regression。</strong>Flow matching 的训练 loss 本身也是 MSE，它也在做平均。区别是它把问题拆成了很多小步：每一步只需要回答"从这里出发，平均该往哪边挪"，而离某个 mode 越近，这个平均就越偏向那个 mode。<strong>多峰是靠多步积分分辨出来的，不是靠输出层。</strong>这就是 generative policy 多花的那几次 forward 买到的东西。</p></div>
+<h3>Robot policy 的输出头：一张对照表</h3>
+<div class="tw"><table>
+<thead><tr><th>输出头</th><th>假设的 action 分布</th><th>能否表示多峰</th><th>一次推理的代价</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>直接回归（MSE、L1）</td><td>单峰</td><td>不能</td><td>1 次 forward</td><td>早期 behavior cloning；OpenVLA-OFT</td></tr>
+<tr><td>Gaussian（均值加方差）</td><td>单峰</td><td>不能</td><td>1 次 forward</td><td>PPO 训练的 RL policy</td></tr>
+<tr><td>Conditional VAE</td><td>由 latent \(z\) 选择 mode</td><td>能，靠 \(z\)</td><td>1 次 forward</td><td>ACT</td></tr>
+<tr><td>离散 token，autoregressive</td><td>任意，精度受 bin 数限制</td><td>能</td><td>每个 token 1 次 forward</td><td>RT-2、OpenVLA、π0-FAST</td></tr>
+<tr><td>Diffusion、flow matching</td><td>任意连续分布</td><td>能</td><td>几次到上百次 forward</td><td>Diffusion Policy、π0、GR00T N1</td></tr>
+</tbody></table></div>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
+Diffusion 或 flow 的 policy 在每次出动作时都要做一次迭代计算，这和 MPC 每个周期解一次优化在结构上很像：把一部分计算留到了线上，换来更强的表达能力。代价同样是延迟。所以这类 policy 几乎都配合 action chunking 使用：一次生成未来一段动作，分摊掉迭代的开销（第 19 节）。</p></div>
+</section>
+
+<section id="rl">
+<h2><span class="n">15</span>Reinforcement learning：只有 reward，没有标签</h2>
+<p class="ask"><b>这一节回答：</b>RL 的梯度是怎么来的？它为什么需要那么多样本，又为什么在 locomotion 上行得通？</p>
+<p>设定是 Markov decision process：在 state \(s_t\) 下，policy \(\pi_\theta\) 选一个 action \(a_t\)，环境返回 reward \(r_t\) 并转移到 \(s_{t+1}\)。目标是让长期累计的 reward 最大：</p>
+<div class="eq">\[ J(\theta) = \mathbb{E}_{\tau\sim\pi_\theta}\Big[\sum_{t} \gamma^t\, r(s_t, a_t)\Big] \]</div>
+<p>和前面所有范式相比，这里有两个根本的困难：</p>
+<ul>
+  <li><strong>不能直接对目标求导。</strong>Reward 通过环境的 dynamics 依赖于 action，而环境是个黑盒，有 contact 时还不光滑。链式法则在这里断了。</li>
+  <li><strong>数据分布由 policy 自己决定。</strong>Policy 一更新，它访问的状态就变了，之前的数据就不再代表现在的 policy。训练目标在不断移动。</li>
+</ul>
+<h3>Policy gradient：不对环境求导，只对"选这个动作的概率"求导</h3>
+<div class="eq">
+\[ \nabla_\theta J(\theta) = \mathbb{E}_{\tau\sim\pi_\theta}\Big[\sum_t \nabla_\theta \log \pi_\theta(a_t\mid s_t)\; A(s_t, a_t)\Big] \]
+<div class="sym">
+  <span>\(\pi_\theta(a\mid s)\)</span><span>stochastic policy，通常是一个 Gaussian：网络输出均值，另外学一个方差</span>
+  <span>\(A(s,a)\)</span><span>advantage：在 \(s\) 下做 \(a\)，比这个状态下的平均水平好多少</span>
+</div>
+</div>
+<p>读法很直白：<strong>带着噪声去试；比预期好的动作，提高它的概率；比预期差的，降低。</strong>这个式子只需要能采样、能拿到 reward，完全不需要知道环境的 dynamics。代价是它本质上是用随机扰动来估计方向，方差很大，action 维度越高、任务越长越严重。所以需要大量样本，这就是为什么要在 GPU 上同时跑几千个仿真环境。</p>
+<p>降低方差靠 <strong>critic</strong>：再训练一个网络 \(V(s)\) 来预测"从这个状态开始，按当前 policy 走下去能拿多少 reward"，用它来算 advantage。Policy 叫 actor，合起来叫 actor–critic。Critic 的训练是一个普通的 regression。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
+\(V(s)\) 满足 Bellman equation：\(V(s) = \mathbb{E}[\,r + \gamma V(s')\,]\)，就是 dynamic programming。LQR 是它的特例：dynamics 线性、cost 二次时，value function 正好是二次型 \(x^\top P x\)，把它代入 Bellman equation，得到的就是 \(P\) 要满足的 Riccati equation。RL 里的 critic 是在没有模型、非线性的情况下，用神经网络和样本去近似同一个东西。</p></div>
+<h3>PPO：为什么它是 legged robot 的默认算法</h3>
+<p>Policy gradient 的一步如果迈得太大，policy 会突然变差，接下来采到的数据也跟着变差，很难恢复。PPO 的做法是限制每次更新后 policy 不能离采数据时的旧 policy 太远：</p>
+<div class="eq">\[ L^{\text{CLIP}}(\theta) = \mathbb{E}_t\Big[\min\big(\rho_t(\theta)\,\hat{A}_t,\ \ \mathrm{clip}(\rho_t(\theta),\,1-\varepsilon,\,1+\varepsilon)\,\hat{A}_t\big)\Big], \qquad \rho_t(\theta) = \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\text{old}}}(a_t\mid s_t)} \]</div>
+<p>\(\rho_t\) 是新旧 policy 给同一个动作的概率之比。把它 clip 在 1 附近，相当于一个便宜的 trust region。PPO 的样本效率不高，但相对稳健、容易大规模并行。在仿真里样本几乎免费，所以这个取舍很划算。</p>
+<h3>RL 算法的几个家族</h3>
+<div class="tw"><table>
+<thead><tr><th>家族</th><th>怎么拿到改进方向</th><th>特点</th><th>什么时候用</th></tr></thead>
+<tbody>
+<tr><td>On-policy policy gradient（PPO）</td><td>用当前 policy 新采的数据估计梯度，用完就扔</td><td>稳定，费样本</td><td>仿真又快又便宜：locomotion、motion tracking</td></tr>
+<tr><td>Off-policy actor–critic（SAC、TD3）</td><td>学一个 \(Q(s,a)\)，对 \(Q\) 关于 action 求导；旧数据可以反复用</td><td>省样本，调参更难</td><td>样本贵：真机上的 RL</td></tr>
+<tr><td>Model-based RL（Dreamer、TD-MPC2）</td><td>先学一个 world model，在模型里想象或做 planning</td><td>更省样本；受模型误差限制</td><td>第 21 节</td></tr>
+<tr><td>对可微模型求导（SHAC、SuperMimic）</td><td>Dynamics 可微时，直接用 BPTT 得到 analytic gradient</td><td>梯度方差低得多；需要可微的模型和 reward</td><td>有 differentiable simulator 或学到的可微 world model</td></tr>
+<tr><td>Offline RL（CQL、IQL）</td><td>只用一个固定的数据集，不再交互</td><td>要防止高估数据里没出现过的动作</td><td>有大量已有数据、但质量参差不齐</td></tr>
+</tbody></table></div>
+<p>第四行和第一行的对比最能说明问题。Policy gradient 是"零阶"的：只用到 reward 的值。对模型求导是"一阶"的：用到了 reward 对 action 的导数。SuperMimic 的 ablation 报告，在同一个 world model 上，BPTT 达到同样 return 所需的 imagined step 比 PPO 少约 64 倍。这正是第 12 节那条分界线的体现：<strong>知道"往哪个方向改"比只知道"好不好"值钱得多。</strong></p>
+<h3>RL 在机器人上成立的条件</h3>
+<p>现在的 legged RL 几乎都是 sim-to-real：在 simulator 里训练，直接部署到真机。它依赖四样东西：<strong>够快够准的 simulator</strong>；<strong>domain randomization</strong>（训练时随机改变质量、摩擦、延迟等参数，让真机落在训练分布之内，对应第 06 节）；<strong>写得出来的 reward</strong>；以及训练时可以给 critic 看真机上拿不到的信息（asymmetric actor–critic）。Reward 是最花人力的部分：它是对任务的间接描述，policy 会找到一切能拿高分但不符合你本意的办法。这也是 motion tracking 兴起的原因之一：用 mocap 数据定义 reward，省掉了大部分手工设计（见 <a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a>）。</p>
+</section>
+
+<section id="il">
+<h2><span class="n">16</span>Imitation learning 与 distillation</h2>
+<p class="ask"><b>这一节回答：</b>直接模仿专家有什么坑？Teacher–student 为什么是机器人里最常用的套路？</p>
+<h3>Behavior cloning：对 action 做 supervised learning</h3>
+<p>收集专家的 (observation, action) 对，训练 policy 在同样的 observation 下输出同样的 action：\(\min_\theta \mathbb{E}_{(o,a)\sim\mathcal{D}}[-\log \pi_\theta(a\mid o)]\)。没有 reward，没有 simulator，没有探索。它简单到让人怀疑，而且确实有三个固有的问题，现代方法的大部分设计都是在对付它们：</p>
+<div class="tw"><table>
+<thead><tr><th>问题</th><th>原因</th><th>现在怎么处理</th></tr></thead>
+<tbody>
+<tr><td>Compounding error</td><td>闭环下误差累积，走到示范没覆盖的状态（第 06 节）</td><td>Action chunking，减少做决策的次数；数据里包含纠错动作；DAgger；更多更多样的数据</td></tr>
+<tr><td>Multimodality</td><td>同一个 observation 下，不同示范做了不同的动作（第 04 节）</td><td>Generative 的输出头：diffusion、flow matching、离散 token、CVAE（第 14 节）</td></tr>
+<tr><td>学到错误的因果关系</td><td>把历史喂给 policy 时，它可能学会"照抄上一步的动作"，因为这在训练集上几乎总是对的</td><td>限制历史长度；预测一整段而不是下一步</td></tr>
+</tbody></table></div>
+<p><strong>Action chunking</strong> 值得单独记住：policy 不是每一步输出一个动作，而是一次输出未来 \(H\) 步的一整段。它对上面三个问题都有不同程度的帮助：决策次数变少，等效的任务长度变短；一段动作内部是连贯的，不会在两个 mode 之间来回跳；要预测的是未来一整段，"照抄上一步"这条捷径也没那么好走了。</p>
+<h3>DAgger：让专家给 policy 自己走到的状态打标签</h3>
+<ol>
+  <li>用当前的 policy 去执行，记录它走到的状态。</li>
+  <li>对这些状态，问专家"你在这里会怎么做"，得到标签。</li>
+  <li>把新数据并入数据集，重新训练。重复。</li>
+</ol>
+<p>这样训练分布就逐渐覆盖了 policy 自己会到达的状态，包括它犯错之后的状态。DAgger 的前提是专家可以被随时查询。对人来说这很难（没法在机器人自己乱动的时候给出标签），但如果<strong>专家本身是一个 policy</strong>，就毫无困难。这就引出了 distillation。</p>
+<h3>Distillation：让一个模型模仿另一个模型</h3>
+<p>Distillation 没有新的数学：它就是 supervised learning，只是标签由另一个模型（teacher）提供。它有用是因为 teacher 和 student 的<strong>处境不同</strong>。在机器人里最常见的形式是 privileged teacher–student：</p>
+<figure class="fig">
+<svg viewBox="0 0 960 300" role="img" aria-label="两阶段的 teacher-student：第一阶段 teacher 在仿真里用 RL 训练，输入包含真机拿不到的 privileged 信息；第二阶段 student 只用真机上有的传感器，用 supervised loss 模仿 teacher 的输出；最后只部署 student">
+  <text class="d-t" x="20" y="24">阶段 1：用 RL 训练 teacher（只在 simulator 里）</text>
+  <g text-anchor="middle">
+    <rect class="f-q3" x="20" y="40" width="210" height="64" rx="6"/><text class="d-t" x="125" y="62">Privileged 信息</text><text class="d-s" x="125" y="80">真实速度、摩擦系数、地形高度</text><text class="d-s" x="125" y="96">接触力、物体位姿</text>
+    <rect class="d-box" x="20" y="112" width="210" height="34" rx="6"/><text class="d-s" x="125" y="134">Proprioception</text>
+    <rect class="d-hbox" x="300" y="62" width="150" height="64" rx="6"/><text class="d-t" x="375" y="90">Teacher policy</text><text class="d-s" x="375" y="108">问题简单，学得好</text>
+    <rect class="d-box" x="520" y="76" width="110" height="36" rx="6"/><text class="d-s" x="575" y="99">action a*</text>
+    <rect class="f-q2" x="700" y="62" width="240" height="64" rx="6"/><text class="d-t" x="820" y="90">信号：reward</text><text class="d-s" x="820" y="108">RL（例如 PPO），大量并行环境</text>
+  </g>
+  <line class="d-ln" x1="230" y1="78" x2="298" y2="88" marker-end="url(#arr)"/><line class="d-ln" x1="230" y1="129" x2="298" y2="104" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="450" y1="94" x2="518" y2="94" marker-end="url(#arr)"/>
+  <line class="d-warm" x1="700" y1="94" x2="632" y2="94" marker-end="url(#arrG)" style="stroke-dasharray:6 4"/>
+  <line class="l-ax" x1="20" y1="166" x2="940" y2="166" style="stroke-dasharray:3 5"/>
+  <text class="d-t" x="20" y="194">阶段 2：把 teacher 蒸馏成 student（仍在 simulator 里），然后只部署 student</text>
+  <g text-anchor="middle">
+    <rect class="d-box" x="20" y="212" width="210" height="64" rx="6"/><text class="d-t" x="125" y="238">真机上有的输入</text><text class="d-s" x="125" y="258">Proprioception 的历史，或相机图像</text>
+    <rect class="d-hbox" x="300" y="212" width="150" height="64" rx="6"/><text class="d-t" x="375" y="240">Student policy</text><text class="d-s" x="375" y="258">要从历史里推断缺的信息</text>
+    <rect class="d-box" x="520" y="226" width="110" height="36" rx="6"/><text class="d-s" x="575" y="249">action a</text>
+    <rect class="f-q2" x="700" y="212" width="240" height="64" rx="6"/><text class="d-t" x="820" y="240">信号：‖a − a*‖²</text><text class="d-s" x="820" y="258">Teacher 在同一个状态下的输出</text>
+  </g>
+  <line class="d-ln" x1="230" y1="244" x2="298" y2="244" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="450" y1="244" x2="518" y2="244" marker-end="url(#arr)"/>
+  <line class="d-warm" x1="700" y1="244" x2="632" y2="244" marker-end="url(#arrG)" style="stroke-dasharray:6 4"/>
+  <path class="d-acc" d="M575,112 V150 H820 V210" marker-end="url(#arrA)" style="stroke-dasharray:2 4"/>
+  <text class="d-a" x="592" y="144">teacher 冻住，随时可以查询：这正是 DAgger 需要的专家</text>
+</svg>
+<figcaption class="cap">两个阶段的区别只在两处：输入里有没有 privileged 信息，以及监督信号是 reward 还是 teacher 的输出。阶段 2 里通常让 student 自己的动作驱动仿真，teacher 只负责给标签，也就是 DAgger。</figcaption>
+</figure>
+<p>为什么不直接用 RL 训练 student？因为 student 面对的是部分可观测的问题，再加上 RL 本身的高方差，往往学不出来或者学得很差。两阶段的做法把一个难问题拆成了两个容易的：<strong>teacher 的问题有完整的信息，所以 RL 学得动；student 的问题有每一步的标签，所以是 supervised learning。</strong>这个套路在机器人里有三种主要用途：</p>
+<div class="tw"><table>
+<thead><tr><th>用途</th><th>Teacher</th><th>Student</th><th>例子</th></tr></thead>
+<tbody>
+<tr><td>去掉 privileged 信息</td><td>能看到地形、摩擦、真实速度</td><td>只有 proprioception 的历史</td><td>Lee 2020（ANYmal）；RMA</td></tr>
+<tr><td>从 state 到视觉</td><td>用 simulator 里的真实状态（height map、物体位姿）</td><td>用 depth 或 RGB 图像</td><td>Parkour；灵巧手操作</td></tr>
+<tr><td>多个专家合成一个</td><td>很多个各管一类动作的 policy</td><td>一个通用的 policy</td><td>通用的 humanoid motion tracker</td></tr>
+</tbody></table></div>
+<p>第二行特别重要：它是 state-based 和 vision-based 两条路线之间的桥（第 17 节）。还有两种用法用的是同一个词：把大模型压成小模型（最初的 knowledge distillation，student 学 teacher 输出的整个概率分布）；把需要很多步的 diffusion 模型压成一两步就能采样的模型。</p>
+<div class="note deep"><p><span class="q">深一层：蒸馏的是动作，还是 latent</span>
+RMA 的做法和上图略有不同，值得对比。它的 teacher 包含一个 encoder，把环境参数（质量、摩擦、地形等）压成一个 8 维的 latent \(z\)，policy 根据 \(z\) 和 proprioception 出动作。第二阶段不模仿动作，而是训练一个 adaptation module，从过去约半秒的状态和动作历史里回归出这个 \(z\)。部署时 policy 本身不变，只是 \(z\) 的来源从"真值经过 encoder"换成了"从历史里估计"。这其实是一个<strong>学出来的 system identification</strong>：它没有估计摩擦系数是多少，而是估计了一个对控制来说足够用的环境概括。这也是"latent 作为接口"的一个典型例子。</p></div>
+</section>
+
+<div class="part"><div class="tag">PART E</div><h2>把它们拼成机器人</h2><p>用前面的四个问题去拆 robot learning 的两条主线：state-based 的 sim-to-real RL，和 vision-based 的 imitation learning，以及它们怎么在 VLA 和 humanoid 上汇合。</p></div>
+
+<section id="lines">
+<h2><span class="n">17</span>两条主线：state-based 与 vision-based</h2>
+<p class="ask"><b>这一节回答：</b>为什么腿用 RL、手用 imitation？这两条线的区别到底在哪几个选择上？</p>
+<p>把主要的 robot learning 系统按两个问题排开：<strong>输入是什么</strong>（Q4），<strong>监督信号从哪来</strong>（Q2 和 Q3）。绝大多数工作落在对角线附近的两个格子里（紫色）。</p>
+<div class="tw"><table class="grid-map">
+<thead><tr><th></th><th>信号：reward<br>数据：simulation</th><th>信号：专家的 action<br>数据：真机 teleoperation</th><th>再加上：互联网规模的预训练</th></tr></thead>
+<tbody>
+<tr><td class="rowh">Proprioception<br><span class="d-s" style="font-weight:400;color:var(--muted)">几十到几百维</span></td>
+  <td class="hot"><b>State-based sim-to-real RL</b>四足和 humanoid 的 locomotion；motion tracking（reward 由 mocap 定义）；用 privileged state 的灵巧手</td>
+  <td class="none">少见：低维 state 的任务通常 reward 好写，直接用 RL</td>
+  <td class="none">Humanoid 的 behavior foundation model 在往这里走，但预训练数据是 mocap，不是互联网</td></tr>
+<tr><td class="rowh">加上 depth 或 height map</td>
+  <td><b>Perceptive locomotion</b>先训练看得到真实地形的 teacher，再蒸馏到只用 depth 的 student：越野、parkour</td>
+  <td class="none">—</td><td class="none">—</td></tr>
+<tr><td class="rowh">RGB 图像<br><span class="d-s" style="font-weight:400;color:var(--muted)">每帧十几万维</span></td>
+  <td>仿真里的视觉 RL 加 sim-to-real；需要把渲染也随机化，难度大</td>
+  <td class="hot"><b>Visuomotor imitation</b>ACT、Diffusion Policy：单个或少数任务，每个任务几十到几百条 demonstration</td>
+  <td><b>在预训练 encoder 上做 imitation</b>用 DINOv2、SigLIP 等现成的 vision encoder</td></tr>
+<tr><td class="rowh">RGB + 语言</td>
+  <td class="none">—</td>
+  <td>语言条件的多任务 policy：RT-1、Octo</td>
+  <td class="hot"><b>VLA</b>RT-2、OpenVLA、π0、GR00T N1：在预训练的 VLM 上加 action 输出</td></tr>
+</tbody></table></div>
+<h3>两条线的全面对比</h3>
+<div class="tw"><table>
+<thead><tr><th></th><th>State-based sim-to-real RL</th><th>Visuomotor imitation</th><th>VLA</th></tr></thead>
+<tbody>
+<tr><td>典型任务</td><td>Locomotion、全身 motion tracking、手内转动物体</td><td>桌面操作、双臂精细操作</td><td>用语言指定的多任务操作</td></tr>
+<tr><td>输入（Q4）</td><td>Proprioception，可能加 height map 或 depth</td><td>1 到 3 路 RGB，加 proprioception</td><td>RGB、语言、proprioception</td></tr>
+<tr><td>网络（Q1）</td><td>MLP，约 10⁵ 到 10⁶ 个参数</td><td>CNN 或 ViT，加 Transformer 或 U-Net，约 10⁷ 到 10⁸</td><td>VLM 加 action head，10⁹ 量级</td></tr>
+<tr><td>监督信号（Q2）</td><td>Reward：手写，或由 mocap 定义</td><td>专家的 action</td><td>专家的 action，加互联网的图文数据</td></tr>
+<tr><td>数据（Q3）</td><td>Simulation，10⁸ 到 10¹⁰ 步，几乎免费</td><td>Teleoperation，每个任务几十到几百条</td><td>10⁴ 到 10⁵ 小时量级的 robot 数据（大多是私有的），加预训练</td></tr>
+<tr><td>输出</td><td>Joint position target，交给 PD</td><td>一段 action（joint 或 end-effector）</td><td>同左</td></tr>
+<tr><td>频率</td><td>Policy 约 50 Hz，底层 PD 更高</td><td>10 到 50 Hz，一次出一段</td><td>大模型每秒几次；action head 更快</td></tr>
+<tr><td>部署算力</td><td>机载 CPU</td><td>一块 GPU</td><td>大 GPU，常见做法是分层</td></tr>
+<tr><td>主要的 gap</td><td>Sim-to-real：dynamics 不一致</td><td>视觉、物体、位置变化造成的 distribution shift</td><td>同左，再加推理延迟</td></tr>
+<tr><td>泛化靠什么</td><td>Domain randomization</td><td>数据的多样性</td><td>预训练带来的语义知识，加数据多样性</td></tr>
+</tbody></table></div>
+<h3>为什么会分成这两条线</h3>
+<p>方法不是按喜好选的，而是由三个条件决定的。这一点在 <a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a> 里从控制的角度讲过，这里用 learning 的词重说一遍：</p>
+<div class="tw"><table>
+<thead><tr><th>条件</th><th>Locomotion</th><th>Manipulation</th></tr></thead>
+<tbody>
+<tr><td>Reward 好不好写</td><td>好写：走得快、别摔、省力</td><td>难写：什么叫"把衣服叠好"</td></tr>
+<tr><td>Simulation 准不准</td><td>刚体加地面接触，够准</td><td>软物体、复杂摩擦、真实的图像，都难仿真</td></tr>
+<tr><td>关键信息在哪</td><td>在 proprioception 里，低维</td><td>在图像里，高维，而且物体千变万化</td></tr>
+<tr><td>Demonstration 好不好采</td><td>难：人没法"遥操作"一条腿的每个关节</td><td>可以：teleoperation 能直接给出 action</td></tr>
+<tr><td>结论</td><td>RL in simulation</td><td>Imitation from real data</td></tr>
+</tbody></table></div>
+<h3>两条线在哪里汇合</h3>
+<ul>
+  <li><strong>Distillation 是桥。</strong>先在仿真里用 state 训练一个 RL teacher，再蒸馏成只看图像的 student（第 16 节）。Parkour 和一部分灵巧手工作这样做，它把 RL 的"reward 驱动、能超过示范"和视觉的"真机可部署"接了起来。</li>
+  <li><strong>分层是另一座桥。</strong>Humanoid 上，底层是 state-based RL 训练的 whole-body controller，上层是 vision-based 的 VLA 或 teleoperation，中间通过 keypoint、速度命令或 latent 连接。两条线各自做擅长的部分。</li>
+  <li><strong>互相借数据。</strong>用仿真生成带图像的 manipulation 数据；反过来用真机数据修正仿真（system identification、real-to-sim）。</li>
+</ul>
+<p>Humanoid 的 loco-manipulation 之所以是现在最难的问题，正是因为它同时需要两条线：腿和平衡需要 RL 的鲁棒性，手和任务需要视觉和 demonstration。</p>
+</section>
+
+<section id="state">
+<h2><span class="n">18</span>State-based policy 的解剖</h2>
+<p class="ask"><b>这一节回答：</b>一个 locomotion 或 motion tracking 的 policy，从输入到输出每一步具体是什么？前面那些"learning 的词"在里面出现在哪？</p>
+<p>以一个四足的 velocity-tracking policy 为例，逐项填第 01 节的表：</p>
+<div class="tw"><table>
+<thead><tr><th>项</th><th>具体是什么</th></tr></thead>
+<tbody>
+<tr><td>Observation</td><td>机身角速度、重力方向在机身系下的投影、速度命令、12 个关节的位置和速度、上一步的 action。合起来约 45 维。真机上都能从 IMU 和编码器直接得到。</td></tr>
+<tr><td>网络</td><td>三层 MLP，每层几百个单元（legged_gym 的默认是 512、256、128）。</td></tr>
+<tr><td>Action</td><td>12 个数，解释为关节目标位置相对默认站姿的偏移：\(q^{\text{target}} = q^{\text{default}} + k\,a\)。底层 PD 以更高的频率算力矩 \(\tau = K_p(q^{\text{target}}-q) - K_d\,\dot{q}\)。</td></tr>
+<tr><td>输出分布</td><td>Gaussian：网络输出均值，方差是另外学的参数。训练时采样来探索，部署时直接用均值。</td></tr>
+<tr><td>Loss</td><td>PPO。Critic 另外一个 MLP，输入里可以多给 privileged 信息。</td></tr>
+<tr><td>数据</td><td>几千个并行的仿真环境（legged_gym 默认 4096 个），加上 domain randomization 和从易到难的地形 curriculum。</td></tr>
+</tbody></table></div>
+<div class="note rb"><p><span class="q">为什么输出 position target，而不是 torque</span>
+PD 回路在 policy 的两次输出之间以更高的频率提供反馈，相当于一个可变的弹簧，高频的稳定性不用 policy 操心。低增益的 PD 加 position target 实际上是在间接地控制力。探索也更容易：随机的 position target 仍然产生平滑的运动，随机的 torque 则不会。这个接口从 2019 年到现在几乎没变过。</p></div>
+<h3>真正的难点：部分可观测</h3>
+<p>上面的 observation 里没有机身的线速度，没有地形，没有摩擦系数，没有负载的质量。Policy 面对的是 POMDP。所有 state-based 的方法在这一点上的差别，就是<strong>怎么从历史里把缺的信息找回来</strong>，而第 07 节说过，这就是 representation learning：</p>
+<div class="tw"><table>
+<thead><tr><th>做法</th><th>学的是什么</th><th>对应前面的概念</th></tr></thead>
+<tbody>
+<tr><td>把过去若干帧直接拼进输入</td><td>让 MLP 自己从历史里提取</td><td>隐式的 state estimation</td></tr>
+<tr><td>显式的 estimator 网络</td><td>从历史回归出机身速度、足端高度等物理量，再喂给 policy</td><td>Supervised learning，标签来自 simulator 的真值</td></tr>
+<tr><td>Teacher–student</td><td>Student 从历史里模仿有 privileged 信息的 teacher</td><td>Distillation（第 16 节）</td></tr>
+<tr><td>RMA</td><td>从历史里估计环境参数的 latent \(z\)</td><td>Encoder、latent、bottleneck（第 08 节）</td></tr>
+<tr><td>RNN 或 Transformer 的 policy</td><td>用 hidden state 或 context 充当记忆</td><td>学出来的 state estimator（第 07 节）</td></tr>
+<tr><td>Asymmetric actor–critic</td><td>Actor 只看真机上有的；critic 看全部</td><td>Privileged 信息只用来改善训练信号</td></tr>
+</tbody></table></div>
+<h3>Motion tracking 加了什么</h3>
+<p>Humanoid 的全身控制现在主流是 motion tracking：输入里多了一段 reference motion（未来几帧的目标关节角或 keypoint），reward 是"跟得有多准"。从 learning 的角度看，它把手写的 reward 换成了由数据定义的 reward，本质上是<strong>用 RL 来解一个 imitation 的问题</strong>：数据只给了"身体应该怎么动"，没给"电机该出多少力"，后者要靠 RL 在仿真里试出来。</p>
+<p>一个 policy 跟踪的动作越多，它就越像一个通用的底层接口。这时前面的概念集中出现：把各种形式的命令压成一个 latent（encoder 加 bottleneck），用一个共享的 decoder 出动作；用 world model 预测下一个 state 来提供梯度（self-supervised 的 dynamics 学习）；用 diffusion model 在 reference 或 latent 这一层做规划（generative model）。它们都是第 08、14、15 节里的东西，换了个输入输出而已。</p>
+</section>
+
+<section id="visuo">
+<h2><span class="n">19</span>Visuomotor policy 的解剖</h2>
+<p class="ask"><b>这一节回答：</b>ACT 和 Diffusion Policy 这类"看图出动作"的 policy 由哪几块组成？VLA 在它上面加了什么？</p>
+<figure class="fig">
+<svg viewBox="0 0 960 440" role="img" aria-label="上：单任务的 visuomotor policy，相机图像经过 vision encoder 变成 feature，和 proprioception 一起作为条件，action head 输出一段 action。下：VLA，图像经 ViT 和 projector 变成 token，语言经 tokenizer 变成 token，一起进入预训练的 LLM backbone，再由 action head 输出一段 action。两者的差别是中间多了一个预训练的 LLM，输入多了语言">
+  <text class="d-t" x="20" y="24">单任务的 visuomotor policy（ACT、Diffusion Policy）</text>
+  <g text-anchor="middle">
+    <rect class="d-box" x="20" y="44" width="120" height="44" rx="6"/><text class="d-t" x="80" y="64">相机图像</text><text class="d-s" x="80" y="80">1 到 3 路 RGB</text>
+    <rect class="d-box" x="20" y="104" width="120" height="44" rx="6"/><text class="d-t" x="80" y="124">Proprioception</text><text class="d-s" x="80" y="140">关节角、夹爪</text>
+    <rect class="f-q4" x="190" y="44" width="150" height="44" rx="6"/><text class="d-t" x="265" y="64">Vision encoder</text><text class="d-s" x="265" y="80">ResNet-18 或 ViT</text>
+    <rect class="f-q1" x="560" y="56" width="180" height="80" rx="6"/><text class="d-t" x="650" y="84">Action head</text><text class="d-s" x="650" y="102">Transformer decoder，或</text><text class="d-s" x="650" y="118">迭代去噪的网络</text>
+    <rect class="d-box" x="800" y="64" width="140" height="64" rx="6"/><text class="d-t" x="870" y="90">一段 action</text><text class="d-s" x="870" y="108">未来 H 步</text>
+  </g>
+  <line class="d-ln" x1="140" y1="66" x2="188" y2="66" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="340" y1="66" x2="558" y2="84" marker-end="url(#arr)"/><text class="d-s" x="450" y="62" text-anchor="middle">image feature</text>
+  <line class="d-ln" x1="140" y1="126" x2="558" y2="110" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="740" y1="96" x2="798" y2="96" marker-end="url(#arr)"/>
+  <text class="d-s" x="650" y="158" text-anchor="middle">全部从零开始，在这个任务的 demonstration 上训练</text>
+
+  <line class="l-ax" x1="20" y1="184" x2="940" y2="184" style="stroke-dasharray:3 5"/>
+  <text class="d-t" x="20" y="212">VLA：多了语言输入，中间换成一个预训练的 LLM</text>
+  <g text-anchor="middle">
+    <rect class="d-box" x="20" y="232" width="120" height="44" rx="6"/><text class="d-t" x="80" y="252">相机图像</text><text class="d-s" x="80" y="268">1 到 3 路 RGB</text>
+    <rect class="d-box" x="20" y="292" width="120" height="44" rx="6"/><text class="d-t" x="80" y="312">语言指令</text><text class="d-s" x="80" y="328">"把杯子放进水槽"</text>
+    <rect class="d-box" x="20" y="352" width="120" height="44" rx="6"/><text class="d-t" x="80" y="372">Proprioception</text><text class="d-s" x="80" y="388">关节角、夹爪</text>
+    <rect class="f-q4" x="190" y="232" width="150" height="44" rx="6"/><text class="d-t" x="265" y="252">ViT + projector</text><text class="d-s" x="265" y="268">SigLIP、DINOv2</text>
+    <rect class="f-q4" x="190" y="292" width="150" height="44" rx="6"/><text class="d-t" x="265" y="312">Tokenizer</text><text class="d-s" x="265" y="328">+ embedding 表</text>
+    <rect class="f-q2" x="430" y="232" width="150" height="104" rx="6"/><text class="d-t" x="505" y="268">LLM backbone</text><text class="d-s" x="505" y="288">Decoder-only Transformer</text><text class="d-s" x="505" y="306">在互联网数据上预训练</text>
+    <rect class="f-q1" x="630" y="244" width="140" height="80" rx="6"/><text class="d-t" x="700" y="272">Action head</text><text class="d-s" x="700" y="290">输出 action token，或</text><text class="d-s" x="700" y="306">flow matching 的网络</text>
+    <rect class="d-box" x="810" y="252" width="130" height="64" rx="6"/><text class="d-t" x="875" y="278">一段 action</text><text class="d-s" x="875" y="296">未来 H 步</text>
+  </g>
+  <line class="d-ln" x1="140" y1="254" x2="188" y2="254" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="140" y1="314" x2="188" y2="314" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="340" y1="254" x2="428" y2="268" marker-end="url(#arr)"/><text class="d-s" x="386" y="246" text-anchor="middle">visual token</text>
+  <line class="d-ln" x1="340" y1="314" x2="428" y2="300" marker-end="url(#arr)"/><text class="d-s" x="386" y="330" text-anchor="middle">text token</text>
+  <line class="d-ln" x1="580" y1="284" x2="628" y2="284" marker-end="url(#arr)"/>
+  <path class="d-ln" d="M140,374 H700 V326" marker-end="url(#arr)"/>
+  <line class="d-ln" x1="770" y1="284" x2="808" y2="284" marker-end="url(#arr)"/>
+  <text class="d-s" x="505" y="408" text-anchor="middle" style="fill:var(--a2)">橙色这一块是差别所在：它带来对物体、场景和指令的语义理解</text>
+  <text class="d-s" x="505" y="428" text-anchor="middle">动作本身仍然只能从 robot 数据里学</text>
+</svg>
+<figcaption class="cap">两行的左右两端几乎一样：相机和 proprioception 进，一段 action 出。VLA 的增量是中间那个预训练的大模型和语言输入。Proprioception 接到哪里各家做法不同，这里画的是直接给 action head。</figcaption>
+</figure>
+<h3>四个设计选择</h3>
+<div class="tw"><table>
+<thead><tr><th>选择</th><th>选项</th><th>取舍</th></tr></thead>
+<tbody>
+<tr><td>Vision encoder</td><td>从头训练的小 CNN；预训练的大 ViT，冻住或 fine-tune</td><td>从头训练只留下任务相关的信息，但换个背景就可能失效。预训练的更鲁棒，但更慢，而且它保留的信息未必包含任务需要的精细位置。</td></tr>
+<tr><td>Action 表示什么</td><td>关节角；end-effector 的位姿。绝对值；相对当前的增量</td><td>End-effector 空间更容易跨机器人迁移，但需要 IK。旋转常用连续的 6D 表示，避开 quaternion 和 Euler angle 的不连续（见 <a href="../robotics/transforms-and-manipulation.html">Rigid Body Transforms</a>）。</td></tr>
+<tr><td>输出头</td><td>回归、CVAE、离散 token、diffusion、flow matching</td><td>第 14 节的对照表</td></tr>
+<tr><td>时间结构</td><td>看多少帧历史；一次预测多长；执行多少步后重新预测</td><td>见下</td></tr>
+</tbody></table></div>
+<h3>Action chunk 怎么执行：其实是 receding horizon</h3>
+<p>以 Diffusion Policy 为例：看最近 2 帧 observation，预测未来 16 步 action，执行其中前 8 步，然后重新预测。<strong>这和 MPC 的 receding horizon 是同一个结构</strong>，取舍也一样：执行得长，动作连贯但反应慢；执行得短，反应快但前后两次预测可能选了不同的 mode，动作会抖。ACT 的做法是每一步都重新预测一整段，然后把多次预测中对同一时刻的结果加权平均（temporal ensembling）。</p>
+<p>大模型推理一次要几十到上百毫秒，机器人在这段时间里还在动，所以新的一段 action 算出来时，它的开头已经过时了。怎么在两段之间平滑衔接，是 VLA 上真机时一个很实际的工程问题。</p>
+<h3>数据从哪来</h3>
+<div class="tw"><table>
+<thead><tr><th>来源</th><th>怎么采</th><th>特点</th></tr></thead>
+<tbody>
+<tr><td>Leader–follower teleoperation</td><td>人操作一台同构的 leader 机械臂，follower 跟随（ALOHA）</td><td>Action 直接可用，质量高；一个人一台机器，产量低</td></tr>
+<tr><td>VR 或手持控制器</td><td>把手的位姿映射到 end-effector</td><td>设备便宜；没有力反馈</td></tr>
+<tr><td>手持夹爪</td><td>人直接拿着带相机的夹爪做任务，不需要机器人（UMI）</td><td>采集快、可以带出实验室；需要把轨迹转成机器人能执行的 action</td></tr>
+<tr><td>人的视频</td><td>互联网或第一人称视频</td><td>量最大；没有 action 标签，本体也不同</td></tr>
+<tr><td>Simulation</td><td>脚本或 RL policy 自动生成</td><td>量大；视觉和接触的 sim-to-real gap</td></tr>
+</tbody></table></div>
+<p>公开的大规模真机数据集包括 Open X-Embodiment（2023，汇集了 22 种机器人的一百多万条轨迹）和 DROID（2024，约 7.6 万条轨迹，覆盖几百个真实场景）。公开数据合起来是几百到几千小时的量级，和语言模型能用的互联网文本相比仍然少得多。</p>
+</section>
+
+<section id="vla">
+<h2><span class="n">20</span>VLA：vision、language、action</h2>
+<p class="ask"><b>这一节回答：</b>VLA 这个词拆开是什么？为什么要把 LLM 放进机器人，它带来了什么、没带来什么？</p>
+<h3>先有 VLM：让语言模型看图</h3>
+<p>VLM（vision-language model）的结构只有三块：一个预训练的 vision encoder（ViT）把图像变成一串 patch feature；一个小的 projector（通常是 MLP）把它们映射到 LLM 的 embedding space；然后这些 visual token 和文字的 token 拼在一起，喂给 LLM。<strong>对 LLM 来说，图像就是一段用"外语"写的前缀</strong>，projector 是翻译。训练数据是互联网上的图文对和视觉问答。</p>
+<h3>再加 action：两条路线</h3>
+<p>VLA 就是让这个 VLM 的输出里包含机器人的 action，然后在 robot demonstration 上 fine-tune。区别在于 action 怎么输出：</p>
+<div class="two">
+  <div><h4>路线一：action 也是 token</h4><p>把 action 离散成编号（第 09 节），当成词表里的新词，模型像生成文字一样逐个生成。训练仍然是 cross-entropy，和原来的 VLM 完全兼容，可以和图文数据混在一起训练。缺点是逐个生成慢，精度受量化限制。<br><strong>RT-2、OpenVLA、π0-FAST。</strong></p></div>
+  <div><h4>路线二：接一个连续的 action head</h4><p>VLM 负责理解，输出的中间 feature 作为条件，交给一个专门的网络用 flow matching 或 diffusion 生成一整段连续的 action（第 14 节）。没有量化误差，一次出一段，适合高频和灵巧的任务。缺点是多了一个从零开始训练的模块。<br><strong>π0、GR00T N1。</strong></p></div>
+</div>
+<h3>代表工作</h3>
+<div class="tw"><table>
+<thead><tr><th>年份</th><th>工作</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>2022</td><td>RT-1</td><td>语言条件的 Transformer policy，约 13 万条真机 demonstration；action 离散成 256 个 bin。还不是 VLM。</td></tr>
+<tr><td>2023</td><td>RT-2</td><td>第一次明确提出 VLA：把预训练的 VLM 和 robot 数据一起 fine-tune，action 当作文字 token 输出。能执行训练里没出现过的物体和指令。</td></tr>
+<tr><td>2023</td><td>Open X-Embodiment、RT-X</td><td>把很多实验室、很多种机器人的数据汇在一起训练，比只用单一机器人的数据更好。</td></tr>
+<tr><td>2024</td><td>Octo</td><td>开源的通用 policy，Transformer 加 diffusion head；不基于 VLM。</td></tr>
+<tr><td>2024</td><td>OpenVLA</td><td>开源的 7B 参数 VLA：SigLIP 和 DINOv2 两个 vision encoder 加一个 Llama 2，在约 97 万条轨迹上训练。</td></tr>
+<tr><td>2024</td><td>π0</td><td>预训练的 VLM 加一个 flow matching 的 action expert，在一万小时以上的多机器人数据上训练；最高 50 Hz 的 action chunk，能做叠衣服这类长时程的灵巧任务。</td></tr>
+<tr><td>2025</td><td>FAST</td><td>DCT 加 BPE 的 action tokenizer，让离散 token 路线也能处理高频数据。</td></tr>
+<tr><td>2025</td><td>GR00T N1</td><td>面向 humanoid 的双系统结构：一个 VLM 加一个 flow matching 的 action 模块；训练数据混合了真机、仿真合成和人的视频。</td></tr>
+<tr><td>2025</td><td>Helix（Figure）</td><td>双系统：慢的 VLM 每秒 7 到 9 次，快的 visuomotor policy 以 200 Hz 控制上半身。</td></tr>
+<tr><td>2025</td><td>π0.5</td><td>把多种来源的数据（多种机器人、网页数据、高层子任务标注）一起训练，目标是在没见过的家庭环境里工作。</td></tr>
+</tbody></table></div>
+<h3>VLM 带来了什么，没带来什么</h3>
+<div class="two">
+  <div><h4>带来的</h4><ul>
+    <li>认识物体和场景：没在 robot 数据里出现过的东西，VLM 在互联网上见过。</li>
+    <li>理解指令：同义的说法、组合的指令、一定程度的常识推理。</li>
+    <li>一个强的初始化：比从头训练需要的 robot 数据少。</li>
+  </ul></div>
+  <div><h4>没带来的</h4><ul>
+    <li>动作本身。互联网上没有"关节该怎么动"的数据，这部分只能来自 robot 数据。</li>
+    <li>精细的空间和接触信息。VLM 的 vision encoder 是为语义训练的。</li>
+    <li>速度。几十亿参数的模型每秒只能跑几次。</li>
+  </ul></div>
+</div>
+<h3>分层：用频率来划分工</h3>
+<p>最后一条直接导致了现在最常见的结构，通常叫 dual-system 或 System 1 / System 2：</p>
+<div class="tw"><table>
+<thead><tr><th>层</th><th>做什么</th><th>典型频率</th><th>怎么训练的</th></tr></thead>
+<tbody>
+<tr><td>慢的大模型（VLM）</td><td>看图、理解指令、决定现在该做哪一步</td><td>每秒 1 到 10 次</td><td>互联网预训练，加 robot 数据 fine-tune</td></tr>
+<tr><td>快的 action 模块</td><td>根据上层给的 latent 或子任务，结合最新的图像和 proprioception，生成 action chunk</td><td>每秒 10 到上百次</td><td>Imitation，diffusion 或 flow matching</td></tr>
+<tr><td>Whole-body controller（humanoid 才有）</td><td>把上层给的目标变成全身关节的 position target，保持平衡</td><td>约 50 Hz</td><td>仿真里的 RL，motion tracking</td></tr>
+<tr><td>关节 PD</td><td>把 position target 变成力矩</td><td>500 Hz 以上</td><td>不学</td></tr>
+</tbody></table></div>
+<p>每两层之间的接口都是一个 Q4 的设计选择：语言的子任务描述、一个 latent 向量、手和头的 keypoint、速度命令。这和 <a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a> 里"分层没有消失，接口在变"是同一个观察，只是这次从上往下看。</p>
+<div class="note deep"><p><span class="q">深一层：新模块的梯度会不会破坏预训练的知识</span>
+路线二里，action head 是随机初始化的，训练初期它传回 VLM 的梯度很大也很乱，可能把 VLM 原本的语义知识冲掉；只用 robot 数据 fine-tune 也会让模型逐渐忘记它在互联网上学到的东西。常见的对策有三类：和图文数据一起训练（co-training）；让 VLM 的主干用离散 action token 的 loss 学习，同时阻止 action head 的梯度流回主干；或者只训练一小部分参数（例如 LoRA）。这个问题说明"end-to-end"不是越彻底越好，梯度往哪流、不往哪流是需要设计的。</p></div>
+</section>
+
+<section id="wm">
+<h2><span class="n">21</span>World model 与 3D 表示</h2>
+<p class="ask"><b>这一节回答：</b>World model 这个词在不同论文里指的是同一个东西吗？除了 2D 图像，机器人还能怎么表示场景？</p>
+<h3>World model：预测"做了这个动作之后会怎样"</h3>
+<p>最宽的定义：一个学出来的模型，输入当前的状态（或它的表示）和 action，输出下一个状态。训练它是 self-supervised 的：目标就是数据里的下一帧，不需要任何标注。但这个词在不同的工作里指的东西差别很大：</p>
+<div class="tw"><table>
+<thead><tr><th>类型</th><th>在什么空间里预测</th><th>主要用途</th><th>代表</th></tr></thead>
+<tbody>
+<tr><td>State-space dynamics model</td><td>物理状态：关节角、速度</td><td>代替或加速 simulator；提供可微的梯度</td><td>Robotic World Model；SuperMimic（一个大 MLP，没有 latent）</td></tr>
+<tr><td>Latent dynamics model</td><td>Encoder 输出的 latent</td><td>在 latent 里想象轨迹来训练 policy，或在线做 planning</td><td>Dreamer（RSSM，可以粗略看成时序上的 VAE）；TD-MPC2</td></tr>
+<tr><td>Video generation model</td><td>像素，或视频 tokenizer 的 latent</td><td>生成训练数据；评估 policy；作为预训练目标</td><td>Genie、Cosmos</td></tr>
+<tr><td>Latent prediction（JEPA 类）</td><td>预训练 encoder 的 feature</td><td>学 representation；在 feature 空间里做 planning</td><td>V-JEPA 2</td></tr>
+</tbody></table></div>
+<p>所有 world model 共有一个问题，而且你已经见过它：<strong>把模型自己的输出再喂回去，多步之后误差会累积</strong>。这和第 06 节 behavior cloning 的 compounding error 是同一个机制。常见的对策也相似：只用短的 rollout；训练时就让模型从自己的预测出发多步展开（SuperMimic 用 8 步的窗口训练，用 32 步的 imagination）；用 value function 概括更远的未来。</p>
+<div class="note rb"><p><span class="q">对应到你熟悉的东西</span>
+World model 加 planning 就是 MPC，只是模型是学的。World model 加 policy gradient 就是在学到的 simulator 里做 RL。对 world model 求导就是 differentiable simulation。Model-based 控制的结构都还在，变的是模型从哪来。</p></div>
+<h3>3D 表示：把几何结构写进输入</h3>
+<p>2D 图像的问题是它依赖视角：相机挪一下，所有像素都变了。3D 表示把"世界是三维的"这个假设直接写进输入格式，是一种 inductive bias（第 10 节）。</p>
+<div class="tw"><table>
+<thead><tr><th>表示</th><th>是什么</th><th>在机器人里</th></tr></thead>
+<tbody>
+<tr><td>Depth、height map</td><td>每个像素或每个网格点的距离或高度</td><td>Perceptive locomotion 的标准输入；和 RGB 相比 sim-to-real gap 小得多</td></tr>
+<tr><td>Point cloud</td><td>一组 3D 点</td><td>3D Diffusion Policy；抓取检测</td></tr>
+<tr><td>Voxel</td><td>3D 网格，每格存占用或 feature</td><td>PerAct；occupancy 地图</td></tr>
+<tr><td>NeRF</td><td>一个神经网络，输入 3D 位置和视线方向，输出颜色和密度；从多张照片重建</td><td>场景重建；渲染新视角</td></tr>
+<tr><td>3D Gaussian Splatting</td><td>用大量带颜色的 3D Gaussian 表示场景；渲染比 NeRF 快得多</td><td>Real-to-sim：把真实场景扫进仿真里</td></tr>
+</tbody></table></div>
+<p>取舍和第 10 节那张图一致：3D 表示对视角变化更鲁棒、需要的 demonstration 更少，但需要深度传感器和标定，而且用不上在海量 2D 图像上预训练的模型。数据越多，2D 加大模型的路线越占优；数据少、对几何精度要求高的时候，3D 更划算。</p>
+<h3>可以直接拿来用的感知模型</h3>
+<p>除了端到端的 policy，还有一类系统把感知拆成模块，每个模块用一个现成的 foundation model：分割用 SAM，开放词表的检测用 Grounding DINO，单目深度用 Depth Anything，物体 6D 位姿用 FoundationPose，点的跟踪用 CoTracker。它们输出有明确含义的中间结果（mask、bounding box、位姿），接传统的 planning 和控制。和端到端相比，好处是可调试、不需要 robot demonstration；坏处是模块之间的误差会传递，而且中间表示限制了能表达的任务。</p>
+</section>
+
+<div class="part"><div class="tag">PART F</div><h2>讨论</h2><p>把前面的内容压缩成几条可以带进任何一篇论文的视角，以及一些目前没有答案的问题。</p></div>
+
+<section id="themes">
+<h2><span class="n">22</span>贯穿始终的六条主线</h2>
+<h3>1 · 几乎一切都是 prediction</h3>
+<p>语言模型预测下一个 token，MAE 预测被遮住的 patch，diffusion 预测噪声，world model 预测下一个 state，behavior cloning 预测专家的 action，critic 预测未来的 return。目标的差别只在于<strong>预测什么、以什么为条件</strong>。读一个新方法时，先把它写成"根据 A 预测 B"，大部分神秘感就没了。</p>
+<h3>2 · Representation 是被目标逼出来的</h3>
+<p>没有人告诉网络该提取什么 feature。Encoder 学到什么，完全由"为了把 loss 降下去，需要保留哪些信息"决定。所以想要什么样的 representation，就去设计能逼出它的预测任务：想要语义，就让图像去匹配文字；想要几何，就让它预测被遮住的局部；想要对控制有用的信息，就用 action loss。Bottleneck 是在此基础上再加一把力：强迫丢掉一部分。</p>
+<h3>3 · 一切都取决于训练分布盖没盖住</h3>
+<p>Domain randomization、data augmentation、DAgger、teleoperation 时故意采纠错动作、cross-embodiment 数据、互联网预训练，这些看起来不相关的做法是同一个动作：扩大训练分布。评价一个 robot learning 系统时，最有用的问题通常不是"模型多大"，而是"部署时会遇到的情况，训练时见过吗"。</p>
+<h3>4 · 进步常常来自把难问题改写成 supervised learning</h3>
+<p>Supervised learning 是目前唯一确定能随数据和算力稳定变好的东西。于是很多突破的形式是"找到一个办法，把某个难问题变成它"：distillation 把 RL 的问题变成有标签的问题；diffusion 把"表示任意分布"变成"在每个噪声等级上做 regression"；DAgger 把闭环的问题变成一系列有标签的问题；motion tracking 用数据替掉了手写的 reward。看到一个新方法，可以问：它把哪个难的部分变成了 regression 或 classification？</p>
+<h3>5 · 结构放在哪里，由数据量决定</h3>
+<p>关于世界的知识可以放在 architecture 里（CNN 的平移不变、3D 表示）、simulator 里（物理）、reward 里、或者数据里。数据越多，越倾向于少写结构、让模型自己学；数据越少，写进去的结构越值钱。机器人处在数据少的一端，所以 simulator、分层、action chunking 这些人为的结构现在仍然是主力。这条线会随着数据的增长而移动。</p>
+<h3>6 · 一步算完，还是迭代着算</h3>
+<p>MLP policy 一次 forward 就出动作，是把所有计算都提前在训练时做完（amortized）。Diffusion 和 flow 的 policy 在推理时迭代几步到几十步，autoregressive 的模型逐个 token 生成，MPC 每个周期解一次优化。迭代换来的是表达能力和对新情况的适应，代价是延迟。分层的 dual-system 结构就是在频率和表达能力之间做的折中：慢的那层可以迭代、可以大，快的那层必须一步到位。</p>
+</section>
+
+<section id="confuse">
+<h2><span class="n">23</span>容易混的十组词</h2>
+<div class="tw"><table>
+<thead><tr><th>这一组</th><th>区别</th></tr></thead>
+<tbody>
+<tr><td>Feature · embedding · latent · representation</td><td>同一类东西，名字只反映出现的场合（第 07 节）。</td></tr>
+<tr><td>Encoder / decoder（autoencoder）与 encoder / decoder（Transformer）</td><td>前者是"压缩 / 重建"，后者是"每个 token 看得到全部 / 只看得到过去"（第 11 节）。</td></tr>
+<tr><td>Token（编号）与 token（向量）</td><td>前者是词表里的一个整数，后者是序列某个位置上的向量。图像 patch 的 token 没有编号（第 09 节）。</td></tr>
+<tr><td>Backbone · encoder · head</td><td>Backbone 是最大的、被共用的主干；它常常就是 encoder。Head 是接在后面的小模块，按任务更换。</td></tr>
+<tr><td>Pretraining · fine-tuning · co-training</td><td>先在大而泛的数据上训练；再在小而专的数据上接着训练；或者把两种数据混在一起同时训练。</td></tr>
+<tr><td>Diffusion 与 flow matching</td><td>都是"从噪声出发迭代地变成数据"，训练都是 regression。前者预测噪声，后者预测速度；Gaussian 噪声下两者可以互相转换（第 14 节）。</td></tr>
+<tr><td>Generative 与 imitation</td><td>不在一条轴上。Imitation 说的是监督信号来自专家；generative 说的是模型输出一个分布。Diffusion Policy 两者都是（第 12 节）。</td></tr>
+<tr><td>Distillation · teacher–student · DAgger</td><td>Distillation 是"让一个模型模仿另一个"的总称；teacher–student 是它的具体形式；DAgger 是采数据的方式：让 student 自己跑，teacher 只给标签（第 16 节）。</td></tr>
+<tr><td>Model-based RL 与 world model</td><td>World model 是那个学出来的 dynamics 模型；model-based RL 是用它来学 policy 的一类方法。注意 model-based control 里的 model 通常是人写的。</td></tr>
+<tr><td>End-to-end 与"没有模块"</td><td>End-to-end 指梯度从最终的 loss 传到最前面，各模块一起优化。模块仍然存在，只是接口不再由人规定。</td></tr>
+</tbody></table></div>
+<p>再加几句常听到但不准确的话：</p>
+<ul>
+  <li>"Latent space 很神秘"。它只是某一层输出的向量所在的空间。</li>
+  <li>"Encoder 一定在压缩"。是否丢信息取决于训练目标和有没有 bottleneck，不取决于它叫 encoder。</li>
+  <li>"Diffusion 是在加噪声"。加噪声只是造训练样本的方式；模型学的是去噪，生成靠的是迭代。</li>
+  <li>"Foundation model 就是大模型"。重点是在很宽的数据上预训练、然后能适配到很多下游任务；大只是结果。</li>
+  <li>"RL 比 imitation 高级"。它们解决不同条件下的问题：有 reward 和 simulator 时用 RL，有 demonstration 时用 imitation。</li>
+</ul>
+</section>
+
+<section id="open">
+<h2><span class="n">24</span>可以拿来讨论的问题</h2>
+<p>这些问题目前没有公认的答案。每一条下面是我的初步看法，用来引出讨论，不是结论。</p>
+<details class="qa"><summary>机器人为什么还没有它的"GPT 时刻"？缺的到底是什么？</summary><div class="a">
+<p>最直接的回答是数据。语言模型的训练数据是互联网上人类写下的全部文字，量级是万亿个 token，而且天然就是"输入和输出同一种格式"。机器人需要的是带 action 的数据，互联网上没有，只能一小时一小时地采。公开的大规模真机数据集是几百到几千小时的量级；π0 用了一万小时以上；也有公司自报的私有数据达到几十万小时（例如 Generalist AI 的 GEN-0，2025 年底报告 27 万小时）。和互联网文本相比，这仍然少得多，而且每多一个数量级都要靠真金白银的采集。</p>
+<p>但数据可能不是唯一的原因。语言是人已经压缩和抽象过的符号；物理世界的 observation 高维、连续、有噪声，而且任务要求闭环、实时、容错率低。也没有一个像"预测下一个 token"那样既简单又包含一切的统一目标。现在的几条路线（遥操作车队、仿真、人的视频、world model 生成数据）都在赌数据这一环，哪一条能走通还不清楚。</p>
+</div></details>
+<details class="qa"><summary>压缩得好就等于"理解"了吗？</summary><div class="a">
+<p>第 05 节说了精确的那一半：要把数据压得短，模型必须利用数据里的规律。但"利用了统计规律"和"有一个能在分布外正确推理的模型"之间有距离。对机器人来说有一个更具体的版本：一个能生成逼真视频的 world model，是否就知道物理？逼真的画面主要靠纹理和光照，而对控制重要的接触、质量、摩擦在像素里占的比重极小。我倾向于认为，预测目标必须包含 action 的后果，学到的东西才会偏向控制需要的那部分。</p>
+</div></details>
+<details class="qa"><summary>Action 应该用离散 token 还是连续的 flow / diffusion？</summary><div class="a">
+<p>离散 token 的好处是和语言模型的整套东西兼容：同一个 loss，可以和图文数据无缝混合训练，梯度不会干扰预训练的知识。连续的 head 的好处是精度和速度。两条路线一直在互相靠近：FAST 让 token 路线能处理高频数据；也有工作让主干用 token 的 loss 学、同时用 flow 的 head 来执行。可能最后的答案是"训练时两个都用，推理时用连续的"。更深的问题是：action 有没有一个像 subword 那样自然的"词"？</p>
+</div></details>
+<details class="qa"><summary>Vision encoder 应该冻住还是 fine-tune？用哪一种预训练？</summary><div class="a">
+<p>冻住能保留预训练带来的鲁棒性，但 encoder 当初丢掉的信息（比如为了语义不变性而丢掉的精确位置）再也拿不回来。Fine-tune 能找回任务需要的信息，但 robot 数据少，容易把泛化能力训掉。OpenVLA 的实验是 fine-tune 更好；把语义型和几何型的两个 encoder 拼起来也是一种回答。这个问题的本质是第 22 节的第 2 条：encoder 的 representation 是被它原来的训练目标逼出来的，而那个目标不是控制。</p>
+</div></details>
+<details class="qa"><summary>Sim-to-real RL 能不能像征服 locomotion 一样征服 manipulation？</summary><div class="a">
+<p>障碍有三个：接触丰富的操作（尤其是软物体）仿真不准；视觉的 sim-to-real gap 比 dynamics 的大；reward 难写。但每一个都在被推进：更好的接触仿真和 real-to-sim；用 depth 或点云绕开 RGB 的 gap；用 demonstration 或语言模型来生成 reward。灵巧手的手内操作已经是 sim-to-real RL 的成功例子。我的看法是，刚体、短时程、可以用几何描述的技能会先被 RL 拿下，长时程和需要语义的部分仍然靠 imitation，两者通过分层结合。</p>
+</div></details>
+<details class="qa"><summary>End-to-end 的大模型，还是分层的系统？接口应该是什么？</summary><div class="a">
+<p>纯粹的端到端在机器人上还没有发生：频率的差距（大模型每秒几次，电机控制每秒上千次）本身就强制了分层。真正的问题是层与层之间的接口由谁定。人定的接口（速度命令、keypoint、语言子任务）可解释、各层可以分开训练，但限制了上层能表达的东西。学出来的 latent 接口表达力强，但两层必须一起训练，而且难以调试。一个有用的判断标准：好的接口应该让上层的错误容易被下层纠正，而不是被放大。</p>
+</div></details>
+<details class="qa"><summary>World model 是必需的吗？</summary><div class="a">
+<p>Model-free 的方法在 locomotion 和很多 manipulation 任务上已经足够好，所以答案显然不是"必需"。World model 的价值在三个地方：样本贵的时候省样本；提供梯度让优化更高效（SuperMimic）；以及作为数据生成器和评估器，绕开真机实验的成本。最后一条可能最重要：现在评估一个 manipulation policy 只能在真机上一次次地试，又慢又有噪声，这直接限制了研究的迭代速度。</p>
+</div></details>
+<details class="qa"><summary>怎么评估一个 robot policy？</summary><div class="a">
+<p>视觉和语言都有公认的 benchmark，可以在固定的数据上算一个数。机器人的评估要在物理世界里执行，结果依赖具体的硬件、物体、光照，不同实验室之间很难比较，甚至同一个实验室隔一天都不完全可复现。仿真 benchmark 可复现但和真机表现的相关性有限。这个问题比看起来的更根本：没有可靠的评估，就很难判断哪些改进是真的。读论文时，对成功率的数字要比对视觉 benchmark 的数字多一分保留。</p>
+</div></details>
+<details class="qa"><summary>Learned controller 没有稳定性证明，这件事该怎么看？</summary><div class="a">
+<p>经典控制的保证来自对模型的假设；模型不准时保证也就不成立了，只是失效的方式比较温和。Learning 的"保证"是统计意义上的：在训练分布内成功率很高。两者的弱点互补，所以实际的系统经常叠在一起：learning 负责性能，外面套一层基于模型的限幅、碰撞检测或安全滤波。更长远的问题是能不能让模型知道自己不知道：在分布外的输入上给出低置信度，然后交给保守的控制器。</p>
+</div></details>
+</section>
+
+<section id="glossary">
+<h2><span class="n">25</span>术语速查</h2>
+<p>读到不认识的词，先在这里定位它属于哪个问题，再去对应的小节。可以按类别筛选，或者直接搜索。</p>
+<div class="filters" id="gl-flt">
+  <button type="button" class="pre on" data-c="all">全部</button>
+  <button type="button" class="pre" data-c="q1">Q1 Architecture</button>
+  <button type="button" class="pre" data-c="q2">Q2 Objective</button>
+  <button type="button" class="pre" data-c="q3">Q3 Data</button>
+  <button type="button" class="pre" data-c="q4">Q4 Interface</button>
+  <button type="button" class="pre" data-c="opt">优化与训练</button>
+  <button type="button" class="pre" data-c="rob">机器人专用</button>
+</div>
+<p><input class="find" id="gl-q" type="search" placeholder="搜索，例如 latent、chunk、蒸馏" aria-label="搜索术语"> <span class="cnt" id="gl-cnt" aria-live="polite" style="margin-left:10px"></span></p>
+<div class="tw"><table class="gl" id="gl-tab">
+<thead><tr><th>术语</th><th>类别</th><th>一句话</th><th>在哪</th></tr></thead>
+<tbody>
+<tr data-c="q1"><td>MLP</td><td><span class="qt c1">Q1</span></td><td>线性层和 nonlinearity 交替的全连接网络，对输入不做任何结构假设</td><td><a href="#fit">02</a></td></tr>
+<tr data-c="q1"><td>CNN</td><td><span class="qt c1">Q1</span></td><td>卷积核在图上滑动并共享 weight，假设 locality 和平移等变</td><td><a href="#bias">10</a></td></tr>
+<tr data-c="q1"><td>ResNet</td><td><span class="qt c1">Q1</span></td><td>带 residual connection 的 CNN；常用的小型 vision backbone</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="q1"><td>Transformer</td><td><span class="qt c1">Q1</span></td><td>由 attention 和 MLP 交替组成、处理一串 token 的网络</td><td><a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>ViT</td><td><span class="qt c1">Q1</span></td><td>Vision Transformer：把图像切成 patch 当作 token 的 Transformer</td><td><a href="#token">09</a></td></tr>
+<tr data-c="q1"><td>Attention</td><td><span class="qt c1">Q1</span></td><td>用 query 和 key 的内积算权重，对 value 加权平均</td><td><a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>Self-attention / cross-attention</td><td><span class="qt c1">Q1</span></td><td>Query 和 key 来自同一个序列 / 来自两个不同的序列</td><td><a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>Residual connection</td><td><span class="qt c1">Q1</span></td><td>输出等于输入加上一个修正量，给梯度留一条直通路径</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="q1"><td>Normalization（BatchNorm、LayerNorm）</td><td><span class="qt c1">Q1</span></td><td>把每层输出缩放到固定尺度，让深网络能稳定训练</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="q1"><td>Encoder</td><td><span class="qt c1">Q1</span></td><td>把输入变成向量的那部分网络；在 Transformer 里指 bidirectional 的堆叠</td><td><a href="#repr">07</a>、<a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>Decoder</td><td><span class="qt c1">Q1</span></td><td>把向量变回输出；在 Transformer 里指 causal 的、逐个生成的堆叠</td><td><a href="#ae">08</a>、<a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>Backbone</td><td><span class="qt c1">Q1</span></td><td>模型里最大、被多个任务共用、通常预训练好的主干</td><td><a href="#map">01</a></td></tr>
+<tr data-c="q1"><td>Head</td><td><span class="qt c1">Q1</span></td><td>接在 backbone 后面、针对具体输出的小模块，例如 action head</td><td><a href="#map">01</a></td></tr>
+<tr data-c="q1"><td>FiLM</td><td><span class="qt c1">Q1</span></td><td>用条件信息对中间层的 feature 做逐通道的缩放和平移</td><td><a href="#attn">11</a></td></tr>
+<tr data-c="q1"><td>Inductive bias</td><td><span class="qt c1">Q1</span></td><td>模型在数据之外自带的偏好，来自结构、augmentation 和优化过程</td><td><a href="#shift">06</a>、<a href="#bias">10</a></td></tr>
+<tr data-c="q1"><td>VLM</td><td><span class="qt c1">Q1</span></td><td>Vision-language model：vision encoder 加 projector 加 LLM</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="q1"><td>VLA</td><td><span class="qt c1">Q1</span></td><td>Vision-language-action model：在 VLM 上加 action 输出</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="q4"><td>Token</td><td><span class="qt c4">Q4</span></td><td>序列里的一个单元；可以指离散的编号，也可以指那个位置的向量</td><td><a href="#token">09</a></td></tr>
+<tr data-c="q4"><td>Tokenizer</td><td><span class="qt c4">Q4</span></td><td>把原始数据切成 token 的模块</td><td><a href="#token">09</a></td></tr>
+<tr data-c="q4"><td>Patch</td><td><span class="qt c4">Q4</span></td><td>图像切出来的小方块，ViT 的输入单元</td><td><a href="#token">09</a></td></tr>
+<tr data-c="q4"><td>Embedding</td><td><span class="qt c4">Q4</span></td><td>一个离散对象对应的向量；也指查表得到向量的操作</td><td><a href="#repr">07</a></td></tr>
+<tr data-c="q4"><td>Position embedding</td><td><span class="qt c4">Q4</span></td><td>加到 token 上的位置信息，因为 attention 本身不分顺序</td><td><a href="#attn">11</a></td></tr>
+<tr data-c="q4"><td>Feature / representation</td><td><span class="qt c4">Q4</span></td><td>网络中间层输出的、概括输入的向量</td><td><a href="#repr">07</a></td></tr>
+<tr data-c="q4"><td>Latent / latent space</td><td><span class="qt c4">Q4</span></td><td>没有被直接观测的中间变量，通常在 bottleneck 处；它所在的空间</td><td><a href="#repr">07</a>、<a href="#ae">08</a></td></tr>
+<tr data-c="q4"><td>Bottleneck</td><td><span class="qt c4">Q4</span></td><td>故意限制中间表示的信息量：降维、加噪声或离散化</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="q4"><td>Codebook / VQ / FSQ</td><td><span class="qt c4">Q4</span></td><td>把连续的 latent 量化成有限个离散值的方法</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="q4"><td>Logits / softmax</td><td><span class="qt c4">Q4</span></td><td>网络输出的未归一化的分数 / 把它们变成概率的函数</td><td><a href="#mle">04</a></td></tr>
+<tr data-c="q4"><td>Action chunk</td><td><span class="qt c4">Q4</span></td><td>Policy 一次输出的未来一整段 action</td><td><a href="#il">16</a>、<a href="#visuo">19</a></td></tr>
+<tr data-c="q4"><td>Proprioception</td><td><span class="qt c4">Q4</span></td><td>机器人对自身的感知：关节角、关节速度、IMU</td><td><a href="#state">18</a></td></tr>
+<tr data-c="q2"><td>Loss / objective</td><td><span class="qt c2">Q2</span></td><td>衡量输出好坏的那个数，训练就是让它变小</td><td><a href="#mle">04</a></td></tr>
+<tr data-c="q2"><td>Maximum likelihood</td><td><span class="qt c2">Q2</span></td><td>选参数使数据在模型下的概率最大；大多数 loss 的来源</td><td><a href="#mle">04</a></td></tr>
+<tr data-c="q2"><td>Cross-entropy</td><td><span class="qt c2">Q2</span></td><td>离散输出的标准 loss；按模型编码真实数据的平均码长</td><td><a href="#info">05</a></td></tr>
+<tr data-c="q2"><td>KL divergence</td><td><span class="qt c2">Q2</span></td><td>两个分布之间的不对称"距离"：用错分布多花的 bit</td><td><a href="#info">05</a></td></tr>
+<tr data-c="q2"><td>Supervised learning</td><td><span class="qt c2">Q2</span></td><td>目标由人工标注给出</td><td><a href="#paradigm">12</a></td></tr>
+<tr data-c="q2"><td>Self-supervised learning</td><td><span class="qt c2">Q2</span></td><td>目标从数据自身造出来：预测被遮住的或未来的部分</td><td><a href="#ssl">13</a></td></tr>
+<tr data-c="q2"><td>Contrastive learning / InfoNCE</td><td><span class="qt c2">Q2</span></td><td>把配对样本的 embedding 拉近、不配对的推远</td><td><a href="#ssl">13</a></td></tr>
+<tr data-c="q2"><td>Autoencoder / VAE</td><td><span class="qt c2">Q2</span></td><td>以重建输入为目标的 encoder–decoder；VAE 另加对 latent 分布的 KL 约束</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="q2"><td>ELBO</td><td><span class="qt c2">Q2</span></td><td>VAE 最大化的目标，是数据 log-likelihood 的下界</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="q2"><td>Generative model</td><td><span class="qt c2">Q2</span></td><td>学数据的分布并能从中采样的模型</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Autoregressive</td><td><span class="qt c2">Q2</span></td><td>把序列的概率拆成逐个 token 的条件概率，一次生成一个</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Diffusion</td><td><span class="qt c2">Q2</span></td><td>学习去噪；从纯噪声出发迭代去噪来生成</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Flow matching</td><td><span class="qt c2">Q2</span></td><td>学一个把噪声搬运到数据的速度场；生成就是积分一个 ODE</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Score</td><td><span class="qt c2">Q2</span></td><td>Log 概率密度对输入的梯度，指向数据更密的方向</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>GAN / discriminator</td><td><span class="qt c2">Q2</span></td><td>生成器和判别器对抗训练；判别器分辨真假样本</td><td><a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Mode averaging / mode collapse</td><td><span class="qt c2">Q2</span></td><td>把多个正确答案平均成一个错的 / 只学会其中一部分</td><td><a href="#mle">04</a>、<a href="#generative">14</a></td></tr>
+<tr data-c="q2"><td>Behavior cloning</td><td><span class="qt c2">Q2</span></td><td>对专家的 (observation, action) 做 supervised learning</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q2"><td>Distillation / teacher–student</td><td><span class="qt c2">Q2</span></td><td>让一个模型模仿另一个模型的输出</td><td><a href="#il">16</a></td></tr>
+<tr data-c="q2"><td>Reward / return</td><td><span class="qt c2">Q2</span></td><td>每一步的打分 / 它沿时间的折扣累加</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Policy gradient</td><td><span class="qt c2">Q2</span></td><td>不对环境求导，通过提高好动作的概率来改进 policy</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>Value function / critic / advantage</td><td><span class="qt c2">Q2</span></td><td>预测未来 return 的网络 / 某个动作比平均水平好多少</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>PPO</td><td><span class="qt c2">Q2</span></td><td>限制每次更新幅度的 policy gradient 算法；sim-to-real 的默认选择</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q2"><td>World model</td><td><span class="qt c2">Q2</span></td><td>学出来的 dynamics：给定状态和 action，预测下一个状态</td><td><a href="#wm">21</a></td></tr>
+<tr data-c="q3"><td>Dataset / distribution</td><td><span class="qt c3">Q3</span></td><td>训练样本 / 产生这些样本的那个分布</td><td><a href="#shift">06</a></td></tr>
+<tr data-c="q3"><td>Distribution shift</td><td><span class="qt c3">Q3</span></td><td>部署时的数据分布和训练时不一样</td><td><a href="#shift">06</a></td></tr>
+<tr data-c="q3"><td>Data augmentation</td><td><span class="qt c3">Q3</span></td><td>对训练样本做随机变换，告诉模型这些变化不该影响输出</td><td><a href="#shift">06</a></td></tr>
+<tr data-c="q3"><td>Pretraining / fine-tuning</td><td><span class="qt c3">Q3</span></td><td>先在大而泛的数据上训练，再在小而专的数据上继续</td><td><a href="#map">01</a>、<a href="#ssl">13</a></td></tr>
+<tr data-c="q3"><td>Foundation model</td><td><span class="qt c3">Q3</span></td><td>在很宽的数据上预训练、可适配到很多下游任务的大模型</td><td><a href="#ssl">13</a></td></tr>
+<tr data-c="q3"><td>Zero-shot</td><td><span class="qt c3">Q3</span></td><td>不用任何该任务的训练样本，直接完成任务</td><td><a href="#repr">07</a></td></tr>
+<tr data-c="q3"><td>Demonstration / teleoperation</td><td><span class="qt c3">Q3</span></td><td>专家完成任务的记录 / 人远程操作机器人来采集它</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="q3"><td>Cross-embodiment</td><td><span class="qt c3">Q3</span></td><td>把多种不同机器人的数据放在一起训练一个模型</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="q3"><td>Domain randomization</td><td><span class="qt c3">Q3</span></td><td>在仿真里随机改变物理和视觉参数，让真机落在训练分布内</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q3"><td>Sim-to-real</td><td><span class="qt c3">Q3</span></td><td>在 simulator 里训练，直接部署到真机</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q3"><td>On-policy / off-policy / offline</td><td><span class="qt c3">Q3</span></td><td>只用当前 policy 新采的数据 / 可以复用旧数据 / 只用固定数据集</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="q3"><td>DAgger</td><td><span class="qt c3">Q3</span></td><td>让 policy 自己跑、专家给它走到的状态打标签，逐轮扩充数据</td><td><a href="#il">16</a></td></tr>
+<tr data-c="opt"><td>Backpropagation</td><td><span class="qt c0">优化</span></td><td>用链式法则从输出往回算 loss 对所有参数的梯度</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>SGD / Adam / AdamW</td><td><span class="qt c0">优化</span></td><td>用 minibatch 的梯度更新参数的算法；Adam 给每个参数自适应的步长</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>Learning rate</td><td><span class="qt c0">优化</span></td><td>每一步沿梯度走多远；最重要的超参数</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>Minibatch / epoch</td><td><span class="qt c0">优化</span></td><td>每一步用的一小批样本 / 把整个数据集过一遍</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>BPTT</td><td><span class="qt c0">优化</span></td><td>沿时间展开的 backpropagation</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>Vanishing / exploding gradient</td><td><span class="qt c0">优化</span></td><td>梯度经过很多层或很多时间步后趋于零或发散</td><td><a href="#backprop">03</a></td></tr>
+<tr data-c="opt"><td>Overfitting / underfitting</td><td><span class="qt c0">优化</span></td><td>记住了训练样本的噪声 / 连训练样本都拟合不好</td><td><a href="#fit">02</a></td></tr>
+<tr data-c="opt"><td>Regularization / weight decay</td><td><span class="qt c0">优化</span></td><td>为了泛化而加的约束 / 让 weight 趋向于小的一种做法</td><td><a href="#mle">04</a></td></tr>
+<tr data-c="opt"><td>Reparameterization trick</td><td><span class="qt c0">优化</span></td><td>把采样写成确定性函数加外部噪声，让梯度能穿过采样</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="opt"><td>Straight-through estimator</td><td><span class="qt c0">优化</span></td><td>Forward 用离散化后的值，backward 当作没有离散化</td><td><a href="#ae">08</a></td></tr>
+<tr data-c="opt"><td>Frozen / stop-gradient</td><td><span class="qt c0">优化</span></td><td>某个模块的参数不更新 / 让梯度不流过某条路径</td><td><a href="#map">01</a>、<a href="#vla">20</a></td></tr>
+<tr data-c="opt"><td>LoRA</td><td><span class="qt c0">优化</span></td><td>只训练加在原 weight 上的低秩修正量，便宜的 fine-tuning</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="opt"><td>End-to-end</td><td><span class="qt c0">优化</span></td><td>梯度从最终 loss 传到最前面，所有模块一起优化</td><td><a href="#map">01</a></td></tr>
+<tr data-c="opt"><td>Inference</td><td><span class="qt c0">优化</span></td><td>训练结束后只做 forward 来得到输出</td><td><a href="#map">01</a></td></tr>
+<tr data-c="rob"><td>Policy</td><td><span class="qt c0">机器人</span></td><td>从 observation 到 action 的映射；learning 语境下的"控制器"</td><td><a href="#rl">15</a></td></tr>
+<tr data-c="rob"><td>Observation / state</td><td><span class="qt c0">机器人</span></td><td>传感器实际给出的 / 足以预测未来的完整描述</td><td><a href="#repr">07</a>、<a href="#state">18</a></td></tr>
+<tr data-c="rob"><td>POMDP</td><td><span class="qt c0">机器人</span></td><td>只能拿到 observation、拿不到完整 state 的决策问题</td><td><a href="#state">18</a></td></tr>
+<tr data-c="rob"><td>Privileged information</td><td><span class="qt c0">机器人</span></td><td>仿真里有、真机上拿不到的信息，例如摩擦系数和真实速度</td><td><a href="#il">16</a></td></tr>
+<tr data-c="rob"><td>Asymmetric actor–critic</td><td><span class="qt c0">机器人</span></td><td>Critic 看 privileged 信息，actor 只看真机上有的</td><td><a href="#state">18</a></td></tr>
+<tr data-c="rob"><td>Visuomotor policy</td><td><span class="qt c0">机器人</span></td><td>直接从图像到 action 的 policy</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="rob"><td>Motion tracking</td><td><span class="qt c0">机器人</span></td><td>让机器人跟踪一段 reference motion，reward 由数据定义</td><td><a href="#state">18</a></td></tr>
+<tr data-c="rob"><td>Temporal ensembling / receding horizon</td><td><span class="qt c0">机器人</span></td><td>把多次预测对同一时刻的结果平均 / 只执行一段预测的前几步再重算</td><td><a href="#visuo">19</a></td></tr>
+<tr data-c="rob"><td>Dual-system（System 1 / System 2）</td><td><span class="qt c0">机器人</span></td><td>慢的大模型负责理解，快的小模型负责出动作</td><td><a href="#vla">20</a></td></tr>
+<tr data-c="rob"><td>Loco-manipulation</td><td><span class="qt c0">机器人</span></td><td>同时需要移动和操作的任务</td><td><a href="#lines">17</a></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="papers">
+<h2><span class="n">26</span>学习路径与代表工作</h2>
+<h3>建议的顺序</h3>
+<p>每一步都对应一个你在机器人论文里已经见过的词，并且有一个能亲手做的小实验。</p>
+<ol>
+  <li><strong>训练一个 MLP。</strong>用 PyTorch 拟合一个一维函数，再做 MNIST 分类。目标是亲眼看到 loss 曲线、overfitting，并亲手写一次 backward。对应第 02 到 04 节。</li>
+  <li><strong>Autoencoder 和 VAE。</strong>在 MNIST 上训练，把 latent 设成 2 维并画出来，在 latent space 里插值。对应第 07、08 节。</li>
+  <li><strong>从零写一个小 Transformer。</strong>Karpathy 的 nanoGPT 是标准的入门材料。目标是能不看资料写出 self-attention。对应第 09、11 节。</li>
+  <li><strong>Diffusion 或 flow matching。</strong>在二维的 toy 数据上训练一个 flow matching 模型，就是把实验 5 里的解析速度场换成一个 MLP。对应第 14 节。</li>
+  <li><strong>RL。</strong>在一个现成的 legged 环境里跑通 PPO，改一项 reward 看行为怎么变。对应第 15 节。</li>
+  <li><strong>回到机器人。</strong>读 Diffusion Policy 和 ACT 的代码，对照第 19 节把每个模块认出来；再读一篇 VLA（OpenVLA 或 π0），对照第 20 节。</li>
+</ol>
+<h3>代表工作</h3>
+<div class="filters" id="pp-flt">
+  <button type="button" class="pre on" data-c="all">全部</button>
+  <button type="button" class="pre" data-c="fd">基础</button>
+  <button type="button" class="pre" data-c="rp">Representation</button>
+  <button type="button" class="pre" data-c="gm">Generative</button>
+  <button type="button" class="pre" data-c="rl">RL 与 sim-to-real</button>
+  <button type="button" class="pre" data-c="il">Imitation</button>
+  <button type="button" class="pre" data-c="vla">VLA 与数据</button>
+  <button type="button" class="pre" data-c="wm">World model 与 3D</button>
+</div>
+<p class="cnt" id="pp-cnt" aria-live="polite"></p>
+<div class="tw"><table class="papers" id="pp-tab">
+<thead><tr><th>年份</th><th>工作</th><th>类别</th><th>为什么重要</th></tr></thead>
+<tbody>
+<tr data-c="fd"><td>1986</td><td>Rumelhart、Hinton、Williams：backpropagation</td><td>基础</td><td>让多层网络的训练变得可行并被广泛接受</td></tr>
+<tr data-c="fd"><td>2012</td><td>Krizhevsky：AlexNet</td><td>基础</td><td>深的 CNN 加 GPU 在 ImageNet 上大幅领先，deep learning 由此起飞</td></tr>
+<tr data-c="fd"><td>2014</td><td>Kingma、Ba：Adam</td><td>基础</td><td>至今仍是默认的 optimizer</td></tr>
+<tr data-c="fd"><td>2015</td><td>He：ResNet</td><td>基础</td><td>Residual connection 让很深的网络可以训练</td></tr>
+<tr data-c="fd"><td>2017</td><td>Vaswani：Attention Is All You Need</td><td>基础</td><td>Transformer</td></tr>
+<tr data-c="fd"><td>2020</td><td>Dosovitskiy：ViT</td><td>基础</td><td>把图像切成 patch，Transformer 进入视觉</td></tr>
+<tr data-c="rp"><td>2013</td><td>Kingma、Welling：VAE</td><td>Representation</td><td>带概率结构的 latent space；reparameterization trick</td></tr>
+<tr data-c="rp"><td>2017</td><td>van den Oord：VQ-VAE</td><td>Representation</td><td>离散的 latent，后来图像、音频、action 这类离散 tokenizer 的起点</td></tr>
+<tr data-c="rp"><td>2018</td><td>Devlin：BERT</td><td>Representation</td><td>Masked prediction 的 self-supervised 预训练</td></tr>
+<tr data-c="rp"><td>2021</td><td>Radford：CLIP</td><td>Representation</td><td>图文 contrastive 预训练；zero-shot 分类</td></tr>
+<tr data-c="rp"><td>2021</td><td>He：MAE</td><td>Representation</td><td>遮住 75% 的 patch 再重建，视觉版的 masked 预训练</td></tr>
+<tr data-c="rp"><td>2021–23</td><td>Caron：DINO；Oquab：DINOv2</td><td>Representation</td><td>只用图像的 self-distillation，几何和 dense feature 强</td></tr>
+<tr data-c="rp"><td>2023</td><td>Zhai：SigLIP</td><td>Representation</td><td>用 sigmoid loss 的图文预训练，VLA 常用的 vision encoder</td></tr>
+<tr data-c="rp"><td>2023</td><td>Mentzer：FSQ</td><td>Representation</td><td>不需要学 codebook 的量化方法</td></tr>
+<tr data-c="gm"><td>2014</td><td>Goodfellow：GAN</td><td>Generative</td><td>对抗训练</td></tr>
+<tr data-c="gm"><td>2020</td><td>Ho：DDPM</td><td>Generative</td><td>把 diffusion 做成简单稳定的噪声预测</td></tr>
+<tr data-c="gm"><td>2020</td><td>Song：score-based SDE</td><td>Generative</td><td>把 diffusion 和 score matching 统一起来</td></tr>
+<tr data-c="gm"><td>2021</td><td>Rombach：Latent Diffusion</td><td>Generative</td><td>先用 autoencoder 压缩，再在 latent space 里做 diffusion</td></tr>
+<tr data-c="gm"><td>2022</td><td>Lipman：Flow Matching；Liu：Rectified Flow</td><td>Generative</td><td>直接回归速度场</td></tr>
+<tr data-c="rl"><td>2013–15</td><td>Mnih：DQN</td><td>RL</td><td>深度网络加 Q-learning 从像素学会玩 Atari</td></tr>
+<tr data-c="rl"><td>2017</td><td>Schulman：PPO</td><td>RL</td><td>Legged sim-to-real 的默认算法</td></tr>
+<tr data-c="rl"><td>2017</td><td>Tobin：Domain Randomization</td><td>RL</td><td>Sim-to-real 的基本思路</td></tr>
+<tr data-c="rl"><td>2018</td><td>Haarnoja：SAC</td><td>RL</td><td>省样本的 off-policy 算法</td></tr>
+<tr data-c="rl"><td>2018</td><td>Peng：DeepMimic</td><td>RL</td><td>用 mocap 数据定义 reward</td></tr>
+<tr data-c="rl"><td>2020</td><td>Lee：Quadrupedal locomotion over challenging terrain</td><td>RL</td><td>Privileged teacher 加 student</td></tr>
+<tr data-c="rl"><td>2021</td><td>Kumar：RMA</td><td>RL</td><td>从历史里估计环境的 latent，在线适应</td></tr>
+<tr data-c="rl"><td>2021</td><td>Rudin：Learning to walk in minutes</td><td>RL</td><td>GPU 并行仿真；legged_gym</td></tr>
+<tr data-c="rl"><td>2021</td><td>Peng：AMP</td><td>RL</td><td>用 discriminator 的输出当 style reward</td></tr>
+<tr data-c="il"><td>2011</td><td>Ross、Gordon、Bagnell：DAgger</td><td>Imitation</td><td>指出并解决 behavior cloning 的 compounding error</td></tr>
+<tr data-c="il"><td>2023</td><td>Zhao：ACT、ALOHA</td><td>Imitation</td><td>Action chunking；低成本双臂 teleoperation</td></tr>
+<tr data-c="il"><td>2023</td><td>Chi：Diffusion Policy</td><td>Imitation</td><td>用 diffusion 生成 action 序列，解决 multimodality</td></tr>
+<tr data-c="il"><td>2024</td><td>Chi：UMI</td><td>Imitation</td><td>不需要机器人的手持采集设备</td></tr>
+<tr data-c="vla"><td>2022</td><td>Brohan：RT-1</td><td>VLA</td><td>大规模真机数据上的语言条件 Transformer policy</td></tr>
+<tr data-c="vla"><td>2023</td><td>Brohan、Zitkovich：RT-2</td><td>VLA</td><td>把 action 当作 token，在 VLM 上 fine-tune</td></tr>
+<tr data-c="vla"><td>2023</td><td>Open X-Embodiment</td><td>数据</td><td>跨实验室、跨机器人的数据汇集</td></tr>
+<tr data-c="vla"><td>2024</td><td>Khazatsky：DROID</td><td>数据</td><td>大规模、多场景的真机操作数据集</td></tr>
+<tr data-c="vla"><td>2024</td><td>Octo Model Team：Octo</td><td>VLA</td><td>开源的通用 policy，diffusion head</td></tr>
+<tr data-c="vla"><td>2024</td><td>Kim：OpenVLA</td><td>VLA</td><td>开源的 7B VLA</td></tr>
+<tr data-c="vla"><td>2024</td><td>Black：π0</td><td>VLA</td><td>VLM 加 flow matching 的 action expert</td></tr>
+<tr data-c="vla"><td>2025</td><td>Pertsch：FAST</td><td>VLA</td><td>频域压缩的 action tokenizer</td></tr>
+<tr data-c="vla"><td>2025</td><td>NVIDIA：GR00T N1；Figure：Helix；Physical Intelligence：π0.5</td><td>VLA</td><td>双系统结构；humanoid；开放环境里的泛化</td></tr>
+<tr data-c="wm"><td>2018</td><td>Ha、Schmidhuber：World Models</td><td>World model</td><td>在学到的 latent dynamics 里训练 policy</td></tr>
+<tr data-c="wm"><td>2019–23</td><td>Hafner：Dreamer 系列</td><td>World model</td><td>在 RSSM（来自更早的 PlaNet）的 imagination 里做 actor–critic</td></tr>
+<tr data-c="wm"><td>2022–23</td><td>Hansen：TD-MPC、TD-MPC2</td><td>World model</td><td>Latent 模型加在线 planning 加 value</td></tr>
+<tr data-c="wm"><td>2024</td><td>Bruce：Genie</td><td>World model</td><td>从无标注视频学可交互的生成式环境</td></tr>
+<tr data-c="wm"><td>2026</td><td>Liao：SuperMimic</td><td>World model</td><td>对一个可微 world model 求导来训练 humanoid 的 motion tracking</td></tr>
+<tr data-c="wm"><td>2020</td><td>Mildenhall：NeRF</td><td>3D</td><td>用神经网络表示 3D 场景</td></tr>
+<tr data-c="wm"><td>2023</td><td>Kerbl：3D Gaussian Splatting</td><td>3D</td><td>可实时渲染的显式 3D 表示</td></tr>
+<tr data-c="wm"><td>2023</td><td>Kirillov：SAM</td><td>感知</td><td>通用的分割模型</td></tr>
+</tbody></table></div>
+<h3>读一篇 learning 论文时问的六个问题</h3>
+<ol>
+  <li>把它写成"根据 A 预测 B"：A 是什么，B 是什么？</li>
+  <li>B 从哪来？人标的、数据自身、专家、另一个模型，还是只有 reward？</li>
+  <li>输出是一个值还是一个分布？如果是分布，用的是哪种输出头？</li>
+  <li>输入和输出被表示成什么？有没有 tokenizer、latent、action chunk？</li>
+  <li>数据从哪来，有多少？训练分布和部署时会遇到的情况差在哪？</li>
+  <li>哪些部分是预训练的、冻住的、从头训练的？梯度流过哪些模块？</li>
+</ol>
+<h3>Related</h3>
+<ul>
+  <li><a href="../robotics/whole-body-control-paradigms.html">Whole-Body Control 范式全景</a>：同一段历史从控制的角度看。那一页讲"每一代方法把什么从人写换成了学"，这一页讲"学"这件事本身。</li>
+  <li><a href="../robotics/transforms-and-manipulation.html">Rigid Body Transforms 与 Manipulation 基础</a>：Jacobian、IK、旋转的表示，是第 03 节的类比和第 19 节 action 表示的前置知识。</li>
+  <li><a href="../robotics/apriltag-pose-estimation.html">AprilTag 位姿估计</a>：SVD、least squares、camera model。第 02 节说的"你已经做过的 learning"就是这一类。</li>
+  <li><a href="../robotics/quadrotor-dynamics.html">无人机动力学</a>：一个模型足够准、经典控制很强的平台，可以对照理解什么时候才需要 learning。</li>
+</ul>
+</section>
+
+</main>
+</div>
+
+<script>
+// ---------- 公共小工具 ----------
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+// 可复现的随机数（mulberry32）和标准正态
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = (v, d) => (v >= 0.001 || v === 0) ? v.toFixed(d == null ? 3 : d) : v.toExponential(1);
+function setOn(btns, pred) { btns.forEach(b => { const on = pred(b); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }); }
+
+// ---------- 01 总图：点术语，高亮它在数据流里的位置 ----------
+(function () {
+  const DEF = {
+    tok: ['Token / tokenizer', '把任何数据切成一串统一格式的小单元：文字切成 subword，图像切成 patch，动作离散成编号。之后所有模态都能用同一种网络处理。→ 第 09 节', ['tok']],
+    enc: ['Encoder', '把输入变成向量的那部分网络。它决定哪些信息被留下。→ 第 07、08 节', ['enc']],
+    bb: ['Backbone', '模型里最大、通常预训练好、被多个任务共用的主干。在视觉里它就是 encoder（ResNet、ViT）；在 VLA 里指中间的 LLM。', ['enc']],
+    z: ['Latent · feature · embedding', '同一类东西的几个名字：中间那个向量。它是输入的一个概括，下游只通过它看到输入。→ 第 07 节', ['z']],
+    bn: ['Bottleneck', '故意把中间向量做小（维度低、加噪声，或只允许取有限个离散值），逼网络只保留重要的信息。→ 第 08 节', ['z']],
+    dec: ['Decoder', '把向量变回输出：重建图像、生成文字、生成动作。→ 第 08、14 节', ['dec']],
+    head: ['Head', '接在 backbone 后面、针对具体任务的小模块。Action head 输出动作，value head 输出 value。换任务时常常只换 head。', ['dec']],
+    loss: ['Loss / objective', '把"输出好不好"变成一个数。选什么 loss，等于假设输出服从什么分布。→ 第 04 节', ['loss', 'y']],
+    y: ['Target / label', '告诉模型"正确答案"的那个量。它从哪来，决定了范式的名字：人标的是 supervised，数据自身的是 self-supervised，专家给的是 imitation，另一个模型给的是 distillation。RL 没有它，只有 reward。→ 第 12 节', ['y', 'data']],
+    grad: ['Backprop / gradient', 'Loss 对每个参数的导数，用链式法则从输出端往回算。所有范式都靠它更新参数。→ 第 03 节', ['grad']],
+    e2e: ['End-to-end', '梯度从最终的 loss 一直传回最前面的模块，所有模块一起为同一个目标调整。模块依然存在，只是它们之间的接口不再由人规定。', ['grad', 'tok', 'enc', 'z', 'dec']],
+    frz: ['Frozen', '某个模块的参数不更新。常见做法：冻住预训练好的 vision encoder（图上的 encoder），只训练后面的部分。', ['enc']],
+    pre: ['Pretraining → fine-tuning', '先在大而泛的数据上用一个 loss 训练 encoder / backbone（pretraining），再换上新的 head 和新的 loss，在小而专的数据上继续训练（fine-tuning）。变的是 head、loss 和数据，留下来的是 encoder。', ['enc', 'dec', 'loss', 'data']],
+    inf: ['Inference', '训练结束后只做 forward：输入进去，输出出来。没有 loss，没有梯度。机器人上部署的就是这一段。', ['x', 'tok', 'enc', 'z', 'dec', 'yhat']]
+  };
+  const svg = $('#mapsvg'), box = $('#mapdef'), chips = $('#mapchips');
+  const init = box.innerHTML;
+  let cur = null;
+  Object.keys(DEF).forEach(k => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pre'; b.textContent = DEF[k][0]; b.dataset.k = k; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => pick(cur === k ? null : k));
+    chips.appendChild(b);
+  });
+  const btns = Array.from(chips.children);
+  function pick(k) {
+    cur = k;
+    setOn(btns, b => b.dataset.k === k);
+    svg.classList.toggle('on', !!k);
+    svg.querySelectorAll('g[data-p]').forEach(g => g.classList.toggle('hl', !!k && DEF[k][2].includes(g.dataset.p)));
+    if (k) { box.textContent = ''; const t = document.createElement('b'); t.textContent = DEF[k][0]; box.append(t, DEF[k][1]); }
+    else box.innerHTML = init;
+  }
+})();
+
+// ---------- 实验 1：真的训练一个 MLP（1 → H → H → 1，tanh，Adam，MSE） ----------
+(function () {
+  const fit = $('#mlp-fit'), lossS = $('#mlp-loss');
+  const W = 560, H = 300, L = 40, R = 12, T = 12, B = 28;
+  const X = x => L + (x + 1) / 2 * (W - L - R), Y = y => T + (1.4 - y) / 2.8 * (H - T - B);
+  const g = x => 0.7 * Math.sin(3.3 * x) + 0.25 * x;      // 产生数据的真实函数
+  const PRE = { under: { h: 2, n: 60, s: 0.15 }, ok: { h: 8, n: 60, s: 0.15 }, over: { h: 32, n: 10, s: 0.25 }, more: { h: 32, n: 200, s: 0.25 } };
+  const cfg = Object.assign({}, PRE.ok);
+  const MAXSTEP = 6000;
+  // 固定的样本池：改变点数时取前 n 个，点的位置不会乱跳
+  const pool = (() => { const r = rng(7), r2 = rng(99), o = { x: [], e: [], vx: [], ve: [] };
+    for (let i = 0; i < 200; i++) { o.x.push(r() * 2 - 1); o.e.push(gauss(r)); }
+    for (let i = 0; i < 200; i++) { o.vx.push(r2() * 2 - 1); o.ve.push(gauss(r2)); } return o; })();
+  let P, G, M, V, h1, h2, d1, d2, o2, ob1, ob2, o3, ob3, tx, ty, vx, vy, step, adamT, hist, running = false, raf = 0;
+
+  function data() {
+    tx = pool.x.slice(0, cfg.n); ty = tx.map((x, i) => g(x) + cfg.s * pool.e[i]);
+    vx = pool.vx; vy = vx.map((x, i) => g(x) + cfg.s * pool.ve[i]);
+  }
+  function init() {
+    const h = cfg.h, r = rng(11), n = h * h + 4 * h + 1;
+    P = new Float64Array(n); G = new Float64Array(n); M = new Float64Array(n); V = new Float64Array(n);
+    ob1 = h; o2 = 2 * h; ob2 = o2 + h * h; o3 = ob2 + h; ob3 = o3 + h;
+    const a2 = Math.sqrt(6 / (2 * h)), a3 = Math.sqrt(6 / (h + 1));
+    for (let j = 0; j < h; j++) { P[j] = (r() * 2 - 1) * 2.5; P[ob1 + j] = (r() * 2 - 1); }
+    for (let k = 0; k < h * h; k++) P[o2 + k] = (r() * 2 - 1) * a2;
+    for (let i = 0; i < h; i++) P[o3 + i] = (r() * 2 - 1) * a3;
+    h1 = new Float64Array(h); h2 = new Float64Array(h); d1 = new Float64Array(h); d2 = new Float64Array(h);
+    step = 0; adamT = 0; hist = { st: [], tr: [], va: [] };
+  }
+  function fwd(x) {
+    const h = cfg.h;
+    for (let j = 0; j < h; j++) h1[j] = Math.tanh(P[j] * x + P[ob1 + j]);
+    for (let i = 0; i < h; i++) { let s = P[ob2 + i]; const row = o2 + i * h; for (let j = 0; j < h; j++) s += P[row + j] * h1[j]; h2[i] = Math.tanh(s); }
+    let y = P[ob3]; for (let i = 0; i < h; i++) y += P[o3 + i] * h2[i];
+    return y;
+  }
+  function trainStep() {                                    // 一次 forward + backward + Adam 更新
+    const h = cfg.h, n = tx.length; G.fill(0); let loss = 0;
+    for (let k = 0; k < n; k++) {
+      const x = tx[k], e = fwd(x) - ty[k]; loss += e * e;
+      const dy = 2 * e / n;                                 // ∂L/∂ŷ
+      G[ob3] += dy; d1.fill(0);
+      for (let i = 0; i < h; i++) {
+        G[o3 + i] += dy * h2[i];
+        const di = dy * P[o3 + i] * (1 - h2[i] * h2[i]);    // δ 过 tanh
+        G[ob2 + i] += di; const row = o2 + i * h;
+        for (let j = 0; j < h; j++) { G[row + j] += di * h1[j]; d1[j] += di * P[row + j]; }   // δ₁ = δ₂ · J₂
+      }
+      for (let j = 0; j < h; j++) { const dj = d1[j] * (1 - h1[j] * h1[j]); G[j] += dj * x; G[ob1 + j] += dj; }
+    }
+    adamT++; const lr = 0.01 / (1 + step / 1500), b1 = 0.9, b2 = 0.999, c1 = 1 - Math.pow(b1, adamT), c2 = 1 - Math.pow(b2, adamT);   // learning rate 逐渐衰减
+    for (let k = 0; k < P.length; k++) {
+      M[k] = b1 * M[k] + (1 - b1) * G[k]; V[k] = b2 * V[k] + (1 - b2) * G[k] * G[k];
+      P[k] -= lr * (M[k] / c1) / (Math.sqrt(V[k] / c2) + 1e-8);
+    }
+    step++; return loss / n;
+  }
+  const mse = (xs, ys) => { let s = 0; for (let k = 0; k < xs.length; k++) { const e = fwd(xs[k]) - ys[k]; s += e * e; } return s / xs.length; };
+
+  // 静态部分
+  function frame() {
+    fit.textContent = '';
+    for (let y = -1; y <= 1; y += 1) { el('line', { class: 'l-grid', x1: L, x2: W - R, y1: Y(y), y2: Y(y) }, fit); el('text', { class: 'l-t', x: L - 6, y: Y(y) + 4, 'text-anchor': 'end' }, fit, String(y)); }
+    for (let x = -1; x <= 1; x += 0.5) { el('line', { class: 'l-grid', x1: X(x), x2: X(x), y1: T, y2: H - B }, fit); el('text', { class: 'l-t', x: X(x), y: H - B + 14, 'text-anchor': 'middle' }, fit, String(x)); }
+    el('text', { class: 'l-lbl', x: W - R, y: H - 4, 'text-anchor': 'end' }, fit, '输入 x');
+    let d = ''; for (let i = 0; i <= 120; i++) { const x = -1 + i / 60; d += (i ? 'L' : 'M') + X(x).toFixed(1) + ',' + Y(g(x)).toFixed(1); }
+    el('path', { class: 'l-true', d }, fit);
+    el('path', { class: 'l-fit', id: 'mlp-curve', d: '' }, fit);
+    const gp = el('g', {}, fit);
+    tx.forEach((x, i) => el('circle', { class: 'l-pt', cx: X(x), cy: Y(clamp(ty[i], -1.4, 1.4)), r: 4 }, gp));
+  }
+  function draw() {
+    let d = ''; for (let i = 0; i <= 140; i++) { const x = -1 + i / 70; d += (i ? 'L' : 'M') + X(x).toFixed(1) + ',' + Y(clamp(fwd(x), -1.5, 1.5)).toFixed(1); }
+    $('#mlp-curve').setAttribute('d', d);
+    // loss 曲线
+    const w = 300, hh = 190, l = 36, r = 8, t = 10, b = 22;
+    const ly = v => t + (0 - Math.log10(clamp(v, 1e-5, 1))) / 5 * (hh - t - b);
+    const maxS = Math.max(500, step), lx = s => l + s / maxS * (w - l - r);
+    lossS.textContent = '';
+    ['1', '0.1', '0.01', '10⁻³', '10⁻⁴', '10⁻⁵'].forEach((s, i) => { const y = t + i / 5 * (hh - t - b); el('line', { class: 'l-grid', x1: l, x2: w - r, y1: y, y2: y }, lossS); el('text', { class: 'l-t', x: l - 5, y: y + 4, 'text-anchor': 'end' }, lossS, s); });
+    el('text', { class: 'l-t', x: l, y: hh - 6 }, lossS, '0'); el('text', { class: 'l-t', x: w - r, y: hh - 6, 'text-anchor': 'end' }, lossS, maxS + ' step');
+    const s2 = cfg.s * cfg.s; if (s2 >= 1e-5) el('line', { class: 'l-floor', x1: l, x2: w - r, y1: ly(s2), y2: ly(s2) }, lossS);
+    const path = arr => arr.map((v, i) => (i ? 'L' : 'M') + lx(hist.st[i]).toFixed(1) + ',' + ly(v).toFixed(1)).join('');
+    if (hist.st.length > 1) { el('path', { class: 'l-val', d: path(hist.va) }, lossS); el('path', { class: 'l-train', d: path(hist.tr) }, lossS); }
+    const tl = mse(tx, ty), vl = mse(vx, vy);
+    $('#mlp-step').textContent = step; $('#mlp-np').textContent = P.length;
+    $('#mlp-tl').textContent = fmt(tl, 4); $('#mlp-vl').textContent = fmt(vl, 4); $('#mlp-nf').textContent = fmt(s2, 4);
+    let msg = '点"开始训练"。';
+    if (step >= 1500) {
+      const lim = 1.5 * s2 + 0.004;
+      if (tl > lim) msg = '<span class="pill bad">underfitting</span> Train loss 停在噪声方差之上降不下去：这个网络表示不了这条曲线。';
+      else if (vl > lim && vl > 2 * tl) msg = '<span class="pill bad">overfitting</span> Train loss 远低于 validation loss，后者明显高于噪声方差：网络在记训练点的噪声。';
+      else msg = '<span class="pill ok">拟合得不错</span> 两条曲线都在噪声方差附近：能学的都学到了，剩下的是数据本身的噪声。';
+    } else if (step > 0) msg = '训练中…';
+    $('#mlp-msg').innerHTML = '<p>' + msg + '</p>';
+  }
+  function tick() {
+    const cost = cfg.n * (2 * cfg.h * cfg.h + 6 * cfg.h), spf = clamp(Math.round(5e6 / cost), 1, 60);
+    for (let i = 0; i < spf && step < MAXSTEP; i++) {
+      const tl = trainStep();
+      if (step % 10 === 0) { hist.st.push(step); hist.tr.push(tl); hist.va.push(mse(vx, vy)); }
+    }
+    if (hist.st.length > 700) ['st', 'tr', 'va'].forEach(k => { hist[k] = hist[k].filter((_, i) => i % 2 === 0); });
+    draw();
+    if (step >= MAXSTEP) run(false); else if (running) raf = requestAnimationFrame(tick);
+  }
+  function run(on) {
+    running = on; cancelAnimationFrame(raf);
+    $('#mlp-run').textContent = on ? '暂停' : (step >= MAXSTEP ? '已到 ' + MAXSTEP + ' step' : step ? '继续训练' : '开始训练');
+    if (on) raf = requestAnimationFrame(tick);
+  }
+  const presetBtns = Array.from(document.querySelectorAll('#lab-mlp .presets button'));
+  function sync(auto) {
+    $('#mlp-h').value = String(cfg.h); $('#mlp-n').value = cfg.n; $('#mlp-s').value = cfg.s;
+    $('#mlp-n-o').textContent = cfg.n; $('#mlp-s-o').textContent = cfg.s.toFixed(2);
+    setOn(presetBtns, b => { const p = PRE[b.dataset.p]; return p.h === cfg.h && p.n === cfg.n && Math.abs(p.s - cfg.s) < 1e-9; });
+    run(false); data(); init(); frame(); draw(); if (auto) run(true);
+  }
+  presetBtns.forEach(b => b.addEventListener('click', () => { Object.assign(cfg, PRE[b.dataset.p]); sync(true); }));
+  $('#mlp-h').addEventListener('change', e => { cfg.h = +e.target.value; sync(false); });
+  $('#mlp-n').addEventListener('input', e => { cfg.n = +e.target.value; sync(false); });
+  $('#mlp-s').addEventListener('input', e => { cfg.s = +e.target.value; sync(false); });
+  $('#mlp-run').addEventListener('click', () => { if (step < MAXSTEP) run(!running); });
+  $('#mlp-reset').addEventListener('click', () => sync(false));
+  sync(false);
+})();
+
+// ---------- 实验 2：entropy、cross-entropy、KL ----------
+(function () {
+  const svg = $('#info-svg'), bar = $('#info-bar');
+  const LAB = ['block', 'cup', 'ball', 'bowl', 'pen', 'box'], K = 6;
+  const P0 = [0.55, 0.2, 0.1, 0.08, 0.04, 0.03], Q0 = [0.25, 0.3, 0.15, 0.1, 0.1, 0.1];
+  let p = P0.slice(), q = Q0.slice();
+  const W = 560, H = 260, L = 34, R = 8, T = 16, B = 38, gw = (W - L - R) / K, bw = gw * 0.34, ph = H - T - B;
+  const yOf = v => T + (1 - v) * ph;
+  const lg = x => Math.log2(x);
+  function setBin(arr, i, v) {                              // 把第 i 项设成 v，其余按原比例缩放
+    v = clamp(v, 0.002, 0.994); const rest = arr.reduce((s, x, j) => j === i ? s : s + x, 0);
+    for (let j = 0; j < K; j++) if (j !== i) arr[j] = rest > 1e-12 ? arr[j] / rest * (1 - v) : (1 - v) / (K - 1);
+    arr[i] = v;
+  }
+  function draw() {
+    svg.textContent = '';
+    [0, 0.25, 0.5, 0.75, 1].forEach(v => { el('line', { class: 'l-grid', x1: L, x2: W - R, y1: yOf(v), y2: yOf(v) }, svg); el('text', { class: 'l-t', x: L - 5, y: yOf(v) + 4, 'text-anchor': 'end' }, svg, String(v)); });
+    for (let i = 0; i < K; i++) {
+      const x0 = L + i * gw + gw * 0.12;
+      [['p', p, x0], ['q', q, x0 + bw + 4]].forEach(([name, arr, x]) => {
+        const v = arr[i];
+        el('rect', { class: 'bar-' + name, x, y: yOf(v), width: bw, height: Math.max(1, v * ph), rx: 2 }, svg);
+        el('text', { class: 'l-t', x: x + bw / 2, y: yOf(v) - 4, 'text-anchor': 'middle' }, svg, v.toFixed(2));
+        const hit = el('rect', { x: x - 2, y: T, width: bw + 4, height: ph, fill: 'transparent', style: 'cursor:ns-resize', tabindex: 0, role: 'slider', 'aria-label': name + '(' + LAB[i] + ')', 'aria-valuemin': 0, 'aria-valuemax': 1, 'aria-valuenow': v.toFixed(2) }, svg);
+        hit.dataset.w = name; hit.dataset.i = i;
+      });
+      el('text', { class: 'l-lbl', x: L + i * gw + gw / 2, y: H - B + 18, 'text-anchor': 'middle' }, svg, LAB[i]);
+    }
+    el('text', { class: 'l-lbl', x: L, y: H - 4 }, svg, '"pick up the red ___" 的下一个词');
+    // 数值
+    let h = 0, ce = 0, rkl = 0;
+    for (let i = 0; i < K; i++) {
+      if (p[i] > 0) { h -= p[i] * lg(p[i]); ce -= p[i] * lg(q[i]); }
+      if (q[i] > 0) rkl += p[i] > 0 ? q[i] * lg(q[i] / p[i]) : Infinity;
+    }
+    const kl = Math.max(0, ce - h);
+    $('#info-h').textContent = h.toFixed(3) + ' bit'; $('#info-ce').textContent = ce.toFixed(3) + ' bit';
+    $('#info-kl').textContent = kl.toFixed(3) + ' bit'; $('#info-rkl').textContent = isFinite(rkl) ? rkl.toFixed(3) + ' bit' : '∞';
+    // 条形分解：H(p,q) = H(p) + KL
+    bar.textContent = ''; const bl = 14, bwid = 272, maxB = 5, sx = v => bl + Math.min(v, maxB) / maxB * bwid;
+    el('text', { class: 'l-lbl', x: bl, y: 16 }, bar, 'H(p,q) = H(p) + KL(p‖q)');
+    el('rect', { x: bl, y: 26, width: Math.max(0, sx(h) - bl), height: 24, style: 'fill:var(--a1)' }, bar);
+    el('rect', { x: sx(h), y: 26, width: Math.max(0, sx(ce) - sx(h)), height: 24, style: 'fill:var(--bad)' }, bar);
+    if (ce > maxB) el('text', { class: 'l-t', x: bl + bwid + 2, y: 43 }, bar, '›');
+    for (let v = 0; v <= maxB; v++) { el('line', { class: 'l-ax', x1: sx(v), x2: sx(v), y1: 52, y2: 58 }, bar); el('text', { class: 'l-t', x: sx(v), y: 70, 'text-anchor': 'middle' }, bar, String(v)); }
+    el('text', { class: 'l-t', x: bl + bwid, y: 84, 'text-anchor': 'end' }, bar, 'bit');
+    el('rect', { x: bl, y: 78, width: 9, height: 9, style: 'fill:var(--a1)' }, bar); el('text', { class: 'l-lbl', x: bl + 13, y: 87 }, bar, 'H(p)：消不掉');
+    el('rect', { x: bl + 100, y: 78, width: 9, height: 9, style: 'fill:var(--bad)' }, bar); el('text', { class: 'l-lbl', x: bl + 113, y: 87 }, bar, 'KL：模型的错');
+    const top = p.indexOf(Math.max(...p));
+    let msg;
+    if (kl < 0.005) msg = 'q 和 p 几乎一样：KL ≈ 0，cross-entropy 等于 entropy。这是任何模型能达到的下限。';
+    else if (q[top] < 0.02) msg = '数据里最常见的是 "' + LAB[top] + '"，模型只给了它 ' + q[top].toFixed(3) + ' 的概率。每遇到一次就要付 ' + (-lg(q[top])).toFixed(1) + ' bit。';
+    else if (h < 0.01) msg = 'p 是确定的：entropy 为 0，cross-entropy 就是 −log₂ q("' + LAB[top] + '") = ' + ce.toFixed(2) + ' bit。';
+    else msg = '模型多花了 ' + kl.toFixed(2) + ' bit（红色）。把橙色柱子拖得和蓝色一样高，红色就消失。';
+    $('#info-msg').innerHTML = '<p>' + msg + '</p>';
+  }
+  let drag = null;
+  function at(e) { const r = svg.getBoundingClientRect(); return 1 - ((e.clientY - r.top) / r.height * H - T) / ph; }
+  svg.addEventListener('pointerdown', e => { const t = e.target; if (!t.dataset || t.dataset.w == null) return; drag = { w: t.dataset.w, i: +t.dataset.i }; svg.setPointerCapture(e.pointerId); setBin(drag.w === 'p' ? p : q, drag.i, at(e)); draw(); e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (!drag) return; setBin(drag.w === 'p' ? p : q, drag.i, at(e)); draw(); });
+  ['pointerup', 'pointercancel'].forEach(n => svg.addEventListener(n, () => { drag = null; }));
+  svg.addEventListener('keydown', e => {
+    const t = e.target; if (!t.dataset || t.dataset.w == null) return;
+    const d = e.key === 'ArrowUp' ? 0.02 : e.key === 'ArrowDown' ? -0.02 : 0; if (!d) return;
+    e.preventDefault(); const arr = t.dataset.w === 'p' ? p : q, i = +t.dataset.i, w = t.dataset.w;
+    setBin(arr, i, arr[i] + d); draw();
+    const again = svg.querySelector('rect[data-w="' + w + '"][data-i="' + i + '"]'); if (again) again.focus();
+  });
+  const PRE = {
+    start: () => { p = P0.slice(); q = Q0.slice(); }, match: () => { q = p.map(v => Math.max(v, 1e-6)); const s = q.reduce((a, b) => a + b, 0); q = q.map(v => v / s); },
+    unif: () => { q = new Array(K).fill(1 / K); }, conf: () => { const top = p.indexOf(Math.max(...p)), wrong = (top + 2) % K; q = new Array(K).fill(0.004); q[wrong] = 1 - 0.004 * (K - 1); },
+    onehot: () => { p = [1, 0, 0, 0, 0, 0]; }
+  };
+  document.querySelectorAll('#lab-info .presets button').forEach(b => b.addEventListener('click', () => { PRE[b.dataset.p](); draw(); }));
+  svg.style.touchAction = 'none';
+  draw();
+})();
+
+// ---------- 实验 3：一维 bottleneck。PCA（直线） vs 现场训练的 autoencoder（2 → 12 → 1 → 12 → 2） ----------
+(function () {
+  const svg = $('#ae-svg'), N = 140, HN = 12, MAXSTEP = 5000;
+  const SX = x => 280 + x * 240, SY = y => 160 - (y + 0.05) * 240;
+  const pts = (() => { const r = rng(5), a = []; for (let i = 0; i < N; i++) { const t = r() * 2 - 1; a.push([0.85 * t + 0.04 * gauss(r), 0.75 * t * t - 0.4 + 0.04 * gauss(r)]); } return a; })();
+  // PCA：2×2 协方差的主方向有 closed form
+  const mean = [0, 0]; pts.forEach(p => { mean[0] += p[0] / N; mean[1] += p[1] / N; });
+  let cxx = 0, cyy = 0, cxy = 0; pts.forEach(p => { const a = p[0] - mean[0], b = p[1] - mean[1]; cxx += a * a / N; cyy += b * b / N; cxy += a * b / N; });
+  const th = 0.5 * Math.atan2(2 * cxy, cxx - cyy), u = [Math.cos(th), Math.sin(th)];
+  let pcaMse = 0, smin = 1e9, smax = -1e9;
+  pts.forEach(p => { const s = (p[0] - mean[0]) * u[0] + (p[1] - mean[1]) * u[1]; smin = Math.min(smin, s); smax = Math.max(smax, s); const rx = mean[0] + s * u[0] - p[0], ry = mean[1] + s * u[1] - p[1]; pcaMse += (rx * rx + ry * ry) / N; });
+
+  // 参数布局：W1(HN×2) b1(HN) W2(HN) b2(1) W3(HN) b3(HN) W4(2×HN) b4(2)
+  const oW1 = 0, ob1 = 2 * HN, oW2 = 3 * HN, ob2 = 4 * HN, oW3 = 4 * HN + 1, ob3 = 5 * HN + 1, oW4 = 6 * HN + 1, ob4 = 8 * HN + 1, NP = 8 * HN + 3;
+  let P, G, M, V, step, adamT, running = false, raf = 0;
+  const a1 = new Float64Array(HN), a3 = new Float64Array(HN), out = [0, 0];
+  function init() {
+    const r = rng(21); P = new Float64Array(NP); G = new Float64Array(NP); M = new Float64Array(NP); V = new Float64Array(NP);
+    const U = (o, n, a) => { for (let k = 0; k < n; k++) P[o + k] = (r() * 2 - 1) * a; };
+    U(oW1, 2 * HN, Math.sqrt(6 / (2 + HN))); U(oW2, HN, Math.sqrt(6 / (HN + 1))); U(oW3, HN, Math.sqrt(6 / (HN + 1))); U(oW4, 2 * HN, Math.sqrt(6 / (HN + 2)));
+    step = 0; adamT = 0;
+  }
+  function enc(x, y) { let z = P[ob2]; for (let j = 0; j < HN; j++) { a1[j] = Math.tanh(P[oW1 + 2 * j] * x + P[oW1 + 2 * j + 1] * y + P[ob1 + j]); z += P[oW2 + j] * a1[j]; } return z; }
+  function dec(z) { out[0] = P[ob4]; out[1] = P[ob4 + 1]; for (let j = 0; j < HN; j++) { a3[j] = Math.tanh(P[oW3 + j] * z + P[ob3 + j]); out[0] += P[oW4 + j] * a3[j]; out[1] += P[oW4 + HN + j] * a3[j]; } return out; }
+  function trainStep() {
+    G.fill(0);
+    for (let k = 0; k < N; k++) {
+      const x = pts[k][0], y = pts[k][1], z = enc(x, y); dec(z);
+      const d0 = 2 * (out[0] - x) / N, d1 = 2 * (out[1] - y) / N;
+      G[ob4] += d0; G[ob4 + 1] += d1; let dz = 0;
+      for (let j = 0; j < HN; j++) {
+        G[oW4 + j] += d0 * a3[j]; G[oW4 + HN + j] += d1 * a3[j];
+        const d3 = (d0 * P[oW4 + j] + d1 * P[oW4 + HN + j]) * (1 - a3[j] * a3[j]);
+        G[oW3 + j] += d3 * z; G[ob3 + j] += d3; dz += d3 * P[oW3 + j];
+      }
+      G[ob2] += dz;
+      for (let j = 0; j < HN; j++) {
+        G[oW2 + j] += dz * a1[j];
+        const dj = dz * P[oW2 + j] * (1 - a1[j] * a1[j]);
+        G[oW1 + 2 * j] += dj * x; G[oW1 + 2 * j + 1] += dj * y; G[ob1 + j] += dj;
+      }
+    }
+    adamT++; const lr = 0.01, b1 = 0.9, b2 = 0.999, c1 = 1 - Math.pow(b1, adamT), c2 = 1 - Math.pow(b2, adamT);
+    for (let k = 0; k < NP; k++) { M[k] = b1 * M[k] + (1 - b1) * G[k]; V[k] = b2 * V[k] + (1 - b2) * G[k] * G[k]; P[k] -= lr * (M[k] / c1) / (Math.sqrt(V[k] / c2) + 1e-8); }
+    step++;
+  }
+  function draw() {
+    const zs = pts.map(p => enc(p[0], p[1])); const zmin = Math.min(...zs), zmax = Math.max(...zs), span = Math.max(zmax - zmin, 1e-9);
+    let mse = 0; pts.forEach((p, k) => { dec(zs[k]); const a = out[0] - p[0], b = out[1] - p[1]; mse += (a * a + b * b) / N; });
+    svg.textContent = '';
+    el('line', { x1: SX(mean[0] + smin * u[0]), y1: SY(mean[1] + smin * u[1]), x2: SX(mean[0] + smax * u[0]), y2: SY(mean[1] + smax * u[1]), style: 'stroke:var(--muted);stroke-width:2;stroke-dasharray:6 5' }, svg);
+    pts.forEach((p, k) => { const f = Math.round((zs[k] - zmin) / span * 100); el('circle', { cx: SX(p[0]).toFixed(1), cy: SY(p[1]).toFixed(1), r: 3.6, style: 'fill:color-mix(in srgb,var(--a1) ' + f + '%,var(--a2));opacity:.85' }, svg); });
+    let d = ''; for (let i = 0; i <= 80; i++) { dec(zmin + span * i / 80); d += (i ? 'L' : 'M') + SX(out[0]).toFixed(1) + ',' + SY(out[1]).toFixed(1); }
+    el('path', { d, style: 'fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round' }, svg);
+    const zv = zmin + span * (+$('#ae-z').value); dec(zv);
+    el('circle', { cx: SX(out[0]).toFixed(1), cy: SY(out[1]).toFixed(1), r: 8, style: 'fill:var(--accent);stroke:var(--surface);stroke-width:2.5' }, svg);
+    el('text', { class: 'l-lbl', x: SX(out[0]) + 12, y: SY(out[1]) - 10 }, svg, 'decoder(z)');
+    $('#ae-step').textContent = step; $('#ae-pca').textContent = fmt(pcaMse, 4); $('#ae-mse').textContent = fmt(mse, 4); $('#ae-zv').textContent = zv.toFixed(2);
+    let msg = '还没训练：decoder 的输出是随机的，颜色（encoder 给的 z）也没有规律。';
+    if (step > 0 && mse > pcaMse) msg = '训练中：现在还不如 PCA。';
+    else if (step > 0) msg = 'Autoencoder 的重建误差是 PCA 的 ' + (mse / pcaMse * 100).toFixed(0) + '%。同样只用一个数，弯的线比直的线贴得更近。';
+    $('#ae-msg').innerHTML = '<p>' + msg + '</p>';
+  }
+  function tick() { for (let i = 0; i < 25 && step < MAXSTEP; i++) trainStep(); draw(); if (step >= MAXSTEP) run(false); else if (running) raf = requestAnimationFrame(tick); }
+  function run(on) { running = on; cancelAnimationFrame(raf); $('#ae-run').textContent = on ? '暂停' : (step >= MAXSTEP ? '训练完成' : step ? '继续训练' : '开始训练'); if (on) raf = requestAnimationFrame(tick); }
+  $('#ae-run').addEventListener('click', () => { if (step < MAXSTEP) run(!running); });
+  $('#ae-reset').addEventListener('click', () => { run(false); init(); run(false); draw(); });
+  $('#ae-z').addEventListener('input', draw);
+  init(); draw();
+})();
+
+// ---------- 实验 4：attention = 内积 → softmax → 加权平均（向量是手工设定的） ----------
+(function () {
+  const svg = $('#attn-svg'), C = 170, U = 58, MAXL = 2.7;
+  const deg = a => a * Math.PI / 180;
+  const TOK = [
+    { name: '红色方块', a: 25, l: 1.0, c: [214, 69, 61] },
+    { name: '蓝色碗', a: 115, l: 1.0, c: [43, 120, 208] },
+    { name: '桌面', a: 205, l: 0.8, c: [196, 160, 104] },
+    { name: '夹爪', a: 300, l: 1.0, c: [38, 140, 92] }
+  ].map(t => Object.assign(t, { k: [t.l * Math.cos(deg(t.a)), t.l * Math.sin(deg(t.a))] }));
+  let q = [1.5 * Math.cos(deg(48)), 1.5 * Math.sin(deg(48))];
+  const px = v => [C + v[0] * U, C - v[1] * U], rgb = c => 'rgb(' + c.map(Math.round).join(',') + ')';
+  const rows = $('#attn-rows');
+  TOK.forEach((t, i) => {
+    const d = document.createElement('div'); d.className = 'attn-row';
+    d.innerHTML = '<span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:' + rgb(t.c) + '"></i>' + t.name + '</span><span id="at-s' + i + '"></span><span class="trk"><i id="at-b' + i + '" style="background:' + rgb(t.c) + '"></i></span><span id="at-a' + i + '"></span>';
+    rows.appendChild(d);
+  });
+  function draw() {
+    svg.textContent = '';
+    el('line', { class: 'l-grid', x1: 8, x2: 332, y1: C, y2: C }, svg); el('line', { class: 'l-grid', x1: C, x2: C, y1: 8, y2: 332 }, svg);
+    el('circle', { cx: C, cy: C, r: U, style: 'fill:none;stroke:var(--line-strong);stroke-dasharray:3 4' }, svg);
+    const s = TOK.map(t => q[0] * t.k[0] + q[1] * t.k[1]), m = Math.max(...s), ex = s.map(v => Math.exp(v - m)), Z = ex.reduce((a, b) => a + b, 0), al = ex.map(v => v / Z);
+    TOK.forEach((t, i) => {
+      const e = px(t.k);
+      el('line', { x1: C, y1: C, x2: e[0], y2: e[1], style: 'stroke:' + rgb(t.c) + ';stroke-width:' + (2 + 5 * al[i]).toFixed(1) + ';stroke-linecap:round' }, svg);
+      el('circle', { cx: e[0], cy: e[1], r: 5, style: 'fill:' + rgb(t.c) }, svg);
+      const lx = C + t.k[0] * U * 1.0 + Math.cos(deg(t.a)) * 14, ly = C - t.k[1] * U - Math.sin(deg(t.a)) * 16 + 4;
+      el('text', { class: 'l-lbl', x: lx, y: ly, 'text-anchor': Math.cos(deg(t.a)) > 0.3 ? 'start' : Math.cos(deg(t.a)) < -0.3 ? 'end' : 'middle', style: 'fill:var(--ink)' }, svg, 'k: ' + t.name);
+      $('#at-s' + i).textContent = s[i].toFixed(2); $('#at-a' + i).textContent = al[i].toFixed(2); $('#at-b' + i).style.width = (al[i] * 100).toFixed(1) + '%';
+    });
+    const e = px(q);
+    el('line', { x1: C, y1: C, x2: e[0], y2: e[1], style: 'stroke:var(--accent);stroke-width:3.5;stroke-linecap:round' }, svg);
+    el('circle', { cx: e[0], cy: e[1], r: 10, style: 'fill:var(--accent);stroke:var(--surface);stroke-width:2.5;cursor:grab' }, svg);
+    el('text', { class: 'l-lbl', x: e[0] + 14, y: e[1] + 4, style: 'fill:var(--accent);font-weight:600' }, svg, 'q');
+    const mix = [0, 1, 2].map(c => TOK.reduce((a, t, i) => a + al[i] * t.c[c], 0));
+    $('#attn-out').style.background = rgb(mix);
+    const top = al.indexOf(Math.max(...al)), len = Math.hypot(q[0], q[1]);
+    let msg = '权重最大的是"' + TOK[top].name + '"（' + al[top].toFixed(2) + '）。query 的长度是 ' + len.toFixed(2) + '。';
+    if (len < 0.45) msg += ' Query 很短：所有权重接近相等，输出接近四个 value 的平均。';
+    else if (al[top] > 0.85) msg += ' 几乎只选了一个 token，接近普通的查表。';
+    $('#attn-msg').innerHTML = '<p>' + msg + '</p>';
+  }
+  function setQ(x, y) { let l = Math.hypot(x, y); if (l < 0.08) { x = 0.08; y = 0; l = 0.08; } if (l > MAXL) { x *= MAXL / l; y *= MAXL / l; } q = [x, y]; draw(); }
+  let drag = false;
+  const at = e => { const r = svg.getBoundingClientRect(), k = 340 / r.width; return [((e.clientX - r.left) * k - C) / U, -((e.clientY - r.top) * k - C) / U]; };
+  svg.addEventListener('pointerdown', e => { drag = true; svg.setPointerCapture(e.pointerId); const p = at(e); setQ(p[0], p[1]); e.preventDefault(); });
+  svg.addEventListener('pointermove', e => { if (drag) { const p = at(e); setQ(p[0], p[1]); } });
+  ['pointerup', 'pointercancel'].forEach(n => svg.addEventListener(n, () => { drag = false; }));
+  svg.addEventListener('keydown', e => {
+    let a = Math.atan2(q[1], q[0]), l = Math.hypot(q[0], q[1]);
+    if (e.key === 'ArrowLeft') a += deg(6); else if (e.key === 'ArrowRight') a -= deg(6); else if (e.key === 'ArrowUp') l += 0.1; else if (e.key === 'ArrowDown') l -= 0.1; else return;
+    e.preventDefault(); l = clamp(l, 0.08, MAXL); setQ(l * Math.cos(a), l * Math.sin(a));
+  });
+  const PRE = { red: () => setQ(1.9 * Math.cos(deg(25)), 1.9 * Math.sin(deg(25))), bowl: () => setQ(1.9 * Math.cos(deg(115)), 1.9 * Math.sin(deg(115))),
+    short: () => { const a = Math.atan2(q[1], q[0]); setQ(0.2 * Math.cos(a), 0.2 * Math.sin(a)); }, long: () => { const a = Math.atan2(q[1], q[0]); setQ(MAXL * Math.cos(a), MAXL * Math.sin(a)); } };
+  document.querySelectorAll('#lab-attn .presets button').forEach(b => b.addEventListener('click', () => PRE[b.dataset.p]()));
+  svg.style.touchAction = 'none';
+  draw();
+})();
+
+// ---------- 实验 5：一维 flow matching。目标是已知的 Gaussian mixture，所以 marginal velocity field 有解析解 ----------
+(function () {
+  const svg = $('#flow-svg'), MU = [1.15, -1.15], S = 0.14, M = 240, NLINE = 90;
+  const X0 = 100, X1 = 520, Y0 = 16, Y1 = 296, R = 2.7;
+  const TX = t => X0 + t * (X1 - X0), VY = v => Y0 + (R - v) / (2 * R) * (Y1 - Y0);
+  let steps = 32, w = 0.5, seed = 3;
+  // v(x,t) = Σ_k r_k(x,t) · E[x1 − x0 | x_t = x, 第 k 个 mode]
+  function vel(x, t) {
+    const Vt = (1 - t) * (1 - t) + t * t * S * S, c = (t * S * S - (1 - t)) / Vt, W = [w, 1 - w];
+    let l0 = Math.log(W[0]) - (x - t * MU[0]) ** 2 / (2 * Vt), l1 = Math.log(W[1]) - (x - t * MU[1]) ** 2 / (2 * Vt);
+    const m = Math.max(l0, l1), e0 = Math.exp(l0 - m), e1 = Math.exp(l1 - m), r0 = e0 / (e0 + e1);
+    return r0 * (MU[0] + c * (x - t * MU[0])) + (1 - r0) * (MU[1] + c * (x - t * MU[1]));
+  }
+  const pdfN = (x, m, s) => Math.exp(-(x - m) * (x - m) / (2 * s * s)) / (s * Math.sqrt(2 * Math.PI));
+  function draw() {
+    const r = rng(seed), x0 = []; for (let i = 0; i < M; i++) x0.push(gauss(r));
+    const mean = w * MU[0] + (1 - w) * MU[1];
+    svg.textContent = '';
+    for (let v = -2; v <= 2; v++) { el('line', { class: 'l-grid', x1: X0, x2: X1, y1: VY(v), y2: VY(v) }, svg); el('text', { class: 'l-t', x: 8, y: VY(v) + 4 }, svg, String(v)); }
+    el('line', { class: 'l-ax', x1: X0, x2: X0, y1: Y0, y2: Y1 }, svg); el('line', { class: 'l-ax', x1: X1, x2: X1, y1: Y0, y2: Y1 }, svg);
+    el('text', { class: 'l-lbl', x: X0, y: 316, 'text-anchor': 'middle' }, svg, 't = 0：噪声'); el('text', { class: 'l-lbl', x: X1, y: 316, 'text-anchor': 'middle' }, svg, 't = 1：数据');
+    el('text', { class: 'l-lbl', x: (X0 + X1) / 2, y: 316, 'text-anchor': 'middle' }, svg, '沿速度场积分 →');
+    el('text', { class: 'l-lbl', x: X0 + 6, y: 12 }, svg, '纵轴：action 的值');
+    // 轨迹
+    const end = [], gl = el('g', {}, svg);
+    for (let i = 0; i < M; i++) {
+      let x = x0[i], d = 'M' + TX(0) + ',' + VY(x).toFixed(1);
+      for (let k = 0; k < steps; k++) { x += vel(x, k / steps) / steps; d += 'L' + TX((k + 1) / steps).toFixed(1) + ',' + VY(clamp(x, -R, R)).toFixed(1); }
+      end.push(x);
+      const cls = Math.abs(x - MU[0]) < 3 * S ? 0 : Math.abs(x - MU[1]) < 3 * S ? 1 : 2;
+      if (i < NLINE) el('path', { d, style: 'fill:none;stroke:var(' + ['--a1', '--a2', '--bad'][cls] + ');stroke-width:1.1;opacity:.5' }, gl);
+    }
+    // 均值线
+    el('line', { x1: X0, x2: X1, y1: VY(mean), y2: VY(mean), style: 'stroke:var(--ok);stroke-width:1.6;stroke-dasharray:6 4' }, svg);
+    el('text', { class: 'l-lbl', x: X0 + 8, y: VY(mean) - 6, style: 'fill:var(--ok)' }, svg, '数据的均值 = MSE regression 的输出');
+    // 两侧的直方图：左边是噪声，右边是终点；细线是理论密度
+    const NB = 36, bwv = 2 * R / NB, hs = 150, binOf = v => clamp(Math.floor((R - v) / bwv), 0, NB - 1);
+    const cL = new Array(NB).fill(0), cR = new Array(NB).fill(0); x0.forEach(v => cL[binOf(v)]++); end.forEach(v => cR[binOf(v)]++);
+    for (let b = 0; b < NB; b++) {
+      const y = Y0 + b / NB * (Y1 - Y0), hh = (Y1 - Y0) / NB - 1;
+      if (cL[b]) el('rect', { x: X0 - 4 - Math.min(cL[b] / M * hs, 84), y, width: Math.min(cL[b] / M * hs, 84), height: hh, style: 'fill:var(--line-strong)' }, svg);
+      if (cR[b]) { const vc = R - (b + 0.5) * bwv, cls = Math.abs(vc - MU[0]) < 3 * S + bwv / 2 ? '--a1' : Math.abs(vc - MU[1]) < 3 * S + bwv / 2 ? '--a2' : '--bad';
+        el('rect', { x: X1 + 4, y, width: Math.min(cR[b] / M * hs, 108), height: hh, style: 'fill:var(' + cls + ')' }, svg); }
+    }
+    let dT = ''; for (let i = 0; i <= 200; i++) { const v = R - i / 200 * 2 * R, dens = (w * pdfN(v, MU[0], S) + (1 - w) * pdfN(v, MU[1], S)) * bwv * hs; dT += (i ? 'L' : 'M') + (X1 + 4 + Math.min(dens, 108)).toFixed(1) + ',' + VY(v).toFixed(1); }
+    el('path', { d: dT, style: 'fill:none;stroke:var(--ink);stroke-width:1.2;opacity:.7' }, svg);
+    el('text', { class: 'l-lbl', x: 636, y: 12, 'text-anchor': 'end' }, svg, '细线：真实的数据分布');
+    const nA = end.filter(v => Math.abs(v - MU[0]) < 3 * S).length, nB = end.filter(v => Math.abs(v - MU[1]) < 3 * S).length, nM = M - nA - nB;
+    const pc = n => (n / M * 100).toFixed(0) + '%';
+    $('#flow-nv').textContent = steps; $('#flow-a').textContent = pc(nA); $('#flow-b').textContent = pc(nB); $('#flow-mid').textContent = pc(nM); $('#flow-mean').textContent = mean.toFixed(2);
+    $('#flow-w-o').textContent = Math.round(w * 100) + '%';
+    let msg;
+    if (steps === 1) msg = '<span class="pill bad">mode averaging</span> 一步：所有样本落在同一个点，正好是数据的均值。没有一个示范做过这个动作。';
+    else if (nM / M > 0.04) msg = '步数还不够：' + pc(nM) + ' 的样本停在两个 mode 之间（红色）。';
+    else msg = '<span class="pill ok">两个 mode 都在</span> 上下的比例约为 ' + pc(nA) + ' 比 ' + pc(nB) + '，和数据的 ' + Math.round(w * 100) + '% 比 ' + Math.round((1 - w) * 100) + '% 一致。';
+    $('#flow-msg').innerHTML = '<p>' + msg + '</p>';
+    setOn(nb, b => +b.dataset.n === steps);
+  }
+  const nb = Array.from(document.querySelectorAll('#flow-n button'));
+  nb.forEach(b => b.addEventListener('click', () => { steps = +b.dataset.n; draw(); }));
+  $('#flow-w').addEventListener('input', e => { w = +e.target.value; draw(); });
+  $('#flow-seed').addEventListener('click', () => { seed++; draw(); });
+  draw();
+})();
+
+// ---------- 术语表和代表工作表的筛选 ----------
+(function () {
+  function table(tabSel, fltSel, cntSel, inputSel) {
+    const rows = Array.from(document.querySelectorAll(tabSel + ' tbody tr')), btns = Array.from(document.querySelectorAll(fltSel + ' button')), cnt = $(cntSel), inp = inputSel ? $(inputSel) : null;
+    let cat = 'all';
+    function apply() {
+      const kw = inp ? inp.value.trim().toLowerCase() : ''; let n = 0;
+      rows.forEach(r => { const show = (cat === 'all' || r.dataset.c === cat) && (!kw || r.textContent.toLowerCase().includes(kw)); r.hidden = !show; if (show) n++; });
+      setOn(btns, b => b.dataset.c === cat);
+      cnt.textContent = '显示 ' + n + ' / ' + rows.length + ' 项';
+    }
+    btns.forEach(b => b.addEventListener('click', () => { cat = b.dataset.c; apply(); }));
+    if (inp) inp.addEventListener('input', apply);
+    apply();
+  }
+  table('#gl-tab', '#gl-flt', '#gl-cnt', '#gl-q');
+  table('#pp-tab', '#pp-flt', '#pp-cnt', null);
+})();
+</script>
+<!-- notes-panel:start -->
+<script>
+// ---------- 笔记抽屉：右侧标签随时打开，自动保存在这个浏览器里，可导出 .md ----------
+(function(){
+  const PAGE = (decodeURIComponent(location.pathname).split('/').pop() || 'page').replace(/\.html?$/i, '') || 'page';
+  const KEY = 'learning-log-notes:' + PAGE, KEY_OPEN = 'learning-log-notes-open:' + PAGE;
+  let store = null;
+  try { localStorage.setItem('__np', '1'); localStorage.removeItem('__np'); store = localStorage; } catch (e) { store = null; }
+  const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+  const set = (k, v) => { try { if (store) { store.setItem(k, v); return true; } } catch (e) {} return false; };
+
+  const tab = document.createElement('button');
+  tab.className = 'np-tab'; tab.type = 'button';
+  tab.setAttribute('aria-controls', 'np-panel'); tab.setAttribute('aria-expanded', 'false');
+  tab.title = '打开笔记（Alt+N）';
+  tab.innerHTML = '笔记<span class="np-dot" aria-hidden="true"></span>';
+  const panel = document.createElement('aside');
+  panel.className = 'np'; panel.id = 'np-panel'; panel.setAttribute('aria-label', '我的笔记');
+  panel.innerHTML =
+    '<div class="np-head"><strong>我的笔记</strong><span class="np-st" aria-live="polite"></span>' +
+    '<button type="button" class="np-x" aria-label="关闭笔记" title="关闭（Esc）">×</button></div>' +
+    '<div class="np-tools">' +
+      '<button type="button" data-a="sec" title="把正在看的小节标题插进笔记">插入当前小节</button>' +
+      '<button type="button" data-a="quote" title="先在页面上选中一段文字，再点这里">引用选中的文字</button>' +
+      '<button type="button" data-a="time">插入时间</button>' +
+    '</div>' +
+    '<textarea class="np-ta" spellcheck="false" aria-label="笔记内容" placeholder="随手记：没看懂的地方、自己的理解、面试时想说的话……&#10;&#10;支持 Markdown。Tab 缩进，Esc 关闭，Alt+N 随时开关。"></textarea>' +
+    '<div class="np-foot">' +
+      '<button type="button" data-a="copy">复制全部</button>' +
+      '<button type="button" data-a="export">导出 .md</button>' +
+      '<button type="button" data-a="clear">清空</button>' +
+      '<span class="np-count"></span>' +
+    '</div>' +
+    '<p class="np-hint">自动保存在这个浏览器里，换浏览器或清理浏览数据就没了。想长期保留，导出 .md 放进 vault。</p>';
+  document.body.append(tab, panel);
+
+  const ta = panel.querySelector('.np-ta'), st = panel.querySelector('.np-st'), cnt = panel.querySelector('.np-count');
+  ta.value = get(KEY) || '';
+  const pad = n => String(n).padStart(2, '0');
+  const now = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const refresh = () => { cnt.textContent = ta.value.length + ' 字'; tab.classList.toggle('has', ta.value.trim().length > 0); };
+  const status = (msg, warn) => { st.textContent = msg; st.classList.toggle('warn', !!warn); };
+  if (!store) status('这个浏览器不让自动保存，记得导出', true);
+  else if (ta.value) status('已从上次恢复');
+  refresh();
+
+  let timer = 0;
+  const save = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (set(KEY, ta.value)) status('已保存 ' + now().slice(11)); else status('没能保存，记得导出', true); }, 300);
+  };
+  ta.addEventListener('input', () => { refresh(); save(); });
+  window.addEventListener('beforeunload', () => { clearTimeout(timer); set(KEY, ta.value); });
+
+  const open = (on, focus) => {
+    panel.classList.toggle('open', on);
+    document.documentElement.classList.toggle('np-open', on);
+    tab.setAttribute('aria-expanded', String(on));
+    tab.title = on ? '收起笔记（Alt+N）' : '打开笔记（Alt+N）';
+    set(KEY_OPEN, on ? '1' : '');
+    if (on && focus) setTimeout(() => ta.focus({ preventScroll: true }), 50);
+    if (!on && panel.contains(document.activeElement)) tab.focus();
+  };
+  tab.addEventListener('click', () => open(!panel.classList.contains('open'), true));
+  panel.querySelector('.np-x').addEventListener('click', () => open(false));
+  if (get(KEY_OPEN) === '1') open(true, false);
+  document.addEventListener('keydown', e => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') { e.preventDefault(); open(!panel.classList.contains('open'), true); }
+    else if (e.key === 'Escape' && panel.classList.contains('open') && panel.contains(document.activeElement)) open(false);
+  });
+
+  // 自己记住光标位置：在页面上选中文字时，浏览器会把 textarea 的光标重置到开头
+  let caret = [ta.value.length, ta.value.length];
+  const keep = () => { caret = [ta.selectionStart, ta.selectionEnd]; };
+  ['input', 'keyup', 'mouseup', 'select'].forEach(ev => ta.addEventListener(ev, keep));
+  // 在记住的光标处插入一段文字，前后自动补换行
+  const insert = (text, block) => {
+    const v = ta.value, a = Math.min(caret[0], v.length), b = Math.min(caret[1], v.length);
+    let s = text;
+    if (block) {
+      if (a > 0 && v[a - 1] !== '\n') s = '\n' + s;
+      if (a > 1 && v.slice(a - 2, a) !== '\n\n' && v.slice(0, a).trim()) s = '\n' + s;
+      s += '\n';
+    }
+    ta.focus(); ta.setRangeText(s, a, b, 'end'); ta.dispatchEvent(new Event('input'));
+    ta.scrollTop = ta.scrollHeight * (ta.selectionStart / Math.max(1, ta.value.length)) - ta.clientHeight / 2;
+  };
+  // 当前小节：屏幕上方最近的一个 h2
+  const currentSection = () => {
+    let cur = null;
+    document.querySelectorAll('main h2, article h2, h2').forEach(h => { if (!panel.contains(h) && h.getBoundingClientRect().top < 160) cur = h; });
+    if (!cur) cur = document.querySelector('h1');
+    if (!cur) return document.title;
+    const n = cur.querySelector('.n');
+    const rest = Array.from(cur.childNodes).filter(x => x !== n).map(x => x.textContent).join('').trim();
+    return (n ? n.textContent.trim() + ' ' : '') + rest;
+  };
+  // 记住页面上最近一次选中的文字（点按钮时选区可能已经没了）
+  let lastSel = '';
+  document.addEventListener('selectionchange', () => {
+    const sel = document.getSelection();
+    if (!sel || sel.isCollapsed || !sel.anchorNode || panel.contains(sel.anchorNode)) return;
+    const t = sel.toString().trim();
+    if (t) lastSel = t;
+  });
+
+  const actions = {
+    sec: () => insert('## ' + currentSection(), true),
+    time: () => insert('— ' + now(), true),
+    quote: () => {
+      if (!lastSel) { status('先在页面上选中一段文字', true); return; }
+      insert(lastSel.split('\n').map(l => '> ' + l.trim()).filter(l => l !== '>').join('\n'), true);
+      lastSel = '';
+    },
+    copy: () => {
+      const done = () => status('已复制');
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+      else fallback();
+      function fallback(){ ta.select(); try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，手动全选复制', true); } }
+    },
+    export: () => {
+      const meta = document.querySelector('meta[name="tags"]');
+      const tags = ['notes'].concat(meta ? meta.content.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4) : []);
+      const md = '---\ncreated: ' + now().slice(0, 10) + '\ntags: [' + tags.join(', ') + ']\nsource: "[[' + PAGE + '.html]]"\n---\n\n# ' + document.title + '：我的笔记\n\n' + ta.value.trim() + '\n';
+      const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = PAGE + '-notes.md';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('已导出 ' + PAGE + '-notes.md');
+    },
+    clear: () => {
+      if (!ta.value || !confirm('清空这一页的全部笔记？清空后找不回来。')) return;
+      ta.value = ''; ta.dispatchEvent(new Event('input'));
+    },
+  };
+  panel.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b && actions[b.dataset.a]) actions[b.dataset.a](); });
+
+  // Tab 缩进，Shift+Tab 减少缩进
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+    if (!e.shiftKey && a === b) { ta.setRangeText('    ', a, b, 'end'); }
+    else {
+      const blk = v.slice(ls, b), out = e.shiftKey ? blk.replace(/^ {1,4}/gm, '') : blk.replace(/^/gm, '    ');
+      ta.setRangeText(out, ls, b, 'preserve'); ta.selectionStart = ls; ta.selectionEnd = ls + out.length;
+    }
+    ta.dispatchEvent(new Event('input'));
+  });
+})();
+</script>
+<!-- notes-panel:end -->
+</body>
+</html>
