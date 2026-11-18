@@ -453,7 +453,7 @@ s_\psi c_\theta & s_\psi s_\theta s_\phi + c_\psi c_\phi & s_\psi s_\theta c_\ph
 </div>
   <p>用 <code>atan2</code> 不用 <code>atan</code>，才能拿到正确的象限。<code>asin</code> 的输入先 clamp 到 [−1, 1]，否则数值误差会给出 NaN。</p>
   <h3>Gimbal lock</h3>
-  <p>看上面矩阵的第一列和第三行：当 \(\operatorname{pitch} = \pm 90^\circ\) 时 \(\cos\theta = 0\)，\(R_{11}, R_{21}, R_{32}, R_{33}\) 全是 0，两个 <code>atan2</code> 都变成 <code>atan2(0, 0)</code>。此时矩阵里只剩下 \(\operatorname{roll} - \operatorname{yaw}\)（\(\text{pitch} = +90^\circ\)）或 \(\operatorname{roll} + \operatorname{yaw}\)（\(\text{pitch} = -90^\circ\)）这一个组合。</p>
+  <p>看上面矩阵的第一列和第三行：当 \(\text{pitch} = \pm 90^\circ\) 时 \(\cos\theta = 0\)，\(R_{11}, R_{21}, R_{32}, R_{33}\) 全是 0，两个 <code>atan2</code> 都变成 <code>atan2(0, 0)</code>。此时矩阵里只剩下 \(\text{roll} - \text{yaw}\)（\(\text{pitch} = +90^\circ\)）或 \(\text{roll} + \text{yaw}\)（\(\text{pitch} = -90^\circ\)）这一个组合。</p>
   <p>几何上：pitch 转了 90° 之后，roll 的转轴（body 的 x 轴）被转到和 yaw 的转轴（world 的 z 轴）<strong>共线</strong>。三根转轴只张成一个平面，有一个方向的转动表达不出来。回到 §03 的实验台点“gimbal lock”可以直接看到两根虚线重合。</p>
   <p>定量地看，Euler angle 的变化率和 angular velocity 之间差一个矩阵，它的三列就是三根转轴：</p>
   <div class="eq">
@@ -595,7 +595,7 @@ R = \begin{bmatrix}
   <span>\(R\)</span><span>对应的 rotation matrix</span>
 </div>
 </div>
-  <p>反方向（\(R \to q\)）最朴素的写法是 \(w = \tfrac12\sqrt{1 + \operatorname{trace} R}\)，然后 \(x = (R_{32} - R_{23})/(4w)\) 等等。但 \(\theta\) 接近 180° 时 \(w \approx 0\)，除法数值上不稳定。标准做法（Shepperd’s method）是比较 \(\operatorname{trace}, R_{11}, R_{22}, R_{33}\) 哪个最大，先算出 \(w, x, y, z\) 中最大的那个，再用它去除别的。实际中直接调库，但面试会问“\(\theta = 180\)° 时怎么办”。</p>
+  <p>反方向（\(R \to q\)）最朴素的写法是 \(w = \tfrac12\sqrt{1 + \operatorname{trace} R}\)，然后 \(x = (R_{32} - R_{23})/(4w)\) 等等。但 \(\theta\) 接近 180° 时 \(w \approx 0\)，除法数值上不稳定。标准做法（Shepperd’s method）是比较 \(\operatorname{trace}, R_{11}, R_{22}, R_{33}\) 哪个最大，先算出 \(w, x, y, z\) 中最大的那个，再用它去除别的。实际中直接调库，但面试会问“\(\theta = 180^\circ\) 时怎么办”。</p>
   <h3>Double cover：\(q\) 和 \(-q\) 是同一个 rotation</h3>
   <p>绕 \(\hat{\omega}\) 转 \(\theta\) 和绕 \(-\hat{\omega}\) 转 \(2\pi - \theta\) 到达同一个姿态。代进定义，后者正好是 \(-q\)。也可以直接看：\(q p q^{*}\) 里 \(q\) 出现两次，负号抵消。所以每个 rotation 对应 unit sphere \(S^3\) 上的<strong>两个</strong>对跖点。实际影响：</p>
   <ul>
@@ -621,7 +621,7 @@ R = \begin{bmatrix}
 <div class="sym">
   <span>\(q_0,\ q_1\)</span><span>起点和终点的 unit quaternion</span>
   <span>\(t\)</span><span>插值参数，\(t\in[0,1]\)</span>
-  <span>\(\Omega\)</span><span>q_0 和 q_1 在 \(S^3\) 上的夹角（由 \(\cos\Omega = q_0\cdot q_1\) 定义）</span>
+  <span>\(\Omega\)</span><span>\(q_0\) 和 \(q_1\) 在 \(S^3\) 上的夹角（由 \(\cos\Omega = q_0\cdot q_1\) 定义）</span>
 </div>
 </div>
   <p>\(\Omega \approx 0\) 时分母接近 0，退化成普通线性插值再 normalize（NLERP）。NLERP 路径相同、速度不完全均匀、便宜，游戏和实时系统里很常用。</p>
@@ -1643,7 +1643,7 @@ F &= K\, (x_d - x) + D\, (\dot{x}_d - \dot{x}) && \text{想要的末端行为：
   <div class="tw"><table>
     <tr><th></th><th>Impedance control</th><th>Admittance control</th></tr>
     <tr><td>输入 → 输出</td><td>测量<strong>运动</strong>（位置偏差）→ 输出<strong>力</strong></td><td>测量<strong>力</strong>（force/torque sensor）→ 输出<strong>运动</strong>（位置指令）</td></tr>
-    <tr><td>需要的硬件</td><td>torque-controlled arm（Franka、iiwa）</td><td>position-controlled arm + wrist \(F\)/T sensor（UR、多数工业臂）</td></tr>
+    <tr><td>需要的硬件</td><td>torque-controlled arm（Franka、iiwa）</td><td>position-controlled arm + wrist F/T sensor（UR、多数工业臂）</td></tr>
     <tr><td>擅长</td><td>和硬的环境接触时稳定</td><td>自由空间里位置准（底层还是高增益 position loop）</td></tr>
     <tr><td>弱点</td><td>自由空间里受摩擦和模型误差影响，位置精度差；很难渲染出很大的 stiffness</td><td>和很硬的环境接触时容易不稳定（振荡）；受 sensor noise 和 delay 影响</td></tr>
   </table></div>
@@ -1812,7 +1812,7 @@ F &= K\, (x_d - x) + D\, (\dot{x}_d - \dot{x}) && \text{想要的末端行为：
   </div></details>
   <details class="qa"><summary>35. 为什么接触任务不用纯 position control？讲一下 impedance control，以及它和 admittance control 的区别。</summary><div class="a">
     <p>Position control 等效于很硬的弹簧，环境也硬，毫米级的位置误差就会产生很大的接触力，带 I 项还会一直加到饱和。Impedance control 不单独控制位置或力，而是让末端表现得像连在目标上的 spring–damper：\(F = K(x_{d} - x) + D(\dot{x}_{d} - \dot{x})\)，\(\tau = J^{\top}F + g(q)\)。\(K\) 小就 compliant，接触力 \(\approx K \times\) 位置偏差，是可预测、有界的。</p>
-    <p>Impedance：测运动、输出力，用在 torque-controlled arm 上，硬接触时稳定。Admittance：测力（\(F\)/T sensor）、输出位置指令，用在 position-controlled arm 上，自由空间精度高但硬接触时容易不稳定。</p>
+    <p>Impedance：测运动、输出力，用在 torque-controlled arm 上，硬接触时稳定。Admittance：测力（F/T sensor）、输出位置指令，用在 position-controlled arm 上，自由空间精度高但硬接触时容易不稳定。</p>
   </div></details>
   <details class="qa"><summary>36. 完整讲一遍：相机看到桌上一个带 AprilTag 的方块，机械臂把它抓起来。</summary><div class="a">
     <ol>
@@ -1837,8 +1837,8 @@ F &= K\, (x_d - x) + D\, (\dot{x}_d - \dot{x}) && \text{想要的末端行为：
     <tr><td>组合</td><td>\(T_{a\_c} = T_{a\_b} T_{b\_c}\)</td><td>相邻下标相消</td></tr>
     <tr><td>SE(3) inverse</td><td>\(T^{-1} = \begin{bmatrix} R^\top & -R^\top t \\ 0 & 1 \end{bmatrix}\)</td><td>不是 \(-t\)</td></tr>
     <tr><td>左乘 / 右乘</td><td>\(\Delta T\cdot T / T\cdot \Delta T\)</td><td>world frame / body frame</td></tr>
-    <tr><td>ZYX Euler</td><td>\(R = R_{z}(\operatorname{yaw}) R_{y}(\operatorname{pitch}) R_{x}(\operatorname{roll})\)</td><td>\(\text{pitch} = \pm 90^\circ\) 时 gimbal lock</td></tr>
-    <tr><td>反解 Euler</td><td>\(\operatorname{pitch} = -\operatorname{asin} R_{31}, \operatorname{yaw} = \operatorname{atan2}(R_{21}, R_{11}), \operatorname{roll} = \operatorname{atan2}(R_{32}, R_{33})\)</td><td></td></tr>
+    <tr><td>ZYX Euler</td><td>\(R = R_{z}(\text{yaw}) R_{y}(\text{pitch}) R_{x}(\text{roll})\)</td><td>\(\text{pitch} = \pm 90^\circ\) 时 gimbal lock</td></tr>
+    <tr><td>反解 Euler</td><td>\(\text{pitch} = -\operatorname{asin} R_{31}, \text{yaw} = \operatorname{atan2}(R_{21}, R_{11}), \text{roll} = \operatorname{atan2}(R_{32}, R_{33})\)</td><td></td></tr>
     <tr><td>Rodrigues</td><td>\(R = I + \sin \theta \cdot K + (1 - \cos \theta )\cdot K^2, K = [\hat{\omega}]_{\times }\)</td><td>\(= \exp(\theta K)\)</td></tr>
     <tr><td>Log map</td><td>\(\theta = \operatorname{acos}((\operatorname{tr} R - 1)/2)\)</td><td>\(\theta = 0,\ \pi\) 要特殊处理</td></tr>
     <tr><td>Quaternion</td><td>\(q = (\cos (\theta /2), \hat{\omega} \sin (\theta /2)),\quad p' = q p q^{*}\)</td><td>\(q\) 与 \(-q\) 等价</td></tr>

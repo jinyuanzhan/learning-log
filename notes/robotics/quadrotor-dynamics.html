@@ -352,7 +352,7 @@ details.code .a{padding:12px 12px 0}
 <div class="eq">
 \[
 \begin{aligned}
-d &= \frac{L}{\sqrt{2}}, \qquad c = \frac{k_m}{k_f} \\
+d &= \frac{\ell}{\sqrt{2}}, \qquad c = \frac{k_m}{k_f} \\
 f &= F_1 + F_2 + F_3 + F_4 \\
 \tau_x &= d\,(-F_1 + F_2 + F_3 - F_4) && \text{左侧 − 右侧} \\
 \tau_y &= d\,(-F_1 + F_2 - F_3 + F_4) && \text{后侧 − 前侧} \\
@@ -360,8 +360,8 @@ f &= F_1 + F_2 + F_3 + F_4 \\
 \end{aligned}
 \]
 <div class="sym">
-  <span>\(L\)</span><span>电机到机身中心的距离</span>
-  <span>\(d\)</span><span>力臂：\(L/\sqrt{2}\)，X 型布局下电机到两根机身轴的距离</span>
+  <span>\(\ell\)</span><span>电机到机身中心的距离</span>
+  <span>\(d\)</span><span>力臂：\(\ell/\sqrt{2}\)，X 型布局下电机到两根机身轴的距离</span>
   <span>\(c\)</span><span>反扭矩系数比 \(k_m/k_f\)</span>
   <span>\(k_f,\ k_m\)</span><span>推力系数、反扭矩系数（\(F_i=k_f\omega_i^2,\ M_i=k_m\omega_i^2\)）</span>
   <span>\(F_i\)</span><span>第 \(i\) 个电机产生的向上推力</span>
@@ -503,13 +503,13 @@ J\,\dot\omega &= \tau - \omega \times (J\omega) && \text{转动：力矩产生�
 <h3>1. 输入离位置太远</h3>
 <p>想往前飞，不能直接"给一个向前的力"。必须先用力矩把机身转过去，推力才有水平分量，然后才有水平加速度。从 \(\tau\) 到位置要积分 4 次，中间还有非线性的旋转（06 实验台）。直接规划 \(\tau(t)\)，很难让位置恰好经过 waypoints。</p>
 <h3>2. 欠驱动：12 个状态不能随便选</h3>
-<p>只有 4 个输入，状态之间互相绑定。给定加速度 \(a\)，机身就必须让推力指向 \(a + g\) 的方向，roll 和 pitch 被定死。如果同时规划位置和姿态，就要在每个时刻加动力学约束保证两者一致，变成一个大型、非线性、非凸的优化（direct collocation 之类）。</p>
+<p>只有 4 个输入，状态之间互相绑定。给定加速度 \(a\)，机身就必须让推力指向 \(a + g\,e_3\) 的方向，roll 和 pitch 被定死。如果同时规划位置和姿态，就要在每个时刻加动力学约束保证两者一致，变成一个大型、非线性、非凸的优化（direct collocation 之类）。</p>
 <h3>3. Flatness：真正能自由选的只有 4 个</h3>
 <div class="tw"><table>
 <tr><th>量</th><th>能自由选吗</th><th>原因</th></tr>
 <tr><td>\(x\), \(y\), \(z\)</td><td>✅</td><td>想飞到哪，自己定</td></tr>
 <tr><td>\(\psi\) yaw</td><td>✅</td><td>绕推力轴转，不改变推力方向，不影响平动</td></tr>
-<tr><td>\(\phi\) roll, \(\theta\) pitch</td><td>❌</td><td>由加速度决定：推力必须指向 \(a + g\)</td></tr>
+<tr><td>\(\phi\) roll, \(\theta\) pitch</td><td>❌</td><td>由加速度决定：推力必须指向 \(a + g\,e_3\)</td></tr>
 <tr><td>\(v\)、\(\omega\)、\(f\)、\(\tau\)</td><td>❌</td><td>由上面四条曲线的导数算出（定义见 08）</td></tr>
 </table></div>
 <p>这四个量就是 quadrotor 的 <strong>flat outputs</strong>，个数正好等于输入的个数。在 (\(x\), \(y\), \(z\), \(\psi\)) 空间里规划，就是<strong>只规划能自由选的部分</strong>，其他量自动跟着确定，并且自动满足动力学。问题从"12 + 4 个变量加非线性 ODE 约束"变成"4 条光滑曲线"，可以写成 QP。</p>
@@ -594,10 +594,10 @@ x(t) \xrightarrow{\ \text{求导}\ } a \xrightarrow{\ \text{代公式}\ } \theta
   <span>\(m,\ g,\ e_3,\ z_B,\ J\)</span><span>同上：质量、重力加速度、world z 轴、推力方向、转动惯量</span>
 </div>
 </div>
-这些公式（\(\theta = \operatorname{atan}(a/g)\)、\(f = m\lVert a + g\rVert\)、\(\tau = J\dot\omega + \omega\times J\omega\)）<strong>事先推一次</strong>就固定了，运行时只做求导和代入。</li>
+这些公式（\(\theta = \operatorname{atan}(a/g)\)、\(f = m\lVert a + g\,e_3\rVert\)、\(\tau = J\dot\omega + \omega\times J\omega\)）<strong>事先推一次</strong>就固定了，运行时只做求导和代入。</li>
 <li><strong>曲线足够光滑</strong>：链条用到第几阶导数，曲线就要几阶可导。四旋翼用到 snap，要 4 阶可导。</li>
 </ol>
-<p><strong>Flatness 本身是系统的性质</strong>：它保证这条链能一路传到底，每一步都能唯一地反解（奇异点除外，比如 \(a = -g\)）。不 flat 的系统，链条会在某一步断掉：那一步有无穷多个解或者无解，只能改成正着积分、用优化去找 \(u\)（见 <a href="#roadmap">12</a>）。</p>
+<p><strong>Flatness 本身是系统的性质</strong>：它保证这条链能一路传到底，每一步都能唯一地反解（奇异点除外，比如 \(a = -g\,e_3\)）。不 flat 的系统，链条会在某一步断掉：那一步有无穷多个解或者无解，只能改成正着积分、用优化去找 \(u\)（见 <a href="#roadmap">12</a>）。</p>
 <p>另外，链条算出的输入只在模型准确时才对。质量、\(J\)、推力系数一有偏差就只是近似，所以它的定位是 <strong>feedforward</strong>，还要配 feedback（见 <a href="#ffb">10</a>）。</p>
 <div class="note"><p><span class="q">一句话</span>Flatness 保证链条能传到底，动力学给出链条上每一环的公式，实际使用就是对规划好的曲线求导、代公式。</p></div>
 
@@ -605,7 +605,7 @@ x(t) \xrightarrow{\ \text{求导}\ } a \xrightarrow{\ \text{代公式}\ } \theta
 <div class="tw"><table>
 <tr><th>系统</th><th>Flat outputs</th><th>为什么是它</th></tr>
 <tr><td>差速底盘</td><td>中心 (\(x\), \(y\))</td><td>轮子不侧滑，速度方向就是朝向：\(\theta = \operatorname{atan2}(\dot y, \dot x)\)，\(v\)、\(\omega\) 再求导得到</td></tr>
-<tr><td>Car-like（kinematic bicycle）</td><td><strong>后轴中心</strong> (\(x\), \(y\))</td><td>后轮不转向、不侧滑，后轴中心的速度沿车身方向，\(\theta\) 直接由速度方向得到；转向角 \(\delta = \operatorname{atan}(L\kappa)\)，\(\kappa\) 是后轴轨迹的曲率。选前轴或车身中心，速度方向里混进了转向角，推不出来</td></tr>
+<tr><td>Car-like（kinematic bicycle）</td><td><strong>后轴中心</strong> (\(x\), \(y\))</td><td>后轮不转向、不侧滑，后轴中心的速度沿车身方向，\(\theta\) 直接由速度方向得到；转向角 \(\delta = \operatorname{atan}(L\kappa)\)，\(L\) 是 wheelbase（前后轴的距离），\(\kappa\) 是后轴轨迹的曲率。选前轴或车身中心，速度方向里混进了转向角，推不出来</td></tr>
 <tr><td>带多节拖车的车</td><td><strong>最后一节拖车</strong>的位置</td><td>从最后一节开始，一节一节往前推出每节的位置和朝向</td></tr>
 <tr><td>Quadrotor</td><td>\(x\), \(y\), \(z\), \(\psi\)</td><td>见 <a href="#flat">09</a></td></tr>
 <tr><td>全驱动机械臂</td><td>关节角 \(q\)</td><td>平凡情况：\(u = M(q)\ddot q + C(q, \dot q)\dot q + G(q)\)（\(M\) 是 mass matrix，\(C\) 是 Coriolis 项，\(G\) 是 gravity 项）</td></tr>
@@ -616,7 +616,7 @@ x(t) \xrightarrow{\ \text{求导}\ } a \xrightarrow{\ \text{代公式}\ } \theta
 <ol>
 <li><strong>不是所有系统都 flat。</strong>例如带轮胎侧滑的车辆动力学模型、很多欠驱动系统。这时只能用带完整动力学的 trajectory optimization 或 MPC。</li>
 <li><strong>"能实现"不等于"在限制内"。</strong>自由选的前提是不考虑输入上限。曲线太激进，算出的推力或倾角可能超限，规划完要检查，超了就拉长时间。</li>
-<li><strong>奇异点。</strong>反推公式在某些地方除以 0：quadrotor 的 \(a = -g\)，差速底盘和 car-like 的 \(v = 0\)（停下时朝向无定义）。</li>
+<li><strong>奇异点。</strong>反推公式在某些地方除以 0：quadrotor 的 \(a = -g\,e_3\)，差速底盘和 car-like 的 \(v = 0\)（停下时朝向无定义）。</li>
 </ol>
 </section>
 
@@ -628,7 +628,7 @@ x(t) \xrightarrow{\ \text{求导}\ } a \xrightarrow{\ \text{代公式}\ } \theta
 z_B &= \frac{a + g\,e_3}{\lVert a + g\,e_3 \rVert}, \qquad f = m\,\lVert a + g\,e_3 \rVert && \text{acceleration → 推力方向和大小} \\
 x_C &= [\cos\psi,\ \sin\psi,\ 0]^\top && \text{用上 yaw} \\
 y_B &= \frac{z_B \times x_C}{\lVert z_B \times x_C \rVert}, \quad x_B = y_B \times z_B, \quad R = [x_B\ \ y_B\ \ z_B] && \text{姿态} \\
-h_\omega &= \frac{m}{f}\bigl( j - (z_B \cdot j)\, z_B \bigr) && \text{jerk} \\
+h_\omega &= \frac{m}{f}\bigl( \jmath - (z_B \cdot \jmath)\, z_B \bigr) && \text{jerk} \\
 p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi\,(e_3 \cdot z_B) && \text{角速度} \\
 \tau &= J\dot\omega + \omega \times J\omega && \text{snap → 角加速度 → 力矩}
 \end{aligned}
@@ -641,7 +641,7 @@ p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi
   <span>\(x_C\)</span><span>yaw 给出的水平朝向（heading）向量</span>
   <span>\(\psi,\ \dot\psi\)</span><span>yaw 角、yaw rate</span>
   <span>\(R\)</span><span>旋转矩阵，三列依次是 \(x_B,\ y_B,\ z_B\)</span>
-  <span>\(j\)</span><span>jerk，加速度的导数</span>
+  <span>\(\jmath\)</span><span>jerk，加速度的导数</span>
   <span>\(h_\omega\)</span><span>jerk 中垂直于推力方向的部分（乘 \(m/f\)），是推力方向变化快慢的度量</span>
   <span>\(p,\ q,\ r\)</span><span>角速度在 body frame 里绕 \(x_B,\ y_B,\ z_B\) 的分量</span>
   <span>\(\omega,\ \dot\omega\)</span><span>角速度、角加速度（\(\dot\omega\) 由 snap 算出）</span>
@@ -673,9 +673,9 @@ p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi
 <p>\(m = 1\,\text{kg}\)，悬停时想以 \(a_x = 2\,\text{m/s}^2\) 向前加速：\(a + g\,e_3 = (2, 0, 9.81)\)，\(\text{pitch} = \operatorname{atan}(2 / 9.81) \approx\) <strong>\(11.5^\circ\)</strong>，\(f = \sqrt{2^2 + 9.81^2} \approx\) <strong>\(10.0\,\text{N}\)</strong>，比悬停的 \(9.81\,\text{N}\) 略大。全程只是代公式，不解微分方程。</p>
 <h3>三个注意点</h3>
 <ul>
-<li><strong>奇异点</strong>：\(a = -g\)（自由落体）时 \(f = 0\)，\(z_B\) 无定义，姿态算不出来。</li>
+<li><strong>奇异点</strong>：\(a = -g\,e_3\)（自由落体）时 \(f = 0\)，\(z_B\) 无定义，姿态算不出来。</li>
 <li><strong>\(\psi\) 自由的代价</strong>：\(x_C\) 和 \(z_B\) 平行时（推力轴水平并指向 heading 方向，也就是 pitch \(\pm 90^\circ\)）\(y_B\) 无定义，实际飞行一般碰不到。roll \(90^\circ\) 时 \(z_B\) 垂直于 \(x_C\)，不是奇异点。</li>
-<li><strong>yaw rate 是近似式</strong>：\(r\) 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 \(x_C\) 构造，精确式是 \(r = \bigl(\dot\psi\,(y_B \cdot y_C) + p\,(z_B \cdot x_C)\bigr) / (x_B \cdot x_C)\)，其中 \(y_C = [-\sin\psi, \cos\psi, 0]\)。机身倾斜越大、姿态变化越快，近似式的误差越大。</li>
+<li><strong>yaw rate 是近似式</strong>：\(r\) 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 \(x_C\) 构造，精确式是 \(r = \bigl(\dot\psi\,(y_B \cdot y_C) + p\,(z_B \cdot x_C)\bigr) / (x_B \cdot x_C)\)，其中 \(y_C = [-\sin\psi,\ \cos\psi,\ 0]^\top\)。机身倾斜越大、姿态变化越快，近似式的误差越大。</li>
 </ul>
 </section>
 
@@ -684,7 +684,7 @@ p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi
 
 <section id="ffb">
 <h2><span class="n">10</span>已经算出了输入，为什么还要 feedback</h2>
-<div class="note"><p><span class="q">我的问题</span>有了 flatness，minimum snap 算出 \(x(t)\)、\(y(t)\)、\(z(t)\)、\(\psi\)(\(t\)) 之后，12 维状态和 4 维输入随时间的变化（比如 thrust(\(t\))）都能算出来。既然输入都知道了，底层为什么还需要 PID？还需要 "tracking controller + 滚动重规划"？它和不用 flatness、只靠 feedback 跟踪，本质区别是什么？</p></div>
+<div class="note"><p><span class="q">我的问题</span>有了 flatness，minimum snap 算出 \(x(t)\)、\(y(t)\)、\(z(t)\)、\(\psi(t)\) 之后，12 维状态和 4 维输入随时间的变化（比如 \(\text{thrust}(t)\)）都能算出来。既然输入都知道了，底层为什么还需要 PID？还需要 "tracking controller + 滚动重规划"？它和不用 flatness、只靠 feedback 跟踪，本质区别是什么？</p></div>
 <h3>结论</h3>
 <p>Flatness 算出的 \(u(t)\) 是 <strong>open-loop feedforward</strong>，只有在"模型完全准、起点完全准、没有扰动"时才对。真实机器人一定会偏，所以要加 feedback。两者是<strong>相加</strong>的关系，不是二选一：</p>
 <div class="eq">
@@ -845,10 +845,11 @@ u(t) = \underbrace{u_{\text{ff}}(t)}_{\text{由参考轨迹算出}} \;+\; \under
 \[
 \begin{array}{r l l}
 \text{1} & \text{位置误差} & e_p = p - p_{\text{ref}}, \quad e_v = v - v_{\text{ref}} \\
-\text{2} & \text{期望合力} & F_{\text{des}} = m\,a_{\text{ref}} + m\,g\,e_3 - K_p\,e_p - K_v\,e_v \\
-\text{3} & \text{期望姿态} & b_{3,\text{des}} = \dfrac{F_{\text{des}}}{\lVert F_{\text{des}} \rVert}, \quad b_{2,\text{des}} = \dfrac{b_{3,\text{des}} \times b_{1,c}}{\lVert b_{3,\text{des}} \times b_{1,c} \rVert}, \quad b_{1,\text{des}} = b_{2,\text{des}} \times b_{3,\text{des}} \\
+\text{2} & \text{期望合力} & F_{\text{des}} = m\,a_{\text{ref}} + m\,g\,e_3 - K_p\,e_p - K_v\,e_v \qquad \text{feedforward + feedback} \\
+\text{3} & \text{期望姿态} & b_{3,\text{des}} = \dfrac{F_{\text{des}}}{\lVert F_{\text{des}} \rVert} \qquad \text{推力该指的方向} \\
+ & & b_{2,\text{des}} = \dfrac{b_{3,\text{des}} \times b_{1,c}}{\lVert b_{3,\text{des}} \times b_{1,c} \rVert}, \quad b_{1,\text{des}} = b_{2,\text{des}} \times b_{3,\text{des}} \\
  & & b_{1,c} = (\cos\psi_{\text{ref}},\ \sin\psi_{\text{ref}},\ 0), \quad R_{\text{des}} = [\,b_{1,\text{des}}\ \ b_{2,\text{des}}\ \ b_{3,\text{des}}\,] \\
-\text{4} & \text{推力} & f = F_{\text{des}} \cdot (R\,e_3) \\
+\text{4} & \text{推力} & f = F_{\text{des}} \cdot (R\,e_3) \qquad \text{投影到当前机身 z 轴} \\
 \text{5} & \text{姿态误差} & e_R = \tfrac{1}{2}\bigl( R_{\text{des}}^\top R - R^\top R_{\text{des}} \bigr)^\vee, \quad e_\omega = \omega - R^\top R_{\text{des}}\,\omega_{\text{des}} \\
 \text{6} & \text{力矩} & M = -K_R\, e_R - K_\omega\, e_\omega + \omega \times J\omega - J\bigl( \hat\omega\, R^\top R_{\text{des}}\,\omega_{\text{des}} - R^\top R_{\text{des}}\,\dot\omega_{\text{des}} \bigr)
 \end{array}
@@ -996,7 +997,7 @@ x(t) \xrightarrow{\ \text{求导}\ } a = \ddot x \xrightarrow{\ \text{代公式�
 </div>
 <p><strong>为什么说"绕开"了积分：</strong></p>
 <ul>
-<li><strong>积分要历史，求导只看当下。</strong>算 \(x(t)\) 要知道从 0 到 \(t\) 的全部 \(u\) 和初始状态，只能一步步往前推，误差还会累积；算 ẍ(\(t\)) 只需要曲线在 \(t\) 附近的形状，代入公式就行，精确而且瞬时。</li>
+<li><strong>积分要历史，求导只看当下。</strong>算 \(x(t)\) 要知道从 0 到 \(t\) 的全部 \(u\) 和初始状态，只能一步步往前推，误差还会累积；算 \(\ddot x(t)\) 只需要曲线在 \(t\) 附近的形状，代入公式就行，精确而且瞬时。</li>
 <li><strong>信息没有丢。</strong>积分多出来的常数（初始位置、初始速度）由画出的曲线起点决定，所以倒着算不缺条件。</li>
 <li><strong>物理上机器人仍然在"正着积分"。</strong>规划器只是倒着算出"哪个 \(u\) 能让物理积分出这条曲线"，然后把这个 \(u\) 当 feedforward 交下去（10 节）。</li>
 <li><strong>两个前提。</strong>一是曲线要足够光滑：四旋翼要求 \(x(t)\) 4 阶可导，否则 \(\tau\) 是无穷大，这就是 minimum snap 用 7 次多项式、让 snap 平滑的原因。二是每一步都能唯一反推：\(\theta = \operatorname{atan}(a / g)\) 只有一个解，这正是 flatness 保证的；不 flat 的系统在某一步卡住，就倒不回去。</li>
@@ -1019,7 +1020,7 @@ x(t) \xrightarrow{\ \text{求导}\ } a = \ddot x \xrightarrow{\ \text{代公式�
 <tr><td><strong>Kinodynamic sampling / state lattice</strong></td><td>一串离散动作 → 拼出轨迹</td><td>每段 motion primitive 都是仿真出来的</td><td>有分辨率限制，维度高时慢</td></tr>
 <tr><td><strong>MPC</strong></td><td>当前状态 \(\hat x\) → 此刻的 \(u\)</td><td>每个周期在线做一次短时域 traj opt</td><td>计算量大，要实时解完</td></tr>
 <tr><td><strong>Feedback controller</strong>（PID / LQR / SE(3)）</td><td>误差 \(x_{\text{ref}} - \hat x \to \Delta u\)</td><td>不规划，只在参考附近局部修正</td><td>需要好的参考</td></tr>
-<tr><td><strong>只给位置，靠 feedback 硬追</strong></td><td>\(p_{\text{ref}}\)(\(t\)) → \(u\)</td><td>不处理</td><td>参考不一定可行，可能跟不上</td></tr>
+<tr><td><strong>只给位置，靠 feedback 硬追</strong></td><td>\(p_{\text{ref}}(t)\) → \(u\)</td><td>不处理</td><td>参考不一定可行，可能跟不上</td></tr>
 <tr><td><strong>Learning / RL policy</strong></td><td>\(\hat x \to u\)（学出来的函数）</td><td>在仿真里大量试错，隐式学会</td><td>训练成本高，难给保证</td></tr>
 </table></div>
 
@@ -1105,10 +1106,10 @@ x(t) \xrightarrow{\ \text{求导}\ } a = \ddot x \xrightarrow{\ \text{代公式�
 <p>如果能找到 \(m\) 个量 \(y\)（\(m\) 是输入个数），它们由系统状态和输入算得出、彼此之间没有微分方程约束、并且全部状态和输入都能写成 \(y\) 及其有限阶导数的代数函数，系统就是 differentially flat。本质是把动力学约束参数化掉：系统所有轨迹和 \(m\) 条自由曲线一一对应，所以在 \(y\) 空间规划不用再处理 ODE 约束。等价地，换到 flat 坐标下系统就是几条独立的积分器链；quadrotor 位置链是 4 阶，虚拟输入就是 snap，这正是 minimum snap 的来源。</p>
 </div></details>
 <details class="qa"><summary>为什么 flat outputs 是 (\(x\), \(y\), \(z\), \(\psi\))，而不是 roll 或 pitch？</summary><div class="a">
-<p>给定加速度后，推力必须指向 \(a + g\)，roll 和 pitch 被唯一确定，不能自由选。yaw 是绕推力轴的转动，不影响推力方向，所以能自由选。自由的量正好是 \(x\)、\(y\)、\(z\)、\(\psi\) 四个，等于输入个数；其余状态和输入都能由它们的导数代数地算出。</p>
+<p>给定加速度后，推力必须指向 \(a + g\,e_3\)，roll 和 pitch 被唯一确定，不能自由选。yaw 是绕推力轴的转动，不影响推力方向，所以能自由选。自由的量正好是 \(x\)、\(y\)、\(z\)、\(\psi\) 四个，等于输入个数；其余状态和输入都能由它们的导数代数地算出。</p>
 </div></details>
 <details class="qa"><summary>给定想要的加速度，怎么算姿态和推力？什么时候会失效？</summary><div class="a">
-<p>由 \(f\,z_B = m\,(a + g\,e_3)\)：推力方向 \(z_B\) 是 \(a + g\) 的单位向量，推力大小 \(f = m\lVert a + g\rVert\)，再用 \(\psi\) 补全 \(x_B\)、\(y_B\)。\(a = -g\) 时推力为 0，方向无定义；另外算出的 \(f\) 或倾角可能超过物理上限，需要检查并拉长轨迹时间。</p>
+<p>由 \(f\,z_B = m\,(a + g\,e_3)\)：推力方向 \(z_B\) 是 \(a + g\,e_3\) 的单位向量，推力大小 \(f = m\lVert a + g\,e_3\rVert\)，再用 \(\psi\) 补全 \(x_B\)、\(y_B\)。\(a = -g\,e_3\) 时推力为 0，方向无定义；另外算出的 \(f\) 或倾角可能超过物理上限，需要检查并拉长轨迹时间。</p>
 </div></details>
 <details class="qa"><summary>Flatness 已经算出了全部输入，为什么还需要 PID 这类 tracking controller？</summary><div class="a">
 <p>算出的是 open-loop feedforward，只在模型准确、没有扰动时才对。四旋翼从力矩到位置是 4 次积分，力矩偏 1%，开环 4 秒位置就偏 2.6 m。所以实际输入是 \(u = u_{\text{ff}} + K\,e\)：feedforward 负责"按计划该怎么飞"，提前给出绝大部分输入；feedback 负责把偏差拉回来。只用 feedback 会因为必须先有误差才动作而一直滞后。参考轨迹本身失效时（新障碍、偏太远），就要重规划。</p>
@@ -1131,8 +1132,9 @@ x(t) \xrightarrow{\ \text{求导}\ } a = \ddot x \xrightarrow{\ \text{代公式�
 &\text{动力学：}\tau \xrightarrow{\int} \omega \xrightarrow{\int} R \to z_B \to a \xrightarrow{\int} v \xrightarrow{\int} p \qquad \text{（4 次积分）} \\
 &\text{Flatness：}x, y, z, \psi \to a:\ f, \text{roll}, \text{pitch} \to \text{jerk}:\ \omega \to \text{snap}:\ \tau \qquad \text{（只求导）} \\
 &\text{本质：}m\text{ 条自由曲线参数化全部轨迹 = }m\text{ 条积分器链（位置链 4 阶 → snap）} \\
-&\text{执行：}u = u_{\text{ff}} + K\,e\ \text{（}u_{\text{ff}}\text{ 来自 flatness / traj opt）}\text{；参考失效 → 重规划} \\
-&\text{SE(3)：}F_{\text{des}} = m\,a_{\text{ref}} + m\,g\,e_3 - K_p e_p - K_v e_v;\quad b_{3,\text{des}} = \frac{F_{\text{des}}}{\lVert F_{\text{des}} \rVert};\quad f = F_{\text{des}} \cdot z_B;\quad e_R = \tfrac{1}{2}\bigl( R_{\text{des}}^\top R - R^\top R_{\text{des}} \bigr)^\vee \\
+&\text{执行：}u = u_{\text{ff}}\ \text{（flatness / traj opt）} + K\,e\ \text{（feedback）}\text{；参考失效 → 重规划} \\
+&\text{SE(3)：}F_{\text{des}} = m\,a_{\text{ref}} + m\,g\,e_3 - K_p e_p - K_v e_v;\quad b_{3,\text{des}} = \frac{F_{\text{des}}}{\lVert F_{\text{des}} \rVert};\quad f = F_{\text{des}} \cdot z_B \\
+&\qquad\quad\ \ e_R = \tfrac{1}{2}\bigl( R_{\text{des}}^\top R - R^\top R_{\text{des}} \bigr)^\vee \\
 &\text{规划方向：正着用 }u \xrightarrow{\int} x\text{（shooting、iLQR）}\text{；倒着用 }x \xrightarrow{d/dt} u\text{（flatness）} \\
 &z_B = \frac{a + g\,e_3}{\lVert a + g\,e_3 \rVert}, \quad f = m\,\lVert a + g\,e_3 \rVert, \quad \text{奇异：}a = -g\,e_3
 \end{aligned}

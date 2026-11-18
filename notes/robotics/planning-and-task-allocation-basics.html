@@ -427,7 +427,7 @@ C D E</pre>
 <tr><td><strong>BFS</strong></td><td>最早放进去的</td><td>queue，先进先出</td><td>步数最少的 path</td></tr>
 <tr><td><strong>DFS</strong></td><td>最晚放进去的</td><td>stack，后进先出</td><td>只保证找到一条 path，不保证短</td></tr>
 <tr><td><strong>Dijkstra</strong></td><td>\(g\) 最小的</td><td>priority queue，通常是 min-heap</td><td>cost 最小的 path，要求 edge cost 不是负数</td></tr>
-<tr><td><strong>A*</strong></td><td>g + \(h\) 最小的</td><td>priority queue</td><td>cost 最小的 path，要求 \(h\) 不高估（骨架里 CLOSED 直接 skip 的写法还要求 h consistent，见 05）</td></tr>
+<tr><td><strong>A*</strong></td><td>\(g + h\) 最小的</td><td>priority queue</td><td>cost 最小的 path，要求 \(h\) 不高估（骨架里 CLOSED 直接 skip 的写法还要求 h consistent，见 05）</td></tr>
 </table></div>
 <p>Dijkstra 和 A* 这种“每次取某个评分最好的 node”的做法，统称 <strong>best-first search</strong>。后面 CBS 的 high level 用的也是它，只是搜索的对象从 cell 换成了别的东西。</p>
 </section>
@@ -983,13 +983,13 @@ print(cols, C[rows, cols].sum())          # [3 1 2 0] 7</pre>
 <p>从下单到货送来需要一段时间，叫 lead time。库存降到某个水平就要下单，这个水平叫 <strong>reorder point</strong>。因为需求有波动，还要多备一点防止断货，多备的部分叫 <strong>safety stock</strong>。</p>
 <div class="eq">
 \[
-\begin{aligned}\text{ROP} &= \bar{d}\cdot L + SS\\ SS &= z\,\sigma\sqrt{L}\end{aligned}
+\begin{aligned}\text{ROP} &= \bar{d}\cdot L + \text{SS}\\ \text{SS} &= z\,\sigma\sqrt{L}\end{aligned}
 \]
 <div class="sym">
 <span>\(\text{ROP}\)</span><span>reorder point：库存降到这个水平就要下单</span>
 <span>\(\bar{d}\)</span><span>平均日需求</span>
 <span>\(L\)</span><span>lead time：从下单到到货的天数</span>
-<span>\(SS\)</span><span>safety stock：防断货多备的量</span>
+<span>\(\text{SS}\)</span><span>safety stock：防断货多备的量</span>
 <span>\(\sigma\)</span><span>日需求的标准差</span>
 <span>\(z\)</span><span>由 service level 决定的系数</span>
 </div>
@@ -1010,7 +1010,7 @@ print(cols, C[rows, cols].sum())          # [3 1 2 0] 7</pre>
 <div class="qa-tools"><button class="pre" type="button" id="qa-open">全部展开</button><button class="pre" type="button" id="qa-close">全部收起</button></div>
 
 <h3>Heuristic search</h3>
-<details class="qa"><summary>BFS、DFS、Dijkstra、A* 的区别是什么？</summary><div class="a"><p>它们是同一个骨架，区别只在每次从 OPEN 里取哪个 node。BFS 取最早放进去的，用 queue。DFS 取最晚放进去的，用 stack。Dijkstra 取 \(g\) 最小的。A* 取 g + \(h\) 最小的。后两个都用 priority queue。</p></div></details>
+<details class="qa"><summary>BFS、DFS、Dijkstra、A* 的区别是什么？</summary><div class="a"><p>它们是同一个骨架，区别只在每次从 OPEN 里取哪个 node。BFS 取最早放进去的，用 queue。DFS 取最晚放进去的，用 stack。Dijkstra 取 \(g\) 最小的。A* 取 \(g + h\) 最小的。后两个都用 priority queue。</p></div></details>
 <details class="qa"><summary>BFS 什么时候找到的不是最短路？</summary><div class="a"><p>edge 的 cost 不全相同的时候。BFS 保证的是步数最少，不是 cost 最小。cost 不一样时要用 Dijkstra 或 A*。</p></div></details>
 <details class="qa"><summary>DFS 和 BFS 各适合做什么？</summary><div class="a"><p>BFS 适合 unit-cost 的最短路，以及算每个 node 到某一点的距离。DFS 省内存，适合判断能不能到达、找环、把所有可能性穷举一遍。DFS 找到的 path 不保证短。</p></div></details>
 <details class="qa"><summary>Dijkstra 为什么要求 edge cost 不是负数？</summary><div class="a"><p>它的正确性依赖一个事实：一个 node 被 expand 时，g 已经是最终值，因为其他的路都要经过 g 更大的 node，再往后只会更贵。有负的 edge 时，“再往后只会更贵”不成立，已经 expand 的 node 的 g 之后可能还会变小。</p></div></details>
@@ -1049,7 +1049,7 @@ print(cols, C[rows, cols].sum())          # [3 1 2 0] 7</pre>
 <tr><td>BFS</td><td>unit-cost 最短路</td><td>queue，一圈一圈往外</td><td>步数上是</td><td>\(O(V + E)\)</td></tr>
 <tr><td>DFS</td><td>可达性、找环</td><td>stack，一条路走到底</td><td>否</td><td>\(O(V + E)\)</td></tr>
 <tr><td>Dijkstra</td><td>带 cost 的最短路</td><td>每次 expand \(g\) 最小的</td><td>是，cost 非负</td><td>\(O((V + E) \log V)\)</td></tr>
-<tr><td>A*</td><td>带 cost 的最短路，更快</td><td>每次 expand g + \(h\) 最小的</td><td>是，\(h\) admissible（不 reopen 时要 consistent）</td><td>取决于 h</td></tr>
+<tr><td>A*</td><td>带 cost 的最短路，更快</td><td>每次 expand \(g + h\) 最小的</td><td>是，\(h\) admissible（不 reopen 时要 consistent）</td><td>取决于 h</td></tr>
 <tr><td>weighted A*</td><td>要更快，能接受次优</td><td>\(f = g + w \cdot h\)</td><td>不超过 \(w\) 倍</td><td>比 A* 少</td></tr>
 <tr><td>PRM</td><td>高维、多次查询</td><td>随机采样建 roadmap，再跑 A*</td><td>否</td><td></td></tr>
 <tr><td>RRT</td><td>高维、单次查询</td><td>从 start 长一棵随机的 tree</td><td>否</td><td></td></tr>

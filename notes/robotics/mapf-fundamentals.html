@@ -369,7 +369,7 @@ B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在
 <p>最直接的想法是把 \(k\) 个 agent 看成一个“大 agent”，state 是所有 agent 的位置 \((v_1, \dots, v_k)\)，\(v_i\) 是第 \(i\) 个 agent 所在的 cell，然后直接跑 A*。这样做是 complete 而且 optimal 的，但规模撑不住：</p>
 <ul>
 <li><strong>state 数是 \(|V|^k\)。</strong>\(20\times 20\) 的 grid 有 400 个 cell，10 个 agent 就是 \(400^{10} \approx 10^{26}\) 个 state。</li>
-<li><strong>branching factor 是 \(5^k\)。</strong>每个 agent 有 5 个 action（4 个方向加 wait），10 个 agent 每 expand 一次要生成 \(5^{10}\) ≈ 980 万个 successor。</li>
+<li><strong>branching factor 是 \(5^k\)。</strong>每个 agent 有 5 个 action（4 个方向加 wait），10 个 agent 每 expand 一次要生成 \(5^{10} \approx\) 980 万个 successor。</li>
 </ul>
 <p>求 SoC 或 makespan optimal 的 MAPF 是 NP-hard 的。所以实用算法都在想办法回避 joint state space，区别只在回避的方式：</p>
 <div class="tw"><table>
@@ -817,15 +817,15 @@ if __name__ == '__main__':
 <h3>Cost matrix 怎么建</h3>
 <div class="eq">
 \[
-c_{ij} = d_{\text{pickup}}(i) + d_{\text{deliv}}(j) + w_1\, u_j + w_2\, p_j
+c_{ij} = d_{\text{pickup}}(i, j) + d_{\text{deliv}}(j) + \lambda_1\, u_j + \lambda_2\, p_j
 \]
 <div class="sym">
 <span>\(c_{ij}\)</span><span>把 robot \(i\) 派去做 task \(j\) 的总 cost</span>
-<span>\(d_{\text{pickup}}(i)\)</span><span>robot \(i\) 到 pickup 的距离，用 06 节的 true distance，不用 Manhattan distance</span>
+<span>\(d_{\text{pickup}}(i, j)\)</span><span>robot \(i\) 到 task \(j\) 的 pickup 的距离，用 06 节的 true distance，不用 Manhattan distance</span>
 <span>\(d_{\text{deliv}}(j)\)</span><span>task \(j\) 从 pickup 到 delivery 的距离</span>
 <span>\(u_j\)</span><span>deadline 项：task \(j\) 越急，这一项越小（cost 越低）</span>
 <span>\(p_j\)</span><span>congestion penalty：目的地附近已经派去了多少 robot</span>
-<span>\(w_1, w_2\)</span><span>各项的权重，按实际需要调</span>
+<span>\(\lambda_1, \lambda_2\)</span><span>deadline 项和 congestion penalty 的权重，按实际需要调</span>
 </div>
 </div>
 <h3>Greedy 不是 optimal 的</h3>
@@ -1015,7 +1015,7 @@ c_{ij} = d_{\text{pickup}}(i) + d_{\text{deliv}}(j) + w_1\, u_j + w_2\, p_j
 <h3>问题定义</h3>
 <details class="qa"><summary>MAPF 的输入和输出是什么？</summary><div class="a"><p>输入是一张 graph 和 \(k\) 个 agent 的 start、goal。时间离散，每一步每个 agent 要么 move 到相邻的 cell，要么 wait。输出是每个 agent 一条带时间的 path，任意两条之间没有 vertex conflict 和 edge conflict。目标通常是最小化 SoC 或 makespan，lifelong 场景看 throughput。</p></div></details>
 <details class="qa"><summary>为什么只检查 vertex conflict 不够？</summary><div class="a"><p>两个 agent 对穿时，每个时刻它们都在不同的 cell 里，vertex conflict 检查不出来，但物理上已经撞了。所以要单独检查 edge conflict：t 到 t+1 之间两个 agent 互换了位置。</p></div></details>
-<details class="qa"><summary>为什么不直接在 joint state space 上跑 A*？</summary><div class="a"><p>state 数是 \(|V|^k\)，branching factor 是 \(5^k\)，都随 agent 数指数增长。\(20\times 20\) 的 grid 上 10 个 agent 就有大约 10<sup>26</sup> 个 state，每次 expand 要生成约 980 万个 successor。所以实用算法都是先各自规划，再处理 conflict。</p></div></details>
+<details class="qa"><summary>为什么不直接在 joint state space 上跑 A*？</summary><div class="a"><p>state 数是 \(|V|^k\)，branching factor 是 \(5^k\)，都随 agent 数指数增长。\(20\times 20\) 的 grid 上 10 个 agent 就有大约 \(10^{26}\) 个 state，每次 expand 要生成约 980 万个 successor。所以实用算法都是先各自规划，再处理 conflict。</p></div></details>
 <details class="qa"><summary>SoC 和 makespan 有什么区别？仓库里看哪个？</summary><div class="a"><p>SoC 是所有 agent 到达时间的和，makespan 是最晚到达的那个时间。仓库是 lifelong 场景，看的是 throughput。SoC optimal 不等于 throughput optimal，因为 throughput 还取决于 task assignment、拥堵和执行时的延误。</p></div></details>
 
 <h3>A* 和 space-time A*</h3>

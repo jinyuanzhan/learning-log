@@ -371,7 +371,7 @@ Q[i][j] &= 0 && (i \text{ 或 } j \lt 4)
 <tr><td>起点</td><td>\(p = w_0\)，\(v = a = j = 0\)（或给定初始状态）</td><td>4</td></tr>
 <tr><td>终点</td><td>\(p = w_m\)，\(v = a = j = 0\)</td><td>4</td></tr>
 <tr><td>普通中间点</td><td>前一段终点 = 后一段起点 = \(w_i\)；\(v\)、\(a\)、\(j\) <strong>前后相等</strong>，但取多少不规定</td><td>2 + 3</td></tr>
-<tr><td>停止点（如 CBS wait）</td><td>\(p = w_i\)；两侧 \(v = a = j =\) <strong>0</strong></td><td>2 + 6</td></tr>
+<tr><td>停止点（如 CBS wait）</td><td>\(p = w_i\)；两侧 \(v = a = j = \mathbf{0}\)</td><td>2 + 6</td></tr>
 </table></div>
 <p>每个约束都是"某段在某时刻的某阶导数"，等于 \(\operatorname{basis}(t, r)\,c\)，其中 \(\operatorname{basis}(t, r)[k] = \frac{k!}{(k-r)!}\, t^{\,k-r}\)（\(t\) 是该段的局部时刻，\(r\) 是导数阶数，\(k\) 是系数下标，\(\operatorname{basis}(t,r)\) 是向量，第 \(k\) 项对应系数 \(c_k\)）。所以都是关于 \(c\) 的线性方程。</p>
 <div class="note"><p><span class="q">数一数自由度，看清优化器到底在选什么</span>两段（3 个 waypoint）：未知数 16，约束 4 + 4 + 5 = 13，剩 <strong>3 个自由度</strong>，正好是中间点的 \(v\)、\(a\)、\(j\)。一般地，自由度 = \(3(m-1)\)。<strong>优化器做的事，就是替每个中间点挑一组最平滑的 \(v\)、\(a\)、\(j\)。</strong>如果中间点设成停止点，\(v\)、\(a\)、\(j\) 被固定为 0，自由度变成 0，轨迹完全由约束决定。</p></div>
@@ -455,7 +455,7 @@ Q[i][j] &= 0 && (i \text{ 或 } j \lt 4)
       <div class="live" id="live" aria-live="polite"></div>
     </div>
   </div>
-  <p class="try"><b>试试：</b>① \(L\) 形里把拐角的点拖远拖近，看曲线怎么切弯。② 切到"均匀 1s"，短段和长段用一样的时间，速度忽快忽慢。③ 选"CBS wait"，看重复点那里轨迹冲出去又绕回来，再勾上"停住"。④ 超速时把 \(\alpha\) 调大。</p>
+  <p class="try"><b>试试：</b>① L 形里把拐角的点拖远拖近，看曲线怎么切弯。② 切到"均匀 1s"，短段和长段用一样的时间，速度忽快忽慢。③ 选"CBS wait"，看重复点那里轨迹冲出去又绕回来，再勾上"停住"。④ 超速时把 \(\alpha\) 调大。</p>
 </div>
 <p>图里的实线是轨迹，上面的小点每隔 0.25s 一个：点越稀，速度越快。橙色圆点是 waypoint，可以拖；红色表示这个点被设成停止点。</p>
 </section>
@@ -516,9 +516,9 @@ Q[i][j] &= 0 && (i \text{ 或 } j \lt 4)
 z_B &= \frac{a + g\,e_3}{\lVert a + g\,e_3 \rVert}, \qquad f = m\,\lVert a + g\,e_3 \rVert && \text{acceleration → 推力方向和大小} \\
 x_C &= [\cos\psi,\ \sin\psi,\ 0]^\top && \text{姿态} \\
 y_B &= \frac{z_B \times x_C}{\lVert z_B \times x_C \rVert}, \quad x_B = y_B \times z_B \\
-h_\omega &= \frac{m}{f}\bigl( j - (z_B \cdot j)\, z_B \bigr) && \text{jerk} \\
+h_\omega &= \frac{m}{f}\bigl( \jmath - (z_B \cdot \jmath)\, z_B \bigr) && \text{jerk} \\
 p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi\,(e_3 \cdot z_B) && \text{角速度} \\
-\tau &= J\dot\omega + \omega \times J\omega && \text{角加速度 / 力矩：snap}
+\tau &= I\dot\omega + \omega \times I\omega && \text{角加速度 / 力矩：snap}
 \end{aligned}
 \]
 <div class="sym">
@@ -528,16 +528,16 @@ p &= -h_\omega \cdot y_B, \quad q = h_\omega \cdot x_B, \quad r \approx \dot\psi
   <span>\(z_B,\ x_B,\ y_B\)</span><span>机身三根轴在 world frame 里的方向（\(z_B\) 是推力方向）</span>
   <span>\(x_C\)</span><span>yaw 给出的水平朝向向量</span>
   <span>\(\psi,\ \dot\psi\)</span><span>yaw 角、yaw rate</span>
-  <span>\(j\)</span><span>jerk，加速度的导数</span>
+  <span>\(\jmath\)</span><span>jerk，加速度的导数（写成 \(\jmath\) 是为了和段的编号 \(j\) 区分）</span>
   <span>\(h_\omega\)</span><span>jerk 中垂直于推力方向的部分（乘 \(m/f\)）</span>
   <span>\(p,\ q,\ r\)</span><span>角速度在 body frame 里绕 \(x_B,\ y_B,\ z_B\) 的分量</span>
   <span>\(\omega,\ \dot\omega\)</span><span>角速度、角加速度（由 snap 得到）</span>
-  <span>\(J,\ \tau\)</span><span>转动惯量矩阵、力矩</span>
+  <span>\(I,\ \tau\)</span><span>转动惯量矩阵（无人机动力学那一页记作 \(J\)；这一页的 \(J\) 是 cost）、力矩</span>
   <span>\(\lVert\cdot\rVert,\ \times,\ \cdot\)</span><span>向量范数、叉乘、点乘</span>
 </div>
 </div>
-<p>奇异点：\(a = -g\)（自由落体）时推力为 0，姿态无定义。</p>
-<p>\(r\) 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 \(x_C\) 构造，精确式是 \(r = \bigl(\dot\psi\,(y_B \cdot y_C) + p\,(z_B \cdot x_C)\bigr) / (x_B \cdot x_C)\)，其中 \(y_C = [-\sin\psi, \cos\psi, 0]\)。机身倾斜越大、姿态变化越快，近似式的误差越大。</p>
+<p>奇异点：\(a = -g\,e_3\)（自由落体）时推力为 0，姿态无定义。</p>
+<p>\(r\) 这一项是 Mellinger &amp; Kumar 原论文的写法，只有机身水平时才精确。按这里的 \(x_C\) 构造，精确式是 \(r = \bigl(\dot\psi\,(y_B \cdot y_C) + p\,(z_B \cdot x_C)\bigr) / (x_B \cdot x_C)\)，其中 \(y_C = [-\sin\psi,\ \cos\psi,\ 0]^\top\)。机身倾斜越大、姿态变化越快，近似式的误差越大。</p>
 <h3>差速底盘：flat outputs = (\(x\), \(y\))</h3>
 <div class="eq">
 \[
@@ -709,7 +709,7 @@ coefs = min_snap_1d(wps=[0, 2, 4], Ts=[2, 2], stops={1})</pre>
 <li>D. Mellinger, V. Kumar. <em>Minimum snap trajectory generation and control for quadrotors.</em> ICRA 2011.</li>
 <li>C. Richter, A. Bry, N. Roy. <em>Polynomial trajectory planning for aggressive quadrotor flight in dense indoor environments.</em> ISRR 2013.</li>
 <li>F. Gao et al. <em>Online safe trajectory generation for quadrotors using fast marching method and Bernstein basis polynomial.</em> ICRA 2018.</li>
-<li>Z. Wang et al. <em>Geometrically constrained trajectory optimization for multicopters</em>（MINCO）. IEEE \(T\)-RO 2022.</li>
+<li>Z. Wang et al. <em>Geometrically constrained trajectory optimization for multicopters</em>（MINCO）. IEEE T-RO 2022.</li>
 </ul>
 </section>
 </main>

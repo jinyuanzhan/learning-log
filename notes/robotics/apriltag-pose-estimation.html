@@ -468,7 +468,7 @@ x = \frac{X_c}{Z_c},\qquad y = \frac{Y_c}{Z_c}
   <span>\(x,\ y\)</span><span>归一化坐标，没有单位</span>
 </div>
 </div>
-  <p>\((x, y)\) 没有单位。它只描述光线的方向，等价于"这条光线在 \(Z\) = 1 的平面上打在哪里"。它与相机的焦距和分辨率无关。</p>
+  <p>\((x, y)\) 没有单位。它只描述光线的方向，等价于"这条光线在 \(Z = 1\) 的平面上打在哪里"。它与相机的焦距和分辨率无关。</p>
   <h3>第二步：用 \(K\) 把归一化坐标变成像素</h3>
   <div class="eq">
 \[
@@ -559,7 +559,7 @@ s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
   <span>\(H\)</span><span>单应矩阵（homography）\(=K\,[\,r_1\ r_2\ t\,]\)，3×3</span>
 </div>
 </div>
-  <p><span class="ca">\(H = K \cdot  [r_1 r_2 t]\)</span> 是一个 \(3\times 3\) 矩阵。它把 tag 平面上的点 \((X, Y)\)（米）直接映射到图像上的像素 \((u, v)\)。</p>
+  <p><span class="ca">\(H = K \cdot  [\,r_1\ \ r_2\ \ t\,]\)</span> 是一个 \(3\times 3\) 矩阵。它把 tag 平面上的点 \((X, Y)\)（米）直接映射到图像上的像素 \((u, v)\)。</p>
   <figure class="fig">
     <svg viewBox="0 0 680 232" role="img" aria-label="坐标变换链：tag 坐标系经外参到相机坐标系，再经内参到图像；H 是直达映射">
       <defs>
@@ -711,10 +711,10 @@ R = U\,V^\top
 
 <section id="pose">
   <h2><span class="n">09</span>从 \(H\) 恢复位姿</h2>
-  <p>已知 <span class="ca">\(H = \lambda  \cdot  K \cdot  [r_1 r_2 t]\)</span>，其中 \(\lambda\) 是那个没有意义的整体尺度。分五步把它拆开。每一步下面的数字来自实验台的当前状态。</p>
+  <p>已知 <span class="ca">\(H = \lambda  \cdot  K \cdot  [\,r_1\ \ r_2\ \ t\,]\)</span>，其中 \(\lambda\) 是那个没有意义的整体尺度。分五步把它拆开。每一步下面的数字来自实验台的当前状态。</p>
   <div class="steps">
     <div class="step"><span class="k">1</span><div>
-      <p><strong>去掉 \(K\)。</strong>计算 \(M = K^{-1} \cdot  H\)。它的三列记为 \(m_1,\ m_2,\ m_3\)，理论上等于 \(\lambda \cdot r_1、\lambda \cdot r_2、\lambda \cdot t\)。</p>
+      <p><strong>去掉 \(K\)。</strong>计算 \(M = K^{-1} \cdot  H\)。它的三列记为 \(m_1,\ m_2,\ m_3\)，理论上等于 \(\lambda \cdot r_1,\ \lambda \cdot r_2,\ \lambda \cdot t\)。</p>
       <div class="live" id="st-m"></div>
     </div></div>
     <div class="step"><span class="k">2</span><div>
@@ -847,7 +847,7 @@ T_{\text{base\_block}} = T_{\text{base\_ee}}\; T_{\text{ee\_cam}}\; T_{\text{cam
     <tr><td>\(s\)</td><td>投影方程里的比例因子，等于深度 \(Z_c\)</td><td>米</td><td><span class="pill mid">中间量</span></td><td>被除掉</td></tr>
     <tr><td>\(A\)</td><td>\(8\times 9\) 系数矩阵，由 \(X,\ Y,\ u,\ v\) 拼成</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>由已知量构造</td></tr>
     <tr><td>\(h\)</td><td>\(H\) 的 9 个元素按行排成的列向量</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>\(A\) 的 SVD，\(V\) 的最后一列</td></tr>
-    <tr><td class="ca">\(H\)</td><td>单应矩阵，\(K\cdot [r_1 r_2 t]\) 乘以任意尺度</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>\(h\) 重排</td></tr>
+    <tr><td class="ca">\(H\)</td><td>单应矩阵，\(K\cdot [\,r_1\ \ r_2\ \ t\,]\) 乘以任意尺度</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>\(h\) 重排</td></tr>
     <tr><td>\(\lambda\)</td><td>\(H\) 的整体尺度，由 \(\lVert r_1\rVert = 1\) 确定</td><td>无</td><td><span class="pill mid">中间量</span></td><td>\(\lVert K^{-1}H \text{ 的第 1 列}\rVert\)</td></tr>
     <tr><td>\(U, \Sigma , V\)</td><td>SVD 的三个因子：旋转、缩放、旋转</td><td>无</td><td><span class="pill mid">中间量</span></td><td><code>np.linalg.svd</code></td></tr>
     <tr><td>\(R\)</td><td>tag 相对相机的朝向，列为 tag 三个轴的方向</td><td>无</td><td><span class="pill unk">待求</span></td><td>分解 \(H\)</td></tr>
