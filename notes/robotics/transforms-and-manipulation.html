@@ -65,7 +65,13 @@ li{margin-bottom:6px}
 strong{font-weight:600}
 code,.m{font-family:var(--mono);font-size:.92em}
 .cx{color:var(--x)}.cy{color:var(--y)}.cz{color:var(--z)}.ca{color:var(--accent)}.cr{color:var(--ray)}.cm{color:var(--muted)}
-.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.eq{padding:6px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+/* KaTeX 公式 */
+.katex{font-size:1.08em}
+.katex-display{margin:.7em 0;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14.5px;line-height:1.6;margin:0 0 10px;padding-top:10px;border-top:1px dashed var(--line)}
+.sym>span:nth-child(2n+1){text-align:right}
+.sym>span:nth-child(2n){color:var(--muted)}
 .mat{position:relative;display:inline-grid;vertical-align:middle;margin:0 .15em;grid-template-columns:repeat(var(--c,3),auto);gap:.2em 1em;padding:.35em .8em;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--mono);font-size:13.5px}
 .mat::before,.mat::after{content:"";position:absolute;top:0;bottom:0;width:.42em;border:1.5px solid currentColor}
 .mat::before{left:0;border-right:0}
@@ -177,6 +183,9 @@ details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
 @media print{.np,.np-tab{display:none}}
 /* notes-panel:end */
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false})"></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -226,7 +235,7 @@ details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
 <main>
 <header class="top">
   <h1>Rigid Body Transforms 与 Manipulation 基础复习</h1>
-  <p>接着 <a href="apriltag-pose-estimation.html">AprilTag 那一页</a>往下走。那一页最后得到了 <span class="m">T<sub>cam_tag</sub></span>，并说“沿变换链传回 base，再用 inverse kinematics 求关节角”。这一页把这句话展开：Part A 讲清楚 rotation 和 transform 本身，Part B 讲机械臂怎么算、怎么规划、怎么控制。</p>
+  <p>接着 <a href="apriltag-pose-estimation.html">AprilTag 那一页</a>往下走。那一页最后得到了 \(T_{\text{cam\_tag}}\)，并说“沿变换链传回 base，再用 inverse kinematics 求关节角”。这一页把这句话展开：Part A 讲清楚 rotation 和 transform 本身，Part B 讲机械臂怎么算、怎么规划、怎么控制。</p>
   <p>每个主题都是同一个顺序：定义 → 公式 → 可以动手拖的实验台 → 容易踩的坑。最后有 36 道面试题（答案默认折叠，先自己答）和一张公式速查表。</p>
 </header>
 
@@ -256,11 +265,11 @@ details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
   <h3>全页统一的记号</h3>
   <div class="tw"><table>
     <tr><th>记号</th><th>含义</th></tr>
-    <tr><td class="m">R<sub>a_b</sub></td><td>frame b 相对 frame a 的 orientation。三列是 b 的 x、y、z 轴在 a 里的坐标。作用在坐标上：<span class="m">p<sub>a</sub> = R<sub>a_b</sub> · p<sub>b</sub></span></td></tr>
-    <tr><td class="m">T<sub>a_b</sub></td><td>4×4 的 homogeneous transform，b 在 a 里的 pose。<span class="m">p<sub>a</sub> = T<sub>a_b</sub> · p<sub>b</sub></span>。和 AprilTag 那一页的写法一致</td></tr>
-    <tr><td class="m">q</td><td>在 Part A 里是 quaternion；在 Part B 里是 joint angle 向量。两处都是领域里的惯用写法，靠上下文区分</td></tr>
+    <tr><td>\(R_{a\_b}\)</td><td>frame b 相对 frame a 的 orientation。三列是 b 的 x、y、z 轴在 a 里的坐标。作用在坐标上：\(p_{a} = R_{a\_b} \cdot p_{b}\)</td></tr>
+    <tr><td>\(T_{a\_b}\)</td><td>\(4\times 4\) 的 homogeneous transform，b 在 a 里的 pose。\(p_{a} = T_{a\_b} \cdot p_{b}\)。和 AprilTag 那一页的写法一致</td></tr>
+    <tr><td>\(q\)</td><td>在 Part A 里是 quaternion；在 Part B 里是 joint angle 向量。两处都是领域里的惯用写法，靠上下文区分</td></tr>
     <tr><td><span class="cx">红</span> <span class="cy">绿</span> <span class="cz">蓝</span></td><td>x、y、z 轴。所有 3D 图都是右手系，world 的 z 朝上</td></tr>
-    <tr><td class="m">c₁, s₁₂</td><td><span class="m">cos(q₁)</span>、<span class="m">sin(q₁+q₂)</span> 的缩写</td></tr>
+    <tr><td>\(c_1, s_{12}\)</td><td>\(\cos (q_1)\)、\(\sin (q_1+q_2)\) 的缩写</td></tr>
   </table></div>
 </section>
 
@@ -273,35 +282,79 @@ details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
 <section id="so3">
   <h2><span class="n">02</span>Rotation matrix 与 SO(3)</h2>
   <p>所有 3D rotation 组成的集合叫 <strong>SO(3)</strong>（special orthogonal group）。写成矩阵就是：</p>
-  <div class="eq">SO(3) = { R ∈ ℝ³ˣ³ | RᵀR = I,  det(R) = +1 }</div>
+  <div class="eq">
+\[
+\mathrm{SO}(3) = \{\, R \in \mathbb{R}^{3\times 3} \;\mid\; R^\top R = I,\ \det(R) = +1 \,\}
+\]
+<div class="sym">
+  <span>\(\mathrm{SO}(3)\)</span><span>所有 3D rotation 组成的集合（special orthogonal group）</span>
+  <span>\(R\)</span><span>一个 rotation matrix</span>
+  <span>\(\mathbb{R}^{3\times 3}\)</span><span>\(3\times 3\) 的实数矩阵</span>
+  <span>\(R^\top\)</span><span>\(R\) 的 transpose</span>
+  <span>\(I\)</span><span>\(3\times 3\) identity matrix</span>
+  <span>\(\det(R)\)</span><span>\(R\) 的行列式</span>
+</div>
+</div>
   <ul>
-    <li><span class="m">RᵀR = I</span>：三列互相垂直、长度都是 1（orthonormal）。所以 <span class="m">R⁻¹ = Rᵀ</span>，求 inverse 不用真的去算。</li>
-    <li><span class="m">det(R) = +1</span>：保持右手系。<span class="m">det = −1</span> 的是 reflection（镜像），不是 rotation。</li>
+    <li>\(R^{\top}R = I\)：三列互相垂直、长度都是 1（orthonormal）。所以 \(R^{-1} = R^{\top}\)，求 inverse 不用真的去算。</li>
+    <li>\(\det (R) = +1\)：保持右手系。\(\det = -1\) 的是 reflection（镜像），不是 rotation。</li>
     <li>9 个数，6 个约束（3 个长度 + 3 个垂直），所以只有 <strong>3 个 degree of freedom</strong>。</li>
   </ul>
   <h3>列是什么</h3>
-  <p>这是最该记住的一句话：<strong><span class="m">R<sub>a_b</sub></span> 的三列，就是 frame b 的 <span class="cx">x</span>、<span class="cy">y</span>、<span class="cz">z</span> 轴在 frame a 里的坐标。</strong>反过来，三行是 frame a 的三个轴在 frame b 里的坐标。</p>
-  <div class="eq">R<sub>a_b</sub> = [ <span class="cx">x̂<sub>b</sub></span>  <span class="cy">ŷ<sub>b</sub></span>  <span class="cz">ẑ<sub>b</sub></span> ]   （每个都写成 a 里的坐标）</div>
-  <p>验证方法：<span class="m">R · (1,0,0)ᵀ</span> 取出的是第一列，而 <span class="m">(1,0,0)</span> 就是 b 的 x 轴在 b 自己里面的坐标。</p>
+  <p>这是最该记住的一句话：<strong>\(R_{a\_b}\) 的三列，就是 frame b 的 <span class="cx">x</span>、<span class="cy">y</span>、<span class="cz">z</span> 轴在 frame a 里的坐标。</strong>反过来，三行是 frame a 的三个轴在 frame b 里的坐标。</p>
+  <div class="eq">
+\[
+R_{a\_b} = \begin{bmatrix} \hat{x}_b & \hat{y}_b & \hat{z}_b \end{bmatrix}
+\]
+<div class="sym">
+  <span>\(R_{a\_b}\)</span><span>frame b 相对 frame a 的 rotation matrix（\(3\times 3\)）</span>
+  <span>\(\hat{x}_b,\ \hat{y}_b,\ \hat{z}_b\)</span><span>frame b 的 x、y、z 单位轴，每个都写成 frame a 里的坐标（\(3\times 1\) 列向量）</span>
+</div>
+</div>
+  <p>验证方法：\(R \cdot (1,0,0)^{\top}\) 取出的是第一列，而 \((1,0,0)\) 就是 b 的 x 轴在 b 自己里面的坐标。</p>
   <h3>同一个矩阵的三种用法</h3>
   <div class="tw"><table>
     <tr><th>用法</th><th>怎么读</th><th>例子</th></tr>
     <tr><td>表示 orientation</td><td>frame b 相对 frame a 怎么摆</td><td>“末端相对 base 的朝向”</td></tr>
-    <tr><td>换坐标（passive）</td><td>点不动，换一个 frame 来描述它：<span class="m">p<sub>a</sub> = R<sub>a_b</sub> p<sub>b</sub></span></td><td>把相机里看到的点换到 base 里</td></tr>
-    <tr><td>转动一个向量（active）</td><td>frame 不动，把向量转到新位置：<span class="m">v′ = R v</span></td><td>把夹爪绕 z 转 90°</td></tr>
+    <tr><td>换坐标（passive）</td><td>点不动，换一个 frame 来描述它：\(p_{a} = R_{a\_b} p_{b}\)</td><td>把相机里看到的点换到 base 里</td></tr>
+    <tr><td>转动一个向量（active）</td><td>frame 不动，把向量转到新位置：\(v' = R v\)</td><td>把夹爪绕 z 转 90°</td></tr>
   </table></div>
-  <p>passive 和 active 用的是同一个矩阵，只是解读不同。容易混的地方是：“把 frame 转 +θ”和“把点转 −θ”在坐标上的效果相同，所以两种解读正好差一个 inverse。写代码时先说清楚你的 R 是 <span class="m">R<sub>a_b</sub></span> 还是 <span class="m">R<sub>b_a</sub></span>，比记 passive / active 更可靠。</p>
+  <p>passive 和 active 用的是同一个矩阵，只是解读不同。容易混的地方是：“把 frame 转 +\(\theta\)”和“把点转 \(-\theta\)”在坐标上的效果相同，所以两种解读正好差一个 inverse。写代码时先说清楚你的 \(R\) 是 \(R_{a\_b}\) 还是 \(R_{b\_a}\)，比记 passive / active 更可靠。</p>
   <h3>组合与基本性质</h3>
-  <div class="eq">R<sub>a_c</sub> = R<sub>a_b</sub> · R<sub>b_c</sub>          相邻的下标相消
-R<sub>b_a</sub> = (R<sub>a_b</sub>)ᵀ                inverse 就是 transpose，下标对调
-R₁R₂ ≠ R₂R₁                   3D rotation 一般不可交换（§08）
-trace(R) = 1 + 2cos θ          θ 是这个 rotation 转过的总角度</div>
+  <div class="eq">
+\[
+\begin{aligned}
+R_{a\_c} &= R_{a\_b}\, R_{b\_c} && \text{相邻的下标相消} \\
+R_{b\_a} &= (R_{a\_b})^\top && \text{inverse 就是 transpose，下标对调} \\
+R_1 R_2 &\neq R_2 R_1 && \text{3D rotation 一般不可交换（§08）} \\
+\operatorname{trace}(R) &= 1 + 2\cos\theta && \theta \text{ 是这个 rotation 转过的总角度}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R_{a\_b},\ R_{b\_c},\ R_{a\_c}\)</span><span>frame b 到 a、c 到 b、c 到 a 的 rotation matrix</span>
+  <span>\(R_1,\ R_2\)</span><span>任意两个 rotation matrix</span>
+  <span>\(\operatorname{trace}(R)\)</span><span>\(R\) 的 trace（对角线元素之和）</span>
+  <span>\(\theta\)</span><span>这个 rotation 转过的总角度（axis-angle 里的角度）</span>
+</div>
+</div>
   <ul>
     <li>绕单个坐标轴的基本 rotation（后面反复用到）：
-      <div class="eq" style="margin-top:8px">R<sub>x</sub>(φ) = <span class="mat" style="--c:3"><span>1</span><span>0</span><span>0</span><span>0</span><span>cφ</span><span>−sφ</span><span>0</span><span>sφ</span><span>cφ</span></span>  R<sub>y</sub>(θ) = <span class="mat" style="--c:3"><span>cθ</span><span>0</span><span>sθ</span><span>0</span><span>1</span><span>0</span><span>−sθ</span><span>0</span><span>cθ</span></span>  R<sub>z</sub>(ψ) = <span class="mat" style="--c:3"><span>cψ</span><span>−sψ</span><span>0</span><span>sψ</span><span>cψ</span><span>0</span><span>0</span><span>0</span><span>1</span></span></div>
+      <div class="eq" style="margin-top:8px">
+\[
+\begin{aligned}
+R_x(\phi) &= \begin{bmatrix} 1 & 0 & 0 \\ 0 & \cos\phi & -\sin\phi \\ 0 & \sin\phi & \cos\phi \end{bmatrix} \\
+R_y(\theta) &= \begin{bmatrix} \cos\theta & 0 & \sin\theta \\ 0 & 1 & 0 \\ -\sin\theta & 0 & \cos\theta \end{bmatrix} \\
+R_z(\psi) &= \begin{bmatrix} \cos\psi & -\sin\psi & 0 \\ \sin\psi & \cos\psi & 0 \\ 0 & 0 & 1 \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R_x,\ R_y,\ R_z\)</span><span>分别绕 x、y、z 轴的基本 rotation matrix</span>
+  <span>\(\phi,\ \theta,\ \psi\)</span><span>绕 x、y、z 轴转过的角度（右手定则为正）</span>
+</div>
+</div>
     </li>
     <li>SO(3) 是一个 <strong>group</strong>，不是 vector space：两个 rotation 相乘还是 rotation，但相加、直接取平均都不再是 rotation。</li>
-    <li>数值误差会让 R 慢慢不再 orthonormal。修正方法：做 SVD，<span class="m">R = UΣVᵀ</span>，取 <span class="m">R ← UVᵀ</span>（若 det 为 −1，把 U 的最后一列取反）。AprilTag 那一页从 H 恢复 R 时用的就是这一步。</li>
+    <li>数值误差会让 \(R\) 慢慢不再 orthonormal。修正方法：做 SVD，\(R = U\Sigma V^{\top}\)，取 \(R \leftarrow U V^{\top}\)（若 det 为 −1，把 \(U\) 的最后一列取反）。AprilTag 那一页从 H 恢复 \(R\) 时用的就是这一步。</li>
   </ul>
   <div class="note"><span class="q">为什么需要别的表示法？</span><p>rotation matrix 没有 singularity、组合就是矩阵乘法，是“最老实”的表示。但 9 个数只表达 3 个自由度：存储冗余、不能直接插值、放进 optimizer 里要带 6 个约束。所以实际中 Euler angles 用来给人看，quaternion 用来存储和插值，axis-angle 用来做优化和算误差，rotation matrix 用来做计算。</p></div>
 </section>
@@ -323,11 +376,11 @@ trace(R) = 1 + 2cos θ          θ 是这个 rotation 转过的总角度</div>
       <div>
         <h4>Rotation matrix（三列 = body 的 <span class="cx">x</span> <span class="cy">y</span> <span class="cz">z</span> 轴）</h4>
         <div class="live" id="rot-R"></div>
-        <h4 style="margin-top:14px">Quaternion (w, x, y, z)</h4>
+        <h4 style="margin-top:14px">Quaternion \((w, x, y, z)\)</h4>
         <div class="kv" id="rot-q"></div>
         <h4 style="margin-top:14px">Axis-angle</h4>
         <div class="kv" id="rot-aa"></div>
-        <h4 style="margin-top:14px">从 R 反解 Euler angles</h4>
+        <h4 style="margin-top:14px">从 \(R\) 反解 Euler angles</h4>
         <div class="kv" id="rot-eu"></div>
       </div>
     </div>
@@ -343,7 +396,7 @@ trace(R) = 1 + 2cos θ          θ 是这个 rotation 转过的总角度</div>
       <label><input type="checkbox" id="rot-ax" checked>显示 axis-angle 的转轴</label>
     </div>
     <div class="ctl" id="rot-ctl"></div>
-    <p class="try"><b>试一试：</b>① 点“gimbal lock”，然后分别拖 yaw 和 roll，看 body frame 的运动：两个滑块做的是同一件事，都是绕 world 的 z 轴转，少了一个自由度。② 点“绕 x 转 180°”，看 quaternion 的 w 变成 0，这时 q 和 −q 哪个“更短”已经分不出来。③ 回到 identity，axis-angle 的转轴没有定义。</p>
+    <p class="try"><b>试一试：</b>① 点“gimbal lock”，然后分别拖 yaw 和 roll，看 body frame 的运动：两个滑块做的是同一件事，都是绕 world 的 z 轴转，少了一个自由度。② 点“绕 x 转 180°”，看 quaternion 的 \(w\) 变成 0，这时 \(q\) 和 \(-q\) 哪个“更短”已经分不出来。③ 回到 identity，axis-angle 的转轴没有定义。</p>
   </div>
 </section>
 
@@ -358,27 +411,71 @@ trace(R) = 1 + 2cos θ          θ 是这个 rotation 转过的总角度</div>
     <li>单位（degree / radian）和每个角的正方向（右手定则）。</li>
   </ul>
   <p>一个必须记住的等价关系：<strong>intrinsic ZYX 和 extrinsic XYZ 是同一个矩阵。</strong></p>
-  <div class="eq">R = R<sub>z</sub>(yaw) · R<sub>y</sub>(pitch) · R<sub>x</sub>(roll)
-
-intrinsic 读法（从左往右）：先绕 z 转 yaw，再绕新的 y 转 pitch，再绕更新的 x 转 roll
-extrinsic 读法（从右往左）：先绕固定 x 转 roll，再绕固定 y 转 pitch，再绕固定 z 转 yaw</div>
-  <p>ROS 的 RPY（<code>tf</code> 的 <code>setRPY</code>、URDF 里的 <code>rpy</code>）就是这个：fixed-axis X-Y-Z，矩阵是 <span class="m">R<sub>z</sub>R<sub>y</sub>R<sub>x</sub></span>。本页的实验台也用它。展开后：</p>
-  <div class="eq">R = <span class="mat" style="--c:3"><span>cψcθ</span><span>cψsθsφ − sψcφ</span><span>cψsθcφ + sψsφ</span><span>sψcθ</span><span>sψsθsφ + cψcφ</span><span>sψsθcφ − cψsφ</span><span>−sθ</span><span>cθsφ</span><span>cθcφ</span></span>   ψ = yaw, θ = pitch, φ = roll</div>
-  <h3>从 R 反解</h3>
-  <div class="eq">pitch = −asin(R₃₁)
-yaw   = atan2(R₂₁, R₁₁)
-roll  = atan2(R₃₂, R₃₃)</div>
+  <div class="eq">
+\[
+R = R_z(\text{yaw})\, R_y(\text{pitch})\, R_x(\text{roll})
+\]
+<div class="sym">
+  <span>\(R_z,\ R_y,\ R_x\)</span><span>绕 z、y、x 轴的基本 rotation（见上一节）</span>
+  <span>\(\text{yaw},\ \text{pitch},\ \text{roll}\)</span><span>分别绕 z、y、x 轴转的角度</span>
+  <span>intrinsic 读法（从左往右）</span><span>先绕 z 转 yaw，再绕新的 y 转 pitch，再绕更新的 x 转 roll</span>
+  <span>extrinsic 读法（从右往左）</span><span>先绕固定 x 转 roll，再绕固定 y 转 pitch，再绕固定 z 转 yaw</span>
+</div>
+</div>
+  <p>ROS 的 RPY（<code>tf</code> 的 <code>setRPY</code>、URDF 里的 <code>rpy</code>）就是这个：fixed-axis X-Y-Z，矩阵是 \(R_{z}R_{y}R_{x}\)。本页的实验台也用它。展开后：</p>
+  <div class="eq">
+\[
+R = \begin{bmatrix}
+c_\psi c_\theta & c_\psi s_\theta s_\phi - s_\psi c_\phi & c_\psi s_\theta c_\phi + s_\psi s_\phi \\
+s_\psi c_\theta & s_\psi s_\theta s_\phi + c_\psi c_\phi & s_\psi s_\theta c_\phi - c_\psi s_\phi \\
+-s_\theta & c_\theta s_\phi & c_\theta c_\phi
+\end{bmatrix}
+\]
+<div class="sym">
+  <span>\(\psi,\ \theta,\ \phi\)</span><span>依次是 yaw、pitch、roll</span>
+  <span>\(c_\psi,\ s_\psi\)</span><span>\(\cos\psi\)、\(\sin\psi\) 的缩写（\(\theta,\phi\) 同理）</span>
+</div>
+</div>
+  <h3>从 \(R\) 反解</h3>
+  <div class="eq">
+\[
+\begin{aligned}
+\text{pitch} &= -\arcsin(R_{31}) \\
+\text{yaw} &= \operatorname{atan2}(R_{21},\, R_{11}) \\
+\text{roll} &= \operatorname{atan2}(R_{32},\, R_{33})
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R_{ij}\)</span><span>\(R\) 的第 i 行第 j 列元素</span>
+  <span>\(\operatorname{atan2}(y,x)\)</span><span>两个参数的反正切，能给出正确象限</span>
+  <span>\(\text{yaw},\ \text{pitch},\ \text{roll}\)</span><span>ZYX Euler angles（同上）</span>
+</div>
+</div>
   <p>用 <code>atan2</code> 不用 <code>atan</code>，才能拿到正确的象限。<code>asin</code> 的输入先 clamp 到 [−1, 1]，否则数值误差会给出 NaN。</p>
   <h3>Gimbal lock</h3>
-  <p>看上面矩阵的第一列和第三行：当 <span class="m">pitch = ±90°</span> 时 <span class="m">cθ = 0</span>，<span class="m">R₁₁, R₂₁, R₃₂, R₃₃</span> 全是 0，两个 <code>atan2</code> 都变成 <code>atan2(0, 0)</code>。此时矩阵里只剩下 <span class="m">roll − yaw</span>（pitch = +90°）或 <span class="m">roll + yaw</span>（pitch = −90°）这一个组合。</p>
+  <p>看上面矩阵的第一列和第三行：当 \(\operatorname{pitch} = \pm 90^\circ\) 时 \(\cos\theta = 0\)，\(R_{11}, R_{21}, R_{32}, R_{33}\) 全是 0，两个 <code>atan2</code> 都变成 <code>atan2(0, 0)</code>。此时矩阵里只剩下 \(\operatorname{roll} - \operatorname{yaw}\)（\(\text{pitch} = +90^\circ\)）或 \(\operatorname{roll} + \operatorname{yaw}\)（\(\text{pitch} = -90^\circ\)）这一个组合。</p>
   <p>几何上：pitch 转了 90° 之后，roll 的转轴（body 的 x 轴）被转到和 yaw 的转轴（world 的 z 轴）<strong>共线</strong>。三根转轴只张成一个平面，有一个方向的转动表达不出来。回到 §03 的实验台点“gimbal lock”可以直接看到两根虚线重合。</p>
   <p>定量地看，Euler angle 的变化率和 angular velocity 之间差一个矩阵，它的三列就是三根转轴：</p>
-  <div class="eq">ω = [ ẑ   ŷ′   x̂″ ] · (yaẇ, pitcḣ, rolİ)ᵀ          det = −cos(pitch)</div>
-  <p>pitch = ±90° 时这个矩阵不可逆：要产生某个方向的 ω，需要无穷大的 Euler angle 速率。这和 §16 机械臂的 singularity 是同一件事，三轴相交的 wrist 本质上就是一组机械的 Euler angles。</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\omega &= \begin{bmatrix} \hat{z} & \hat{y}' & \hat{x}'' \end{bmatrix}
+\begin{bmatrix} \dot{\text{yaw}} \\ \dot{\text{pitch}} \\ \dot{\text{roll}} \end{bmatrix} \\
+\det\begin{bmatrix} \hat{z} & \hat{y}' & \hat{x}'' \end{bmatrix} &= -\cos(\text{pitch})
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\omega\)</span><span>angular velocity（3 维向量）</span>
+  <span>\(\hat{z},\ \hat{y}',\ \hat{x}''\)</span><span>三次转动的转轴：world 的 z 轴、转过 yaw 后的新 y 轴、再转过 pitch 后的新 x 轴</span>
+  <span>\(\dot{\text{yaw}},\ \dot{\text{pitch}},\ \dot{\text{roll}}\)</span><span>三个 Euler angle 的变化率</span>
+  <span>\(\det(\cdot)\)</span><span>行列式；为 0 时这个 \(3\times 3\) 矩阵不可逆</span>
+</div>
+</div>
+  <p>\(\text{pitch} = \pm 90^\circ\) 时这个矩阵不可逆：要产生某个方向的 \(\omega\)，需要无穷大的 Euler angle 速率。这和 §16 机械臂的 singularity 是同一件事，三轴相交的 wrist 本质上就是一组机械的 Euler angles。</p>
   <div class="note warn"><span class="q">常见误解</span><p>gimbal lock 不是“物体卡住转不动了”。物体本身可以随便转，是 <strong>Euler angles 这种参数化</strong>在那个姿态附近失效：同一个姿态对应无穷多组角度，角度会突变，微分关系变 singular。任何只用 3 个数表示 rotation 的方法都必然有这样的 singularity，换轴顺序只是把它挪到别处。</p></div>
   <h3>其他 pitfalls</h3>
   <ul>
-    <li><strong>不唯一</strong>：<span class="m">(ψ, θ, φ)</span> 和 <span class="m">(ψ+π, π−θ, φ+π)</span> 是同一个 rotation。通常把 pitch 限制在 [−90°, 90°] 来消歧。</li>
+    <li><strong>不唯一</strong>：\((\psi , \theta , \phi )\) 和 \((\psi +\pi , \pi -\theta , \phi +\pi )\) 是同一个 rotation。通常把 pitch 限制在 [−90°, 90°] 来消歧。</li>
     <li><strong>±180° 跳变</strong>：角度从 179° 到 −179° 实际只差 2°。直接相减做控制误差会出大错。</li>
     <li><strong>不能逐分量相减或插值</strong>：两组 Euler angles 的差不是两个 orientation 之间的 rotation；线性插值走的也不是最短路径（§06 的 SLERP 实验台有对比）。</li>
     <li><strong>不同库的默认 convention 不同</strong>：scipy 的 <code>from_euler('xyz')</code> 小写是 extrinsic，<code>'XYZ'</code> 大写是 intrinsic；Eigen 的 <code>eulerAngles(2,1,0)</code> 返回范围和你想的可能不一样。换库时用一个已知姿态核对。</li>
@@ -388,68 +485,146 @@ roll  = atan2(R₃₂, R₃₃)</div>
 
 <section id="axisangle">
   <h2><span class="n">05</span>Axis-angle、Rodrigues 公式与 exponential map</h2>
-  <p><strong>Euler’s rotation theorem</strong>：任何 3D rotation 都等价于绕某一根固定轴 <span class="m">ω̂</span>（单位向量）转一个角度 <span class="m">θ</span>。这就是 axis-angle。把两者乘在一起，<span class="m">r = θ·ω̂</span>，只用 3 个数，叫 <strong>rotation vector</strong>（OpenCV 的 <code>rvec</code>、<code>cv2.Rodrigues</code> 用的就是它）。</p>
+  <p><strong>Euler’s rotation theorem</strong>：任何 3D rotation 都等价于绕某一根固定轴 \(\hat{\omega}\)（单位向量）转一个角度 \(\theta\)。这就是 axis-angle。把两者乘在一起，\(r = \theta \cdot \hat{\omega}\)，只用 3 个数，叫 <strong>rotation vector</strong>（OpenCV 的 <code>rvec</code>、<code>cv2.Rodrigues</code> 用的就是它）。</p>
   <h3>Skew-symmetric matrix</h3>
-  <p>把 cross product 写成矩阵乘法：<span class="m">ω × v = [ω]<sub>×</sub> v</span>。</p>
-  <div class="eq">[ω]<sub>×</sub> = <span class="mat" style="--c:3"><span>0</span><span>−ω<sub>z</sub></span><span>ω<sub>y</sub></span><span>ω<sub>z</sub></span><span>0</span><span>−ω<sub>x</sub></span><span>−ω<sub>y</sub></span><span>ω<sub>x</sub></span><span>0</span></span>        [ω]<sub>×</sub>ᵀ = −[ω]<sub>×</sub></div>
-  <p>所有 3×3 skew-symmetric matrix 组成 <strong>so(3)</strong>（小写），是 SO(3) 的 Lie algebra，可以理解成“所有可能的 angular velocity”。它是一个普通的 3 维 vector space，可以相加、缩放。</p>
-  <h3>Rodrigues 公式（axis-angle → R）</h3>
-  <div class="eq">R = I + sin θ · K + (1 − cos θ) · K²        其中 K = [ω̂]<sub>×</sub></div>
-  <p>它其实是 matrix exponential 的闭式解：<span class="m">R = exp(θ·[ω̂]<sub>×</sub>)</span>。直觉：以恒定 angular velocity <span class="m">ω̂</span> 转 <span class="m">θ</span> 秒，解微分方程 <span class="m">Ṙ = [ω̂]<sub>×</sub>R</span> 得到的就是它。这个从 so(3) 到 SO(3) 的映射叫 <strong>exponential map</strong>。</p>
-  <h3>Log map（R → axis-angle）</h3>
-  <div class="eq">θ = acos( (trace(R) − 1) / 2 )
-ω̂ = 1/(2 sin θ) · ( R₃₂ − R₂₃,  R₁₃ − R₃₁,  R₂₁ − R₁₂ )ᵀ</div>
+  <p>把 cross product 写成矩阵乘法：\(\omega \times v = [\omega ]_{\times } v\)。</p>
+  <div class="eq">
+\[
+\begin{aligned}
+[\omega]_\times &= \begin{bmatrix} 0 & -\omega_z & \omega_y \\ \omega_z & 0 & -\omega_x \\ -\omega_y & \omega_x & 0 \end{bmatrix} \\
+[\omega]_\times^\top &= -[\omega]_\times
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\omega = (\omega_x,\omega_y,\omega_z)^\top\)</span><span>一个 3 维向量（例如 angular velocity）</span>
+  <span>\([\omega]_\times\)</span><span>\(\omega\) 对应的 skew-symmetric matrix，满足 \([\omega]_\times v = \omega \times v\)</span>
+</div>
+</div>
+  <p>所有 \(3\times 3\) skew-symmetric matrix 组成 <strong>so(3)</strong>（小写），是 SO(3) 的 Lie algebra，可以理解成“所有可能的 angular velocity”。它是一个普通的 3 维 vector space，可以相加、缩放。</p>
+  <h3>Rodrigues 公式（axis-angle → \(R\)）</h3>
+  <div class="eq">
+\[
+R = I + \sin\theta \, K + (1-\cos\theta)\, K^2, \qquad K = [\hat{\omega}]_\times
+\]
+<div class="sym">
+  <span>\(R\)</span><span>由 axis-angle 得到的 rotation matrix</span>
+  <span>\(\hat{\omega}\)</span><span>转轴（单位向量）</span>
+  <span>\(\theta\)</span><span>转角</span>
+  <span>\(K\)</span><span>\(\hat{\omega}\) 的 skew-symmetric matrix</span>
+  <span>\(I\)</span><span>\(3\times 3\) identity matrix</span>
+</div>
+</div>
+  <p>它其实是 matrix exponential 的闭式解：\(R = \exp (\theta \cdot [\hat{\omega}]_{\times })\)。直觉：以恒定 angular velocity \(\hat{\omega}\) 转 \(\theta\) 秒，解微分方程 \(\dot{R} = [\hat{\omega}]_{\times }R\) 得到的就是它。这个从 so(3) 到 SO(3) 的映射叫 <strong>exponential map</strong>。</p>
+  <h3>Log map（\(R\) → axis-angle）</h3>
+  <div class="eq">
+\[
+\begin{aligned}
+\theta &= \arccos\!\left(\frac{\operatorname{trace}(R) - 1}{2}\right) \\
+\hat{\omega} &= \frac{1}{2\sin\theta}\begin{bmatrix} R_{32} - R_{23} \\ R_{13} - R_{31} \\ R_{21} - R_{12} \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R\)</span><span>输入的 rotation matrix，\(R_{ij}\) 是它第 i 行第 j 列的元素</span>
+  <span>\(\theta\)</span><span>转角</span>
+  <span>\(\hat{\omega}\)</span><span>转轴（单位向量）</span>
+  <span>\(\operatorname{trace}(R)\)</span><span>\(R\) 的 trace（对角线元素之和）</span>
+</div>
+</div>
   <h3>Pitfalls</h3>
   <ul>
-    <li><strong>θ ≈ 0</strong>：转轴没有定义，公式里除以 <span class="m">sin θ ≈ 0</span>。实现里用 Taylor 展开，或者直接返回 <span class="m">r = 0</span>。</li>
-    <li><strong>θ ≈ π</strong>：<span class="m">R − Rᵀ ≈ 0</span>，上面的公式同样失效。改从 <span class="m">(R + I)/2 = ω̂ω̂ᵀ</span> 的对角线里取转轴，或者先转成 quaternion 再取。</li>
-    <li><strong>不唯一</strong>：<span class="m">(ω̂, θ)</span>、<span class="m">(−ω̂, −θ)</span>、<span class="m">(ω̂, θ + 2π)</span> 是同一个 rotation。通常约定 <span class="m">θ ∈ [0, π]</span>。</li>
-    <li><strong>rotation vector 不能相加</strong>：<span class="m">exp(r₁)·exp(r₂) ≠ exp(r₁ + r₂)</span>，除非两根轴平行或者角度很小。</li>
+    <li><strong>\(\theta \approx 0\)</strong>：转轴没有定义，公式里除以 \(\sin \theta \approx 0\)。实现里用 Taylor 展开，或者直接返回 \(r = 0\)。</li>
+    <li><strong>\(\theta \approx \pi\)</strong>：\(R - R^{\top} \approx 0\)，上面的公式同样失效。改从 \((R + I)/2 = \hat{\omega}\hat{\omega}^{\top}\) 的对角线里取转轴，或者先转成 quaternion 再取。</li>
+    <li><strong>不唯一</strong>：\((\hat{\omega}, \theta )\)、\((-\hat{\omega}, -\theta )\)、\((\hat{\omega}, \theta + 2\pi )\) 是同一个 rotation。通常约定 \(\theta \in [0, \pi ]\)。</li>
+    <li><strong>rotation vector 不能相加</strong>：\(\exp (r_1)\cdot \exp (r_2) \neq \exp (r_1 + r_2)\)，除非两根轴平行或者角度很小。</li>
     <li><code>acos</code> 的输入先 clamp 到 [−1, 1]。</li>
   </ul>
   <h3>它在哪里最有用</h3>
   <ul>
-    <li><strong>Orientation error</strong>：控制和 IK 里需要一个 3 维的“朝向误差”。<span class="m">e = log(R<sub>d</sub> · Rᵀ)</span> 给出“从当前转到目标”的 rotation vector，方向是转轴、长度是角度，可以直接乘 gain。</li>
-    <li><strong>在 manifold 上做优化</strong>：不直接优化 R 的 9 个数，而是优化一个 3 维的小增量 <span class="m">δ</span>，每步更新 <span class="m">R ← R · exp([δ]<sub>×</sub>)</span>。没有约束，也没有 singularity（因为 δ 始终很小）。bundle adjustment、SLAM、hand-eye 的非线性 refinement 都这么做。</li>
-    <li><strong>积分 angular velocity</strong>：<span class="m">R(t+Δt) = R(t) · exp([ω<sub>body</sub>Δt]<sub>×</sub>)</span>。</li>
+    <li><strong>Orientation error</strong>：控制和 IK 里需要一个 3 维的“朝向误差”。\(e = \log (R_{d} \cdot R^{\top})\) 给出“从当前转到目标”的 rotation vector，方向是转轴、长度是角度，可以直接乘 gain。</li>
+    <li><strong>在 manifold 上做优化</strong>：不直接优化 \(R\) 的 9 个数，而是优化一个 3 维的小增量 \(\delta\)，每步更新 \(R \leftarrow R \cdot \exp ([\delta ]_{\times })\)。没有约束，也没有 singularity（因为 \(\delta\) 始终很小）。bundle adjustment、SLAM、hand-eye 的非线性 refinement 都这么做。</li>
+    <li><strong>积分 angular velocity</strong>：\(R(t+\Delta t) = R(t) \cdot \exp ([\omega _{\text{body}}\Delta t]_{\times })\)。</li>
     <li><strong>hand-eye calibration</strong>：§11 的解法直接用到 log map。</li>
   </ul>
 </section>
 
 <section id="quat">
   <h2><span class="n">06</span>Quaternion 与 SLERP</h2>
-  <p>unit quaternion 用 4 个数表示 rotation，带一个约束 <span class="m">‖q‖ = 1</span>。可以把它看成 axis-angle 换了一种存法：</p>
-  <div class="eq">q = (w, x, y, z) = ( cos(θ/2),  ω̂ · sin(θ/2) )</div>
-  <p>注意是 <strong>θ/2</strong>。这一个“半角”是 double cover 的来源，也是 quaternion 运算能写成乘法的原因。</p>
+  <p>unit quaternion 用 4 个数表示 rotation，带一个约束 \(\|q\| = 1\)。可以把它看成 axis-angle 换了一种存法：</p>
+  <div class="eq">
+\[
+q = (w, x, y, z) = \left( \cos\tfrac{\theta}{2},\ \hat{\omega}\sin\tfrac{\theta}{2} \right)
+\]
+<div class="sym">
+  <span>\(w\)</span><span>quaternion 的标量部分</span>
+  <span>\((x,y,z)\)</span><span>向量部分，等于 \(\hat{\omega}\sin\frac{\theta}{2}\)</span>
+  <span>\(\hat{\omega},\ \theta\)</span><span>转轴（单位向量）和转角</span>
+</div>
+</div>
+  <p>注意是 <strong>\(\theta/2\)</strong>。这一个“半角”是 double cover 的来源，也是 quaternion 运算能写成乘法的原因。</p>
   <h3>运算</h3>
-  <div class="eq">乘法（Hamilton product）  q₁ ⊗ q₂ = ( w₁w₂ − v₁·v₂,   w₁v₂ + w₂v₁ + v₁ × v₂ )
-组合                    q<sub>a_c</sub> = q<sub>a_b</sub> ⊗ q<sub>b_c</sub>          顺序和 rotation matrix 一样
-inverse                 q⁻¹ = q* = (w, −x, −y, −z)    仅对 unit quaternion 成立
-转一个向量              (0, p′) = q ⊗ (0, p) ⊗ q*
-两个 rotation 的夹角     θ = 2·acos( |q₁ · q₂| )</div>
+  <div class="eq">
+\[
+\begin{aligned}
+q_1 \otimes q_2 &= \left( w_1 w_2 - v_1\cdot v_2,\ w_1 v_2 + w_2 v_1 + v_1\times v_2 \right) && \text{乘法（Hamilton product）} \\
+q_{a\_c} &= q_{a\_b} \otimes q_{b\_c} && \text{组合：顺序和 rotation matrix 一样} \\
+q^{-1} = q^* &= (w, -x, -y, -z) && \text{inverse，仅对 unit quaternion 成立} \\
+(0, p') &= q \otimes (0, p) \otimes q^* && \text{转一个向量} \\
+\theta &= 2\arccos\left( |q_1\cdot q_2| \right) && \text{两个 rotation 的夹角}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(q_i = (w_i, v_i)\)</span><span>第 i 个 quaternion：\(w_i\) 是标量部分，\(v_i\) 是向量部分（3 维）</span>
+  <span>\(\otimes\)</span><span>quaternion 乘法</span>
+  <span>\(q^*\)</span><span>\(q\) 的 conjugate</span>
+  <span>\(p,\ p'\)</span><span>3D 向量，及其被转动之后的结果；\((0,p)\) 是把 \(p\) 嵌进 quaternion</span>
+  <span>\(\cdot,\ \times\)</span><span>向量的点积、叉积（\(q_1\cdot q_2\) 是把 quaternion 当 4 维向量的点积）</span>
+  <span>\(\theta\)</span><span>两个 rotation 之间的夹角</span>
+</div>
+</div>
   <h3>Quaternion ↔ rotation matrix</h3>
-  <div class="eq">R = <span class="mat" style="--c:3"><span>1 − 2(y² + z²)</span><span>2(xy − wz)</span><span>2(xz + wy)</span><span>2(xy + wz)</span><span>1 − 2(x² + z²)</span><span>2(yz − wx)</span><span>2(xz − wy)</span><span>2(yz + wx)</span><span>1 − 2(x² + y²)</span></span></div>
-  <p>反方向（R → q）最朴素的写法是 <span class="m">w = ½√(1 + trace R)</span>，然后 <span class="m">x = (R₃₂ − R₂₃)/(4w)</span> 等等。但 θ 接近 180° 时 <span class="m">w ≈ 0</span>，除法数值上不稳定。标准做法（Shepperd’s method）是比较 <span class="m">trace, R₁₁, R₂₂, R₃₃</span> 哪个最大，先算出 <span class="m">w, x, y, z</span> 中最大的那个，再用它去除别的。实际中直接调库，但面试会问“θ = 180° 时怎么办”。</p>
-  <h3>Double cover：q 和 −q 是同一个 rotation</h3>
-  <p>绕 <span class="m">ω̂</span> 转 <span class="m">θ</span> 和绕 <span class="m">−ω̂</span> 转 <span class="m">2π − θ</span> 到达同一个姿态。代进定义，后者正好是 <span class="m">−q</span>。也可以直接看：<span class="m">q p q*</span> 里 q 出现两次，负号抵消。所以每个 rotation 对应 unit sphere S³ 上的<strong>两个</strong>对跖点。实际影响：</p>
+  <div class="eq">
+\[
+R = \begin{bmatrix}
+1 - 2(y^2 + z^2) & 2(xy - wz) & 2(xz + wy) \\
+2(xy + wz) & 1 - 2(x^2 + z^2) & 2(yz - wx) \\
+2(xz - wy) & 2(yz + wx) & 1 - 2(x^2 + y^2)
+\end{bmatrix}
+\]
+<div class="sym">
+  <span>\((w,x,y,z)\)</span><span>unit quaternion 的四个分量</span>
+  <span>\(R\)</span><span>对应的 rotation matrix</span>
+</div>
+</div>
+  <p>反方向（\(R \to q\)）最朴素的写法是 \(w = \tfrac12\sqrt{1 + \operatorname{trace} R}\)，然后 \(x = (R_{32} - R_{23})/(4w)\) 等等。但 \(\theta\) 接近 180° 时 \(w \approx 0\)，除法数值上不稳定。标准做法（Shepperd’s method）是比较 \(\operatorname{trace}, R_{11}, R_{22}, R_{33}\) 哪个最大，先算出 \(w, x, y, z\) 中最大的那个，再用它去除别的。实际中直接调库，但面试会问“\(\theta = 180\)° 时怎么办”。</p>
+  <h3>Double cover：\(q\) 和 \(-q\) 是同一个 rotation</h3>
+  <p>绕 \(\hat{\omega}\) 转 \(\theta\) 和绕 \(-\hat{\omega}\) 转 \(2\pi - \theta\) 到达同一个姿态。代进定义，后者正好是 \(-q\)。也可以直接看：\(q p q^{*}\) 里 \(q\) 出现两次，负号抵消。所以每个 rotation 对应 unit sphere \(S^3\) 上的<strong>两个</strong>对跖点。实际影响：</p>
   <ul>
-    <li><strong>比较</strong>：判断两个 quaternion 是否表示同一姿态，要看 <span class="m">|q₁·q₂| ≈ 1</span>，不能逐分量比。</li>
-    <li><strong>插值</strong>：SLERP 之前检查 <span class="m">q₁·q₂ &lt; 0</span>，是的话把其中一个取反，否则会绕远路（下面的实验台可以关掉这个检查看效果）。</li>
-    <li><strong>连续性</strong>：从一串连续变化的 R 里逐帧提取 q，符号可能突然翻转。滤波、求导、画曲线之前要逐帧对齐符号。</li>
-    <li><strong>求平均、做 loss</strong>：直接对分量求平均或算 L2 loss 之前先把符号统一；神经网络回归 quaternion 时常用 <span class="m">1 − |q̂·q|</span> 这类对符号不敏感的 loss。</li>
-    <li><strong>控制误差</strong>：用 <span class="m">q<sub>e</sub> = q<sub>d</sub> ⊗ q*</span> 的向量部分做反馈时，若 <span class="m">w<sub>e</sub> &lt; 0</span> 要取反，否则机器人会朝大于 180° 的那一侧转（unwinding）。</li>
+    <li><strong>比较</strong>：判断两个 quaternion 是否表示同一姿态，要看 \(|q_1\cdot q_2| \approx 1\)，不能逐分量比。</li>
+    <li><strong>插值</strong>：SLERP 之前检查 \(q_1\cdot q_2 \lt 0\)，是的话把其中一个取反，否则会绕远路（下面的实验台可以关掉这个检查看效果）。</li>
+    <li><strong>连续性</strong>：从一串连续变化的 \(R\) 里逐帧提取 \(q\)，符号可能突然翻转。滤波、求导、画曲线之前要逐帧对齐符号。</li>
+    <li><strong>求平均、做 loss</strong>：直接对分量求平均或算 L2 loss 之前先把符号统一；神经网络回归 quaternion 时常用 \(1 - |\hat{q}\cdot q|\) 这类对符号不敏感的 loss。</li>
+    <li><strong>控制误差</strong>：用 \(q_{e} = q_{d} \otimes q^{*}\) 的向量部分做反馈时，若 \(w_{e} \lt 0\) 要取反，否则机器人会朝大于 180° 的那一侧转（unwinding）。</li>
   </ul>
   <h3>其他 pitfalls</h3>
   <ul>
-    <li><strong>存储顺序</strong>：数学书和 Eigen 的构造函数是 <span class="m">(w, x, y, z)</span>；ROS message、scipy、Eigen 的 <code>coeffs()</code> 是 <span class="m">(x, y, z, w)</span>。MuJoCo 是 <span class="m">(w, x, y, z)</span>。顺序搞错是最常见的 bug，而且结果“看起来像个 rotation”，不会报错。</li>
+    <li><strong>存储顺序</strong>：数学书和 Eigen 的构造函数是 \((w, x, y, z)\)；ROS message、scipy、Eigen 的 <code>coeffs()</code> 是 \((x, y, z, w)\)。MuJoCo 是 \((w, x, y, z)\)。顺序搞错是最常见的 bug，而且结果“看起来像个 rotation”，不会报错。</li>
     <li><strong>Hamilton vs JPL</strong>：两套乘法 convention（ij = k 还是 ij = −k）。机器人和 ROS 用 Hamilton；部分航天、VIO 文献（如 MSCKF）用 JPL。</li>
-    <li><strong>忘记 normalize</strong>：数值积分或优化后 <span class="m">‖q‖</span> 会漂。不是 unit 的 quaternion 转出来的 R 带缩放。每次更新后 normalize。</li>
-    <li>积分 angular velocity：<span class="m">q̇ = ½ · q ⊗ (0, ω<sub>body</sub>)</span>。</li>
+    <li><strong>忘记 normalize</strong>：数值积分或优化后 \(\|q\|\) 会漂。不是 unit 的 quaternion 转出来的 \(R\) 带缩放。每次更新后 normalize。</li>
+    <li>积分 angular velocity：\(\dot{q} = \tfrac12 \cdot q \otimes (0, \omega _{\text{body}})\)。</li>
   </ul>
   <h3>插值：SLERP</h3>
-  <p>spherical linear interpolation 沿 S³ 上的大圆弧走，对应<strong>绕一根固定轴、以恒定 angular velocity</strong> 从 q₀ 转到 q₁，是两个姿态之间最短、最均匀的路径。</p>
-  <div class="eq">slerp(q₀, q₁, t) = [ sin((1−t)Ω) · q₀ + sin(tΩ) · q₁ ] / sin Ω        cos Ω = q₀ · q₁</div>
-  <p><span class="m">Ω ≈ 0</span> 时分母接近 0，退化成普通线性插值再 normalize（NLERP）。NLERP 路径相同、速度不完全均匀、便宜，游戏和实时系统里很常用。</p>
+  <p>spherical linear interpolation 沿 \(S^3\) 上的大圆弧走，对应<strong>绕一根固定轴、以恒定 angular velocity</strong> 从 \(q_0\) 转到 \(q_1\)，是两个姿态之间最短、最均匀的路径。</p>
+  <div class="eq">
+\[
+\operatorname{slerp}(q_0, q_1, t) = \frac{\sin\big((1-t)\Omega\big)\, q_0 + \sin(t\Omega)\, q_1}{\sin\Omega}, \qquad \cos\Omega = q_0\cdot q_1
+\]
+<div class="sym">
+  <span>\(q_0,\ q_1\)</span><span>起点和终点的 unit quaternion</span>
+  <span>\(t\)</span><span>插值参数，\(t\in[0,1]\)</span>
+  <span>\(\Omega\)</span><span>q_0 和 q_1 在 \(S^3\) 上的夹角（由 \(\cos\Omega = q_0\cdot q_1\) 定义）</span>
+</div>
+</div>
+  <p>\(\Omega \approx 0\) 时分母接近 0，退化成普通线性插值再 normalize（NLERP）。NLERP 路径相同、速度不完全均匀、便宜，游戏和实时系统里很常用。</p>
   <div class="lab">
     <div class="lab-views">
       <div>
@@ -463,12 +638,12 @@ inverse                 q⁻¹ = q* = (w, −x, −y, −z)    仅对 unit quate
       <div>
         <h4>读数</h4>
         <div class="kv" id="sl-out"></div>
-        <div class="opts"><label><input type="checkbox" id="sl-flip">不做 shortest-path 检查（把 q₁ 换成 −q₁）</label></div>
-        <p class="cap">粗的 frame 是 SLERP 在 t 时刻的姿态；细的半透明 frame 是 Euler 插值的姿态。两者起点终点相同，中间不同。</p>
+        <div class="opts"><label><input type="checkbox" id="sl-flip">不做 shortest-path 检查（把 \(q_1\) 换成 \(-q_1\)）</label></div>
+        <p class="cap">粗的 frame 是 SLERP 在 \(t\) 时刻的姿态；细的半透明 frame 是 Euler 插值的姿态。两者起点终点相同，中间不同。</p>
       </div>
     </div>
     <div class="ctl" id="sl-ctl"></div>
-    <p class="try"><b>试一试：</b>① 拖 t，SLERP 的轨迹是大圆弧，Euler 插值的轨迹是一条歪的曲线，而且速度不均匀。② 勾上“不做 shortest-path 检查”：终点姿态完全一样，但 SLERP 绕了 360° − θ 的远路。③ 把 pitch 调到接近 90°，Euler 插值的轨迹会明显扭曲。</p>
+    <p class="try"><b>试一试：</b>① 拖 \(t\)，SLERP 的轨迹是大圆弧，Euler 插值的轨迹是一条歪的曲线，而且速度不均匀。② 勾上“不做 shortest-path 检查”：终点姿态完全一样，但 SLERP 绕了 \(360^\circ - \theta\) 的远路。③ 把 pitch 调到接近 90°，Euler 插值的轨迹会明显扭曲。</p>
   </div>
   <div class="note"><span class="q">一句话总结 quaternion</span><p>优点：没有 gimbal lock，4 个数，组合便宜，normalize 一下就能修正数值漂移，插值简单正确。缺点：不直观，有 double cover，有 unit 约束（放进 optimizer 时仍然要用 §05 的 3 维增量）。</p></div>
 </section>
@@ -478,8 +653,8 @@ inverse                 q⁻¹ = q* = (w, −x, −y, −z)    仅对 unit quate
   <div class="tw"><table>
     <tr><th>表示法</th><th>参数个数</th><th>问题出在哪</th><th>组合</th><th>适合做什么</th></tr>
     <tr><td>Rotation matrix</td><td>9（6 个约束）</td><td>冗余；数值漂移后不再 orthonormal</td><td>矩阵乘法</td><td>计算、变换点、作为“中转站”</td></tr>
-    <tr><td>Euler angles</td><td>3</td><td>gimbal lock；12 种顺序 × intrinsic/extrinsic；±180° 跳变</td><td>不能直接组合，要先转成 R 或 q</td><td>给人看、输入、小角度</td></tr>
-    <tr><td>Axis-angle / rotation vector</td><td>3（或 3 + 1）</td><td>θ = 0 轴无定义；θ = π 附近数值敏感</td><td>不能直接组合</td><td>误差、优化的增量、angular velocity 积分</td></tr>
+    <tr><td>Euler angles</td><td>3</td><td>gimbal lock；12 种顺序 × intrinsic/extrinsic；±180° 跳变</td><td>不能直接组合，要先转成 \(R\) 或 \(q\)</td><td>给人看、输入、小角度</td></tr>
+    <tr><td>Axis-angle / rotation vector</td><td>3（或 3 + 1）</td><td>\(\theta = 0\) 时轴无定义；\(\theta = \pi\) 附近数值敏感</td><td>不能直接组合</td><td>误差、优化的增量、angular velocity 积分</td></tr>
     <tr><td>Unit quaternion</td><td>4（1 个约束）</td><td>double cover；存储顺序；要 normalize</td><td>Hamilton product</td><td>存储、传输、插值、滤波</td></tr>
   </table></div>
   <h3>转换路线</h3>
@@ -496,102 +671,144 @@ inverse                 q⁻¹ = q* = (w, −x, −y, −z)    仅对 unit quate
       <line x1="416" y1="108" x2="504" y2="142" class="d-ln" marker-end="url(#arr2)" marker-start="url(#arr2)"/><text x="444" y="146" text-anchor="middle" class="d-s">公式 / Shepperd</text>
       <line x1="580" y1="76" x2="580" y2="114" class="d-ln" marker-end="url(#arr2)" marker-start="url(#arr2)"/><text x="590" y="100" class="d-s">半角</text>
     </svg>
-    <figcaption>axis-angle 和 quaternion 之间只差一个半角：<span class="m">q = (cos(θ/2), ω̂ sin(θ/2))</span>，<span class="m">θ = 2·atan2(‖v‖, w)</span>。</figcaption>
+    <figcaption>axis-angle 和 quaternion 之间只差一个半角：\(q = (\cos (\theta /2), \hat{\omega} \sin (\theta /2))\)，\(\theta = 2\cdot \operatorname{atan2}(\|v\|, w)\)。</figcaption>
   </figure>
   <h3>转换时的检查清单</h3>
   <ul>
     <li>Euler：顺序是什么？intrinsic 还是 extrinsic？degree 还是 radian？</li>
-    <li>Quaternion：<span class="m">(w,x,y,z)</span> 还是 <span class="m">(x,y,z,w)</span>？normalize 了吗？和上一帧符号一致吗？</li>
-    <li>R：是 <span class="m">R<sub>a_b</sub></span> 还是 <span class="m">R<sub>b_a</sub></span>？（差一个 transpose，是最常见的错）</li>
-    <li>R 是测量或估计出来的吗？如果是，先用 SVD 投影回 SO(3) 再转。</li>
-    <li><code>acos</code> / <code>asin</code> 的输入 clamp 了吗？在 θ = 0、θ = π、pitch = ±90° 这三个特殊点测过吗？</li>
+    <li>Quaternion：\((w,x,y,z)\) 还是 \((x,y,z,w)\)？normalize 了吗？和上一帧符号一致吗？</li>
+    <li>\(R\)：是 \(R_{a\_b}\) 还是 \(R_{b\_a}\)？（差一个 transpose，是最常见的错）</li>
+    <li>\(R\) 是测量或估计出来的吗？如果是，先用 SVD 投影回 SO(3) 再转。</li>
+    <li><code>acos</code> / <code>asin</code> 的输入 clamp 了吗？在 \(\theta = 0\)、\(\theta = \pi\)、\(\text{pitch} = \pm 90^\circ\) 这三个特殊点测过吗？</li>
     <li>两边的 frame convention 一致吗？camera optical frame 是 z 朝前、x 朝右、y 朝下；ROS 的 body frame 是 x 朝前、y 朝左、z 朝上。两者之间差一个固定的 rotation，漏掉它姿态会差 90°。</li>
     <li>有没有混进 left-handed 的系统（Unity、部分图形引擎）？那不是 rotation 能解决的，需要一次 reflection。</li>
   </ul>
-  <div class="note"><span class="q">万能的验证方法</span><p>拿一个不对称的已知姿态（比如 yaw 30°、pitch 20°、roll 40°，三个角都不同且不是 0 / 90°），转过去再转回来，看是否还原；再把它作用在 <span class="m">(1,0,0)</span> 上，看结果是否符合直觉。用 identity 或 90° 这种特殊值测不出 convention 错误。</p></div>
+  <div class="note"><span class="q">万能的验证方法</span><p>拿一个不对称的已知姿态（比如 yaw 30°、pitch 20°、roll 40°，三个角都不同且不是 0 / 90°），转过去再转回来，看是否还原；再把它作用在 \((1,0,0)\) 上，看结果是否符合直觉。用 identity 或 90° 这种特殊值测不出 convention 错误。</p></div>
 </section>
 
 <section id="order">
   <h2><span class="n">08</span>Composition order：左乘还是右乘</h2>
-  <p>3D rotation 不可交换，所以 <span class="m">A·B</span> 和 <span class="m">B·A</span> 是两个不同的姿态。面试里真正考的是：给你一个乘积，你能不能说出它在物理上是“先做什么、绕谁的轴做”。</p>
-  <div class="eq">R = A · B
-
-读法一（从左往右，绕 <strong>body</strong> 轴）：先做 A；再绕 <em>转过之后的新轴</em> 做 B
-读法二（从右往左，绕 <strong>fixed</strong> 轴）：先做 B；再绕 <em>固定不动的 world 轴</em> 做 A</div>
+  <p>3D rotation 不可交换，所以 \(A\cdot B\) 和 \(B\cdot A\) 是两个不同的姿态。面试里真正考的是：给你一个乘积，你能不能说出它在物理上是“先做什么、绕谁的轴做”。</p>
+  <div class="eq">
+\[
+R = A\, B
+\]
+<div class="sym">
+  <span>\(A,\ B\)</span><span>两个 rotation matrix</span>
+  <span>读法一（从左往右，绕 <strong>body</strong> 轴）</span><span>先做 \(A\)；再绕 <em>转过之后的新轴</em> 做 \(B\)</span>
+  <span>读法二（从右往左，绕 <strong>fixed</strong> 轴）</span><span>先做 \(B\)；再绕 <em>固定不动的 world 轴</em> 做 \(A\)</span>
+</div>
+</div>
   <p>两种读法描述的是同一个矩阵、同一个最终姿态。由此得到一条规则：</p>
   <div class="note"><p><strong>右乘（post-multiply）</strong>：新的 rotation 是在<strong>当前 body frame</strong> 里描述的。<br><strong>左乘（pre-multiply）</strong>：新的 rotation 是在 <strong>fixed / world frame</strong> 里描述的。</p></div>
-  <p>对 4×4 的 transform 完全一样。两个实际例子：</p>
+  <p>对 \(4\times 4\) 的 transform 完全一样。两个实际例子：</p>
   <ul>
-    <li>“夹爪沿自己的 z 轴（approach 方向）前进 5 cm”：<span class="m">T<sub>new</sub> = T<sub>base_ee</sub> · Trans(0, 0, 0.05)</span>，右乘。</li>
-    <li>“夹爪沿 base 的 z 轴竖直抬高 5 cm”：<span class="m">T<sub>new</sub> = Trans(0, 0, 0.05) · T<sub>base_ee</sub></span>，左乘。</li>
+    <li>“夹爪沿自己的 z 轴（approach 方向）前进 5 cm”：\(T_{\text{new}} = T_{\text{base\_ee}} \cdot \operatorname{Trans}(0, 0, 0.05)\)，右乘。</li>
+    <li>“夹爪沿 base 的 z 轴竖直抬高 5 cm”：\(T_{\text{new}} = \operatorname{Trans}(0, 0, 0.05) \cdot T_{\text{base\_ee}}\)，左乘。</li>
   </ul>
   <div class="lab">
     <div class="lab-views two">
       <div>
-        <h4><span class="ca">A · B</span>：先 A，再绕新的 body 轴做 B</h4>
+        <h4><span class="ca">\(A \cdot B\)</span>：先 \(A\)，再绕新的 body 轴做 \(B\)</h4>
         <svg id="ord-l" class="drag" viewBox="0 0 320 290" role="img" aria-label="A 乘 B 的结果"></svg>
       </div>
       <div>
-        <h4><span class="ca">B · A</span>：先 B，再绕新的 body 轴做 A</h4>
+        <h4><span class="ca">\(B \cdot A\)</span>：先 \(B\)，再绕新的 body 轴做 \(A\)</h4>
         <svg id="ord-r" class="drag" viewBox="0 0 320 290" role="img" aria-label="B 乘 A 的结果"></svg>
       </div>
     </div>
     <div class="opts">
-      <label>A 绕 <select id="ord-a-ax"><option>X</option><option>Y</option><option selected>Z</option></select> 轴</label>
-      <label>B 绕 <select id="ord-b-ax"><option selected>X</option><option>Y</option><option>Z</option></select> 轴</label>
+      <label>\(A\) 绕 <select id="ord-a-ax"><option>X</option><option>Y</option><option selected>Z</option></select> 轴</label>
+      <label>\(B\) 绕 <select id="ord-b-ax"><option selected>X</option><option>Y</option><option>Z</option></select> 轴</label>
       <button class="pre" id="ord-play">▶ 播放</button>
       <span class="cm">虚线是当前这一步的转轴</span>
     </div>
     <div class="ctl" id="ord-ctl"></div>
     <div class="out">
-      <div class="blk"><h4>A · B</h4><div class="live" id="ord-ab"></div></div>
-      <div class="blk"><h4>B · A</h4><div class="live" id="ord-ba"></div></div>
+      <div class="blk"><h4>\(A \cdot B\)</h4><div class="live" id="ord-ab"></div></div>
+      <div class="blk"><h4>\(B \cdot A\)</h4><div class="live" id="ord-ba"></div></div>
       <div class="blk"><h4>两个结果相差</h4><div class="kv" id="ord-diff"></div></div>
     </div>
-    <p class="try"><b>试一试：</b>① 默认是 A = R<sub>z</sub>(90°)、B = R<sub>x</sub>(90°)，点播放，两边最后差 120°。② 把两个轴选成同一根：绕同一根轴的 rotation 可以交换，差变成 0。③ 把两个角度都调到 5°：小角度时近似可交换，差接近 0。这就是为什么 angular velocity 可以当向量相加。</p>
+    <p class="try"><b>试一试：</b>① 默认是 \(A = R_z(90^\circ)\)、\(B = R_x(90^\circ)\)，点播放，两边最后差 120°。② 把两个轴选成同一根：绕同一根轴的 rotation 可以交换，差变成 0。③ 把两个角度都调到 5°：小角度时近似可交换，差接近 0。这就是为什么 angular velocity 可以当向量相加。</p>
   </div>
 </section>
 
 <section id="se3">
   <h2><span class="n">09</span>SE(3) 与 homogeneous transform</h2>
-  <p>rigid body 的 pose = orientation + position，共 6 个 degree of freedom。所有 rigid body transform 组成 <strong>SE(3)</strong>（special Euclidean group）。把 R 和 t 装进一个 4×4 矩阵，rotation 加 translation 就变成一次矩阵乘法：</p>
-  <div class="eq">T<sub>a_b</sub> = <span class="mat" style="--c:2"><span>R<sub>a_b</sub></span><span>t<sub>a_b</sub></span><span>0 0 0</span><span>1</span></span>        p<sub>a</sub> = R<sub>a_b</sub> · p<sub>b</sub> + t<sub>a_b</sub>     ⇔     <span class="mat" style="--c:1"><span>p<sub>a</sub></span><span>1</span></span> = T<sub>a_b</sub> <span class="mat" style="--c:1"><span>p<sub>b</sub></span><span>1</span></span></div>
+  <p>rigid body 的 pose = orientation + position，共 6 个 degree of freedom。所有 rigid body transform 组成 <strong>SE(3)</strong>（special Euclidean group）。把 \(R\) 和 \(t\) 装进一个 \(4\times 4\) 矩阵，rotation 加 translation 就变成一次矩阵乘法：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+T_{a\_b} &= \begin{bmatrix} R_{a\_b} & t_{a\_b} \\ 0\ 0\ 0 & 1 \end{bmatrix} \\
+p_a = R_{a\_b}\, p_b + t_{a\_b} &\iff \begin{bmatrix} p_a \\ 1 \end{bmatrix} = T_{a\_b} \begin{bmatrix} p_b \\ 1 \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(T_{a\_b}\)</span><span>frame b 在 frame a 里的 pose（\(4\times 4\) homogeneous transform）</span>
+  <span>\(R_{a\_b}\)</span><span>\(3\times 3\) rotation matrix</span>
+  <span>\(t_{a\_b}\)</span><span>\(3\times 1\) translation：b 的原点在 a 里的坐标</span>
+  <span>\(p_a,\ p_b\)</span><span>同一个点在 frame a、frame b 里的坐标</span>
+  <span>\(0\ 0\ 0,\ 1\)</span><span>最后一行；补出的最后一维 1 是 homogeneous 坐标</span>
+</div>
+</div>
   <ul>
-    <li><span class="m">R<sub>a_b</sub></span>：b 的三个轴在 a 里的方向。</li>
-    <li><span class="m">t<sub>a_b</sub></span>：<strong>b 的原点在 a 里的坐标</strong>。（验证：把 b 的原点 <span class="m">p<sub>b</sub> = 0</span> 代进去，得到 <span class="m">p<sub>a</sub> = t</span>。）</li>
+    <li>\(R_{a\_b}\)：b 的三个轴在 a 里的方向。</li>
+    <li>\(t_{a\_b}\)：<strong>b 的原点在 a 里的坐标</strong>。（验证：把 b 的原点 \(p_{b} = 0\) 代进去，得到 \(p_{a} = t\)。）</li>
   </ul>
   <h3>组合与 inverse</h3>
-  <div class="eq">T<sub>a_c</sub> = T<sub>a_b</sub> · T<sub>b_c</sub> = <span class="mat" style="--c:2"><span>R₁R₂</span><span>R₁t₂ + t₁</span><span>0</span><span>1</span></span>
-
-T<sub>b_a</sub> = (T<sub>a_b</sub>)⁻¹ = <span class="mat" style="--c:2"><span>Rᵀ</span><span>−Rᵀt</span><span>0</span><span>1</span></span></div>
-  <div class="note warn"><span class="q">最常见的错误</span><p>inverse 的 translation 是 <span class="m">−Rᵀt</span>，不是 <span class="m">−t</span>。直觉：<span class="m">t</span> 是 b 的原点在 a 里的坐标；反过来要的是 a 的原点在 <em>b</em> 里的坐标，所以除了取反，还要用 <span class="m">Rᵀ</span> 把它换到 b 的轴上。</p></div>
+  <div class="eq">
+\[
+\begin{aligned}
+T_{a\_c} &= T_{a\_b}\, T_{b\_c} = \begin{bmatrix} R_1 R_2 & R_1 t_2 + t_1 \\ 0 & 1 \end{bmatrix} \\
+T_{b\_a} &= (T_{a\_b})^{-1} = \begin{bmatrix} R^\top & -R^\top t \\ 0 & 1 \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R_1,\ t_1\)</span><span>\(T_{a\_b}\) 的 rotation 和 translation</span>
+  <span>\(R_2,\ t_2\)</span><span>\(T_{b\_c}\) 的 rotation 和 translation</span>
+  <span>\(R,\ t\)</span><span>第二行里指 \(R_{a\_b},\ t_{a\_b}\)</span>
+  <span>\(T^{-1}\)</span><span>\(T\) 的 inverse</span>
+</div>
+</div>
+  <div class="note warn"><span class="q">最常见的错误</span><p>inverse 的 translation 是 \(-R^{\top}t\)，不是 \(-t\)。直觉：\(t\) 是 b 的原点在 a 里的坐标；反过来要的是 a 的原点在 <em>b</em> 里的坐标，所以除了取反，还要用 \(R^{\top}\) 把它换到 b 的轴上。</p></div>
   <h3>点和方向</h3>
-  <p>homogeneous 坐标的最后一位区分两种东西：<strong>点</strong>写成 <span class="m">(x, y, z, 1)</span>，会被 translation 影响；<strong>方向 / 自由向量</strong>（速度、力、法向量、轴）写成 <span class="m">(x, y, z, 0)</span>，只被 R 转动。把 normal 或 velocity 当成点去乘 T，是另一个常见 bug。</p>
+  <p>homogeneous 坐标的最后一位区分两种东西：<strong>点</strong>写成 \((x, y, z, 1)\)，会被 translation 影响；<strong>方向 / 自由向量</strong>（速度、力、法向量、轴）写成 \((x, y, z, 0)\)，只被 \(R\) 转动。把 normal 或 velocity 当成点去乘 \(T\)，是另一个常见 bug。</p>
   <h3>再往深一步（知道概念即可）</h3>
   <ul>
-    <li><strong>存储</strong>：实际中 pose 常存成 <span class="m">(t, q)</span> 共 7 个数（ROS 的 <code>geometry_msgs/Pose</code>），计算时再转成 4×4。</li>
+    <li><strong>存储</strong>：实际中 pose 常存成 \((t, q)\) 共 7 个数（ROS 的 <code>geometry_msgs/Pose</code>），计算时再转成 \(4\times 4\)。</li>
     <li><strong>插值</strong>：position 做线性插值，orientation 做 SLERP，分开处理。</li>
-    <li><strong>Twist 与 se(3)</strong>：rigid body 的速度是一个 6 维向量 <span class="m">V = (ω, v)</span>，叫 twist。和 SO(3) 一样有 exponential map：<span class="m">T = exp([S]θ)</span>，表示绕一根空间中的 screw axis 边转边平移。Modern Robotics 的 product of exponentials（§12）就建立在它上面。</li>
-    <li><strong>Adjoint</strong>：点换 frame 用 T，twist 换 frame 要用 6×6 的 adjoint：<span class="m">V<sub>a</sub> = Ad(T<sub>a_b</sub>) · V<sub>b</sub></span>，其中 <span class="m">Ad(T) = [R, 0; [t]<sub>×</sub>R, R]</span>。wrench（力和力矩）用它的 transpose。直觉：平移一个 frame 之后，同一个转动在新原点处会多出一项线速度 <span class="m">t × ω</span>。</li>
-    <li><strong>Pose error</strong>：位置误差 <span class="m">p<sub>d</sub> − p</span> 加上朝向误差 <span class="m">log(R<sub>d</sub>Rᵀ)</span>，拼成 6 维。位置和朝向单位不同（米和 radian），加权时要小心。</li>
+    <li><strong>Twist 与 se(3)</strong>：rigid body 的速度是一个 6 维向量 \(V = (\omega , v)\)，叫 twist。和 SO(3) 一样有 exponential map：\(T = \exp ([S]\theta )\)，表示绕一根空间中的 screw axis 边转边平移。Modern Robotics 的 product of exponentials（§12）就建立在它上面。</li>
+    <li><strong>Adjoint</strong>：点换 frame 用 \(T\)，twist 换 frame 要用 \(6\times 6\) 的 adjoint：\(V_{a} = \operatorname{Ad}(T_{a\_b}) \cdot V_{b}\)，其中 \(\operatorname{Ad}(T) = \begin{bmatrix} R & 0 \\ [t]_\times R & R \end{bmatrix}\)。wrench（力和力矩）用它的 transpose。直觉：平移一个 frame 之后，同一个转动在新原点处会多出一项线速度 \(t \times \omega\)。</li>
+    <li><strong>Pose error</strong>：位置误差 \(p_{d} - p\) 加上朝向误差 \(\log (R_{d}R^{\top})\)，拼成 6 维。位置和朝向单位不同（米和 radian），加权时要小心。</li>
   </ul>
 </section>
 
 <section id="chain">
   <h2><span class="n">10</span>Frame transform chain</h2>
-  <p>机器人系统里有很多 frame：world、base、每个 link、end-effector、camera、tag、object。任意两个之间的关系，都靠把已知的 transform 连乘得到。用 <span class="m">T<sub>a_b</sub></span> 这种写法的好处是，<strong>下标自己会告诉你顺序对不对</strong>：</p>
-  <div class="eq">T<sub>base_tag</sub> = T<sub>base_<span class="ca">cam</span></sub> · T<sub><span class="ca">cam</span>_tag</sub>           相邻的下标必须相同，然后相消
-T<sub>cam_base</sub> = (T<sub>base_cam</sub>)⁻¹                  inverse 把下标对调</div>
+  <p>机器人系统里有很多 frame：world、base、每个 link、end-effector、camera、tag、object。任意两个之间的关系，都靠把已知的 transform 连乘得到。用 \(T_{a\_b}\) 这种写法的好处是，<strong>下标自己会告诉你顺序对不对</strong>：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+T_{\text{base\_tag}} &= T_{\text{base\_}\textcolor{#4F46C8}{\text{cam}}} \cdot T_{\textcolor{#4F46C8}{\text{cam}}\text{\_tag}} && \text{相邻的下标必须相同，然后相消} \\
+T_{\text{cam\_base}} &= (T_{\text{base\_cam}})^{-1} && \text{inverse 把下标对调}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(T_{a\_b}\)</span><span>frame b 在 frame a 里的 pose（\(4\times 4\) transform）</span>
+  <span>\(\text{base},\ \text{cam},\ \text{tag}\)</span><span>机器人 base、相机、AprilTag 各自的 frame</span>
+  <span>\((\cdot)^{-1}\)</span><span>transform 的 inverse</span>
+</div>
+</div>
   <p>写出来之后如果相邻下标对不上，说明顺序错了或者少取了一个 inverse。这比任何口诀都可靠。</p>
   <h3>几条常见的 chain</h3>
   <div class="tw"><table>
     <tr><th>场景</th><th>Chain</th><th>各项的来源</th></tr>
-    <tr><td>相机固定在外面（eye-to-hand）</td><td class="m">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></td><td>hand-eye calibration；AprilTag</td></tr>
-    <tr><td>相机装在末端（eye-in-hand）</td><td class="m">T<sub>base_tag</sub> = T<sub>base_ee</sub> · T<sub>ee_cam</sub> · T<sub>cam_tag</sub></td><td>FK；hand-eye calibration；AprilTag</td></tr>
-    <tr><td>求抓取时末端该去哪</td><td class="m">T<sub>base_ee</sub>* = T<sub>base_obj</sub> · T<sub>obj_grasp</sub> · (T<sub>ee_tcp</sub>)⁻¹</td><td>感知；grasp 定义；工具标定</td></tr>
-    <tr><td>反解中间的未知量</td><td class="m">A · X · B = C  ⇒  X = A⁻¹ · C · B⁻¹</td><td>左边的从左边消，右边的从右边消</td></tr>
+    <tr><td>相机固定在外面（eye-to-hand）</td><td>\(T_{\text{base\_tag}} = T_{\text{base\_cam}} \cdot T_{\text{cam\_tag}}\)</td><td>hand-eye calibration；AprilTag</td></tr>
+    <tr><td>相机装在末端（eye-in-hand）</td><td>\(T_{\text{base\_tag}} = T_{\text{base\_ee}} \cdot T_{\text{ee\_cam}} \cdot T_{\text{cam\_tag}}\)</td><td>FK；hand-eye calibration；AprilTag</td></tr>
+    <tr><td>求抓取时末端该去哪</td><td>\(T_{\text{base\_ee}}^{*} = T_{\text{base\_obj}} \cdot T_{\text{obj\_grasp}} \cdot (T_{\text{ee\_tcp}})^{-1}\)</td><td>感知；grasp 定义；工具标定</td></tr>
+    <tr><td>反解中间的未知量</td><td>\(A \cdot X \cdot B = C \Rightarrow X = A^{-1} \cdot C \cdot B^{-1}\)</td><td>左边的从左边消，右边的从右边消</td></tr>
   </table></div>
-  <p>在 ROS 的 tf 里，<code>lookupTransform(target_frame="a", source_frame="b")</code> 返回的就是 <span class="m">T<sub>a_b</sub></span>：把 b 里的点换到 a 里。tf tree 里 parent → child 的那条边存的是 <span class="m">T<sub>parent_child</sub></span>。</p>
+  <p>在 ROS 的 tf 里，<code>lookupTransform(target_frame="a", source_frame="b")</code> 返回的就是 \(T_{a\_b}\)：把 b 里的点换到 a 里。tf tree 里 parent → child 的那条边存的是 \(T_{\text{parent\_child}}\)。</p>
   <div class="lab">
     <div class="lab-views">
       <div>
@@ -604,46 +821,56 @@ T<sub>cam_base</sub> = (T<sub>base_cam</sub>)⁻¹                  inverse 把�
         </div>
       </div>
       <div>
-        <h4>T<sub>base_cam</sub></h4><div class="live" id="ch-bc"></div>
-        <h4 style="margin-top:10px"><span class="ca">T<sub>cam_tag</sub></span></h4><div class="live" id="ch-ct"></div>
-        <h4 style="margin-top:10px">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></h4><div class="live" id="ch-bt"></div>
+        <h4>\(T_{\text{base\_cam}}\)</h4><div class="live" id="ch-bc"></div>
+        <h4 style="margin-top:10px"><span class="ca">\(T_{\text{cam\_tag}}\)</span></h4><div class="live" id="ch-ct"></div>
+        <h4 style="margin-top:10px">\(T_{\text{base\_tag}} = T_{\text{base\_cam}} \cdot T_{\text{cam\_tag}}\)</h4><div class="live" id="ch-bt"></div>
         <h4 style="margin-top:10px">tag 上的一个点</h4><div class="kv" id="ch-pt"></div>
       </div>
     </div>
-    <div class="opts"><label><input type="checkbox" id="ch-wrong"><span>显示乘反了的结果 T<sub>cam_tag</sub> · T<sub>base_cam</sub></span></label></div>
+    <div class="opts"><label><input type="checkbox" id="ch-wrong"><span>显示乘反了的结果 \(T_{\text{cam\_tag}} \cdot T_{\text{base\_cam}}\)</span></label></div>
     <div class="ctl" id="ch-ctl"></div>
-    <p class="try"><b>试一试：</b>① 拖动 cam：T<sub>base_cam</sub> 和 T<sub>cam_tag</sub> 都在变，但乘出来的 T<sub>base_tag</sub> 一动不动，因为 tag 在世界里没动。这正是 transform chain 的意义。② 拖动 tag：只有 T<sub>cam_tag</sub> 和结果变。③ 勾上“乘反了的结果”，看它落在哪里：一个看起来合理、但完全错误的 pose。这里用 2D（SE(2)，3×3 矩阵）是为了看得清，规则和 3D 完全一样。</p>
+    <p class="try"><b>试一试：</b>① 拖动 cam：\(T_{\text{base\_cam}}\) 和 \(T_{\text{cam\_tag}}\) 都在变，但乘出来的 \(T_{\text{base\_tag}}\) 一动不动，因为 tag 在世界里没动。这正是 transform chain 的意义。② 拖动 tag：只有 \(T_{\text{cam\_tag}}\) 和结果变。③ 勾上“乘反了的结果”，看它落在哪里：一个看起来合理、但完全错误的 pose。这里用 2D（SE(2)，\(3\times 3\) 矩阵）是为了看得清，规则和 3D 完全一样。</p>
   </div>
   <h3>Chain 出错时的排查顺序</h3>
   <ol>
     <li>把每个 transform 的下标写出来，检查相邻是否相消。</li>
     <li>逐个看 translation 的大小和符号是否符合常识（相机在 base 前方 0.5 m，不是 500，也不是 −0.5）。单位是 m 还是 mm？</li>
-    <li>逐个看 R 的第三列（z 轴）指向哪里。camera optical frame 的 z 应该指向场景。</li>
+    <li>逐个看 \(R\) 的第三列（z 轴）指向哪里。camera optical frame 的 z 应该指向场景。</li>
     <li>把其中一个换成 identity，看结果是否退化成预期的样子。</li>
-    <li>时间戳：机械臂在动的时候，<span class="m">T<sub>base_ee</sub></span> 和图像必须是同一时刻的。</li>
+    <li>时间戳：机械臂在动的时候，\(T_{\text{base\_ee}}\) 和图像必须是同一时刻的。</li>
   </ol>
 </section>
 
 <section id="handeye">
   <h2><span class="n">11</span>Hand-eye calibration：AX = XB</h2>
-  <p>上面的 chain 里，<span class="m">T<sub>base_ee</sub></span> 来自 FK，<span class="m">T<sub>cam_tag</sub></span> 来自视觉，唯独相机和机器人之间的那个固定 transform 没有人直接告诉你。hand-eye calibration 就是求它。</p>
+  <p>上面的 chain 里，\(T_{\text{base\_ee}}\) 来自 FK，\(T_{\text{cam\_tag}}\) 来自视觉，唯独相机和机器人之间的那个固定 transform 没有人直接告诉你。hand-eye calibration 就是求它。</p>
   <h3>两种安装方式</h3>
   <div class="tw"><table>
     <tr><th></th><th>Eye-in-hand</th><th>Eye-to-hand</th></tr>
     <tr><td>相机在哪</td><td>装在 end-effector 上，跟着动</td><td>固定在外面的支架上</td></tr>
-    <tr><td>未知量 X</td><td class="m">T<sub>ee_cam</sub></td><td class="m">T<sub>base_cam</sub></td></tr>
+    <tr><td>未知量 \(X\)</td><td>\(T_{\text{ee\_cam}}\)</td><td>\(T_{\text{base\_cam}}\)</td></tr>
     <tr><td>calibration target 放哪</td><td>固定在桌面上（相对 base 不动）</td><td>固定在 end-effector 上（跟着动）</td></tr>
-    <tr><td>不变的量</td><td class="m">T<sub>base_target</sub></td><td class="m">T<sub>ee_target</sub></td></tr>
+    <tr><td>不变的量</td><td>\(T_{\text{base\_target}}\)</td><td>\(T_{\text{ee\_target}}\)</td></tr>
     <tr><td>特点</td><td>靠近物体时精度高，视野随手移动；手会挡不到自己</td><td>视野固定、全局；手臂可能遮挡物体</td></tr>
   </table></div>
-  <h3>AX = XB 是怎么来的（eye-in-hand）</h3>
-  <p>把机械臂移到第 i 个姿态，记录两样东西：FK 给出的 <span class="m">E<sub>i</sub> = T<sub>base_ee</sub></span>，以及相机看 target 得到的 <span class="m">C<sub>i</sub> = T<sub>cam_target</sub></span>。target 固定在桌上，所以绕一圈 chain 得到的 <span class="m">T<sub>base_target</sub></span> 每次都一样：</p>
-  <div class="eq">T<sub>base_target</sub> = E<sub>i</sub> · X · C<sub>i</sub> = E<sub>j</sub> · X · C<sub>j</sub>              （对任意两个姿态 i、j）
-
-两边左乘 E<sub>j</sub>⁻¹、右乘 C<sub>i</sub>⁻¹：
-
-( E<sub>j</sub>⁻¹ E<sub>i</sub> ) · X = X · ( C<sub>j</sub> C<sub>i</sub>⁻¹ )
-        A      · X = X ·      B</div>
+  <h3>\(AX = XB\) 是怎么来的（eye-in-hand）</h3>
+  <p>把机械臂移到第 i 个姿态，记录两样东西：FK 给出的 \(E_{i} = T_{\text{base\_ee}}\)，以及相机看 target 得到的 \(C_{i} = T_{\text{cam\_target}}\)。target 固定在桌上，所以绕一圈 chain 得到的 \(T_{\text{base\_target}}\) 每次都一样：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+T_{\text{base\_target}} &= E_i\, X\, C_i = E_j\, X\, C_j && \text{（对任意两个姿态 i、j）} \\
+&\Downarrow \text{ 两边左乘 } E_j^{-1} \text{、右乘 } C_i^{-1} \\
+(E_j^{-1} E_i)\, X &= X\, (C_j C_i^{-1}) \\
+A\, X &= X\, B
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(E_i\)</span><span>第 i 个姿态下 FK 给出的 \(T_{\text{base\_ee}}\)</span>
+  <span>\(C_i\)</span><span>第 i 个姿态下相机看 target 得到的 \(T_{\text{cam\_target}}\)</span>
+  <span>\(X\)</span><span>待求的相机和 end-effector 之间的固定 transform（eye-in-hand 时是 \(T_{\text{ee\_cam}}\)）</span>
+  <span>\(A,\ B\)</span><span>\(A = E_j^{-1}E_i\) 和 \(B = C_jC_i^{-1}\)，分别是 end-effector 和 camera 在两个姿态之间的相对运动</span>
+</div>
+</div>
   <figure class="fig">
     <svg viewBox="0 0 680 230" role="img" aria-label="eye-in-hand 标定中两个姿态构成的闭环">
       <rect x="20" y="88" width="90" height="50" rx="6" class="d-box"/><text x="65" y="118" text-anchor="middle" class="d-t">base</text>
@@ -661,19 +888,31 @@ T<sub>cam_base</sub> = (T<sub>base_cam</sub>)⁻¹                  inverse 把�
       <line x1="245" y1="160" x2="245" y2="68" class="d-dash" marker-end="url(#arr2)"/><text x="236" y="118" text-anchor="end" class="d-s">A = E_j⁻¹E_i</text>
       <line x1="435" y1="160" x2="435" y2="68" class="d-dash" marker-end="url(#arr2)"/><text x="444" y="118" class="d-s">B = C_jC_i⁻¹</text>
     </svg>
-    <figcaption>从 base 到 target 有上下两条路，结果必须相同。A 是 end-effector 在两个姿态之间的相对运动，B 是 camera 在两个姿态之间的相对运动，X 是两者之间的固定关系。</figcaption>
+    <figcaption>从 base 到 target 有上下两条路，结果必须相同。\(A\) 是 end-effector 在两个姿态之间的相对运动，\(B\) 是 camera 在两个姿态之间的相对运动，\(X\) 是两者之间的固定关系。</figcaption>
   </figure>
-  <p><strong>A 和 B 描述的是同一次刚体运动</strong>，只是一个在 ee frame 里看、一个在 cam frame 里看。X 就是这两个 frame 之间的换算。eye-to-hand 的推导完全一样，只是不变量换成 <span class="m">T<sub>ee_target</sub></span>，得到 <span class="m">A = E<sub>j</sub>E<sub>i</sub>⁻¹</span>、<span class="m">B = C<sub>j</sub>C<sub>i</sub>⁻¹</span>、<span class="m">X = T<sub>base_cam</sub></span>。</p>
+  <p><strong>\(A\) 和 \(B\) 描述的是同一次刚体运动</strong>，只是一个在 ee frame 里看、一个在 cam frame 里看。\(X\) 就是这两个 frame 之间的换算。eye-to-hand 的推导完全一样，只是不变量换成 \(T_{\text{ee\_target}}\)，得到 \(A = E_{j}E_{i}^{-1}\)、\(B = C_{j}C_{i}^{-1}\)、\(X = T_{\text{base\_cam}}\)。</p>
   <h3>怎么解</h3>
-  <p>把 4×4 的方程拆成 rotation 和 translation 两部分：</p>
-  <div class="eq">rotation      R<sub>A</sub> R<sub>X</sub> = R<sub>X</sub> R<sub>B</sub>
-translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</sub> − t<sub>A</sub></div>
+  <p>把 \(4\times 4\) 的方程拆成 rotation 和 translation 两部分：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+R_A R_X &= R_X R_B && \text{rotation} \\
+(R_A - I)\, t_X &= R_X t_B - t_A && \text{translation}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(R_A,\ t_A\)</span><span>\(A\) 的 rotation 和 translation</span>
+  <span>\(R_B,\ t_B\)</span><span>\(B\) 的 rotation 和 translation</span>
+  <span>\(R_X,\ t_X\)</span><span>待求 \(X\) 的 rotation 和 translation</span>
+  <span>\(I\)</span><span>\(3\times 3\) identity matrix</span>
+</div>
+</div>
   <ol>
-    <li><strong>先解 R<sub>X</sub>。</strong>第一个式子改写成 <span class="m">R<sub>A</sub> = R<sub>X</sub> R<sub>B</sub> R<sub>X</sub>ᵀ</span>：A 和 B 是相似的，转角相同，转轴差一个 <span class="m">R<sub>X</sub></span>。取 log map，<span class="m">α = log(R<sub>A</sub>)</span>、<span class="m">β = log(R<sub>B</sub>)</span>，就有 <span class="m">α = R<sub>X</sub> β</span>。每一对运动给出一组对应的向量，求把所有 β 对齐到 α 的最佳 rotation。这是标准的 Kabsch / orthogonal Procrustes 问题，用 SVD 一步解出（Park &amp; Martin 的方法）。</li>
-    <li><strong>再解 t<sub>X</sub>。</strong>把 <span class="m">R<sub>X</sub></span> 代进第二个式子，对 <span class="m">t<sub>X</sub></span> 是线性的。把所有运动的方程摞起来，做 linear least squares。</li>
-    <li><strong>（可选）非线性 refinement。</strong>以上面的解为初值，直接最小化所有图像上的 reprojection error，同时优化 X 和 <span class="m">T<sub>base_target</sub></span>。</li>
+    <li><strong>先解 \(R_{X}\)。</strong>第一个式子改写成 \(R_{A} = R_{X} R_{B} R_{X}^{\top}\)：\(A\) 和 \(B\) 是相似的，转角相同，转轴差一个 \(R_{X}\)。取 log map，\(\alpha = \log (R_{A})\)、\(\beta = \log (R_{B})\)，就有 \(\alpha = R_{X} \beta\)。每一对运动给出一组对应的向量，求把所有 \(\beta\) 对齐到 \(\alpha\) 的最佳 rotation。这是标准的 Kabsch / orthogonal Procrustes 问题，用 SVD 一步解出（Park &amp; Martin 的方法）。</li>
+    <li><strong>再解 \(t_{X}\)。</strong>把 \(R_{X}\) 代进第二个式子，对 \(t_{X}\) 是线性的。把所有运动的方程摞起来，做 linear least squares。</li>
+    <li><strong>（可选）非线性 refinement。</strong>以上面的解为初值，直接最小化所有图像上的 reprojection error，同时优化 \(X\) 和 \(T_{\text{base\_target}}\)。</li>
   </ol>
-  <p>其他经典解法：Tsai–Lenz（也是先 R 后 t，最常用的默认方法）、Horaud（quaternion）、Daniilidis（dual quaternion，R 和 t 同时解）。OpenCV 里是一个函数：</p>
+  <p>其他经典解法：Tsai–Lenz（也是先 \(R\) 后 \(t\)，最常用的默认方法）、Horaud（quaternion）、Daniilidis（dual quaternion，\(R\) 和 \(t\) 同时解）。OpenCV 里是一个函数：</p>
   <pre>R_cam2gripper, t_cam2gripper = cv2.calibrateHandEye(
     R_gripper2base, t_gripper2base,   # 每个姿态的 T_base_ee（FK）
     R_target2cam,   t_target2cam,     # 每个姿态的 T_cam_target（solvePnP）
@@ -681,9 +920,9 @@ translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</su
 # eye-to-hand：把第一组输入换成 T_ee_base（即 FK 结果取 inverse），输出就是 T_base_cam</pre>
   <h3>需要什么样的数据</h3>
   <ul>
-    <li><strong>至少 2 次相对运动（3 个姿态），且两次运动的转轴不平行。</strong>一次运动只给出一对 <span class="m">(α, β)</span>：一个方向对齐了，但绕这个方向还可以任意转，<span class="m">R<sub>X</sub></span> 定不下来。同理 <span class="m">(R<sub>A</sub> − I)</span> 的 rank 只有 2，沿转轴方向的 <span class="m">t<sub>X</sub></span> 也定不下来。</li>
-    <li><strong>纯 translation 的运动对 t<sub>X</sub> 没有信息。</strong><span class="m">R<sub>A</sub> = I</span> 时 translation 方程的左边是 0。</li>
-    <li><strong>转角要大。</strong>转角越小，<span class="m">α, β</span> 越短，噪声占比越大。</li>
+    <li><strong>至少 2 次相对运动（3 个姿态），且两次运动的转轴不平行。</strong>一次运动只给出一对 \((\alpha , \beta )\)：一个方向对齐了，但绕这个方向还可以任意转，\(R_{X}\) 定不下来。同理 \((R_{A} - I)\) 的 rank 只有 2，沿转轴方向的 \(t_{X}\) 也定不下来。</li>
+    <li><strong>纯 translation 的运动对 \(t_{X}\) 没有信息。</strong>\(R_{A} = I\) 时 translation 方程的左边是 0。</li>
+    <li><strong>转角要大。</strong>转角越小，\(\alpha , \beta\) 越短，噪声占比越大。</li>
     <li>实际操作：采 15 – 30 个姿态，绕至少两三根不同的轴各转 30° 以上，target 始终完整地在视野里，不要太远也不要太斜。</li>
   </ul>
   <div class="lab">
@@ -694,13 +933,13 @@ translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</su
         <div class="legend">
           <span>小 frame：各个姿态的 end-effector</span>
           <span><span class="sw" style="background:var(--muted)"></span>真实的 camera 位置</span>
-          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>用估计出的 X 算的 camera 位置</span>
+          <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>用估计出的 \(X\) 算的 camera 位置</span>
         </div>
       </div>
       <div>
         <h4>估计结果</h4>
         <div class="kv" id="he-out"></div>
-        <h4 style="margin-top:14px">X 的真值与估计（translation，单位 mm）</h4>
+        <h4 style="margin-top:14px">\(X\) 的真值与估计（translation，单位 mm）</h4>
         <div class="kv" id="he-x"></div>
       </div>
     </div>
@@ -709,18 +948,18 @@ translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</su
       <button class="pre" id="he-re">重新采样</button>
     </div>
     <div class="ctl" id="he-ctl"></div>
-    <p class="try"><b>试一试：</b>① 默认设置下误差很小。把“转角幅度”拉到 5°：同样的噪声，误差大了一个量级。② 把转轴改成“全部平行”：σ₂ 掉到接近 0，rotation 绕公共轴的那个角和沿轴方向的 translation 都定不下来，误差巨大，加再多姿态也没用。③ 把噪声调到 0：只要转轴不平行，3 个姿态就能精确解出。④ 把姿态数从 3 加到 20，看噪声的影响怎么被平均掉。</p>
+    <p class="try"><b>试一试：</b>① 默认设置下误差很小。把“转角幅度”拉到 5°：同样的噪声，误差大了一个量级。② 把转轴改成“全部平行”：\(\sigma_2\) 掉到接近 0，rotation 绕公共轴的那个角和沿轴方向的 translation 都定不下来，误差巨大，加再多姿态也没用。③ 把噪声调到 0：只要转轴不平行，3 个姿态就能精确解出。④ 把姿态数从 3 加到 20，看噪声的影响怎么被平均掉。</p>
   </div>
   <h3>标定不准时查什么</h3>
   <ul>
-    <li><strong>camera intrinsics</strong> 先标准。<span class="m">C<sub>i</sub></span> 错了后面全错。target 的格子尺寸量准了吗（单位）？</li>
-    <li>输入的方向对吗？最常见的错是把 <span class="m">T<sub>ee_base</sub></span> 当成 <span class="m">T<sub>base_ee</sub></span> 传进去，或者 eye-in-hand / eye-to-hand 搞反。</li>
+    <li><strong>camera intrinsics</strong> 先标准。\(C_{i}\) 错了后面全错。target 的格子尺寸量准了吗（单位）？</li>
+    <li>输入的方向对吗？最常见的错是把 \(T_{\text{ee\_base}}\) 当成 \(T_{\text{base\_ee}}\) 传进去，或者 eye-in-hand / eye-to-hand 搞反。</li>
     <li>采图时机械臂<strong>停稳</strong>了吗？pose 和图像时间对齐了吗？</li>
     <li>姿态够不够多样？（上面实验台的第 ① ② 条）</li>
     <li>机器人本身的 FK 准吗？便宜的手臂有 backlash 和 link 误差，会成为精度上限。</li>
-    <li><strong>验证方法</strong>：用求出的 X 对每个姿态算 <span class="m">T<sub>base_target</sub> = E<sub>i</sub> X C<sub>i</sub></span>，它们应该几乎重合，看 position 的标准差（好的结果在 1 – 2 mm 量级）。再做一次实物测试：让末端去碰 target 上的一个已知点。</li>
+    <li><strong>验证方法</strong>：用求出的 \(X\) 对每个姿态算 \(T_{\text{base\_target}} = E_{i} X C_{i}\)，它们应该几乎重合，看 position 的标准差（好的结果在 1 – 2 mm 量级）。再做一次实物测试：让末端去碰 target 上的一个已知点。</li>
   </ul>
-  <p>相关问题 <strong>AX = ZB</strong>（robot-world / hand-eye）：同时求两个未知量，比如 <span class="m">T<sub>ee_cam</sub></span> 和 <span class="m">T<sub>base_world</sub></span>。OpenCV 里是 <code>calibrateRobotWorldHandEye</code>。</p>
+  <p>相关问题 <strong>AX = ZB</strong>（robot-world / hand-eye）：同时求两个未知量，比如 \(T_{\text{ee\_cam}}\) 和 \(T_{\text{base\_world}}\)。OpenCV 里是 <code>calibrateRobotWorldHandEye</code>。</p>
 </section>
 
 <div class="part" id="part-b">
@@ -733,29 +972,51 @@ translation   (R<sub>A</sub> − I) · t<sub>X</sub> = R<sub>X</sub> t<sub>B</su
   <h2><span class="n">12</span>Forward kinematics</h2>
   <p>机械臂有两个描述它的空间：</p>
   <ul>
-    <li><strong>Joint space</strong>（configuration space）：关节角向量 <span class="m">q = (q₁, …, q<sub>n</sub>)</span>。电机直接控制的是它。</li>
-    <li><strong>Task space</strong>（Cartesian / operational space）：end-effector 的 pose <span class="m">x ∈ SE(3)</span>。任务是用它描述的。</li>
+    <li><strong>Joint space</strong>（configuration space）：关节角向量 \(q = (q_1, \ldots , q_{n})\)。电机直接控制的是它。</li>
+    <li><strong>Task space</strong>（Cartesian / operational space）：end-effector 的 pose \(x \in \mathrm{SE}(3)\)。任务是用它描述的。</li>
   </ul>
-  <p><strong>Forward kinematics（FK）</strong>：已知 q，求 end-effector 的 pose。它就是 §10 的 transform chain，只不过每一环是一个关节：</p>
-  <div class="eq">T<sub>base_ee</sub>(q) = T<sub>0_1</sub>(q₁) · T<sub>1_2</sub>(q₂) · … · T<sub>n−1_n</sub>(q<sub>n</sub>) · T<sub>n_ee</sub></div>
+  <p><strong>Forward kinematics（FK）</strong>：已知 \(q\)，求 end-effector 的 pose。它就是 §10 的 transform chain，只不过每一环是一个关节：</p>
+  <div class="eq">
+\[
+T_{\text{base\_ee}}(q) = T_{0\_1}(q_1)\; T_{1\_2}(q_2) \cdots T_{n-1\_n}(q_n)\; T_{n\_\text{ee}}
+\]
+<div class="sym">
+  <span>\(q = (q_1,\dots,q_n)\)</span><span>n 个关节角</span>
+  <span>\(T_{i-1\_i}(q_i)\)</span><span>第 i 个 link 相对上一个 link 的 transform，随关节角 \(q_i\) 变化</span>
+  <span>\(T_{n\_\text{ee}}\)</span><span>最后一个 link 到 end-effector 的固定 transform</span>
+</div>
+</div>
   <p>FK 永远有解、解唯一、有闭式表达，直接乘就行。难的是反过来（§14）。</p>
   <h3>Planar arm 的例子</h3>
-  <p>平面上的 2-link arm，link 长度 <span class="m">l₁, l₂</span>，关节角 <span class="m">q₁, q₂</span>（<span class="m">q₂</span> 是相对上一个 link 的角度）：</p>
-  <div class="eq">x = l₁c₁ + l₂c₁₂
-y = l₁s₁ + l₂s₁₂
-φ = q₁ + q₂                    （末端朝向）</div>
-  <p>3-link 再加一项 <span class="m">l₃c₁₂₃</span>、<span class="m">l₃s₁₂₃</span>。规律：每个 link 的方向角是它之前所有关节角的和。</p>
-  <h3>怎么系统地写出每个 T<sub>i−1_i</sub></h3>
+  <p>平面上的 2-link arm，link 长度 \(l_1, l_2\)，关节角 \(q_1, q_2\)（\(q_2\) 是相对上一个 link 的角度）：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+x &= l_1 c_1 + l_2 c_{12} \\
+y &= l_1 s_1 + l_2 s_{12} \\
+\phi &= q_1 + q_2 && \text{（末端朝向）}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\((x, y)\)</span><span>末端在平面里的位置</span>
+  <span>\(\phi\)</span><span>末端朝向角</span>
+  <span>\(l_1,\ l_2\)</span><span>两根 link 的长度</span>
+  <span>\(q_1,\ q_2\)</span><span>两个关节角</span>
+  <span>\(c_1,\ s_{12}\)</span><span>\(\cos q_1\)、\(\sin(q_1+q_2)\) 的缩写（\(c_{12},\ s_1\) 同理）</span>
+</div>
+</div>
+  <p>3-link 再加一项 \(l_3c_{123}\)、\(l_3s_{123}\)。规律：每个 link 的方向角是它之前所有关节角的和。</p>
+  <h3>怎么系统地写出每个 \(T_{i-1\_i}\)</h3>
   <div class="tw"><table>
     <tr><th>方法</th><th>做法</th><th>注意</th></tr>
-    <tr><td><strong>DH parameters</strong></td><td>按规则给每个 link 放 frame，每个关节用 4 个数 <span class="m">(a, α, d, θ)</span> 描述：<br><span class="m">T<sub>i−1_i</sub> = Rot<sub>z</sub>(θ) · Trans<sub>z</sub>(d) · Trans<sub>x</sub>(a) · Rot<sub>x</sub>(α)</span></td><td>有 standard（上式）和 modified（Craig，顺序是 <span class="m">Rot<sub>x</sub> Trans<sub>x</sub> Rot<sub>z</sub> Trans<sub>z</sub></span>）两套 convention，参数表不能混用。revolute joint 的变量是 θ，prismatic 是 d</td></tr>
-    <tr><td><strong>Product of exponentials（PoE）</strong></td><td>不放中间 frame。只需要 zero configuration 时的末端 pose <span class="m">M</span> 和每个关节的 screw axis <span class="m">S<sub>i</sub></span>：<br><span class="m">T(q) = e<sup>[S₁]q₁</sup> ··· e<sup>[S<sub>n</sub>]q<sub>n</sub></sup> · M</span></td><td>Modern Robotics 的写法，没有 DH 的 frame 摆放规则要记</td></tr>
-    <tr><td><strong>URDF</strong></td><td>每个 joint 记录 parent → child 的固定 transform（<code>xyz</code> + <code>rpy</code>）和转轴 <code>axis</code>。FK = 固定 transform × 绕 axis 转 q，逐级相乘</td><td>实际工程里最常见；KDL、Pinocchio、MuJoCo 都是读模型文件自动算</td></tr>
+    <tr><td><strong>DH parameters</strong></td><td>按规则给每个 link 放 frame，每个关节用 4 个数 \((a, \alpha , d, \theta )\) 描述：<br>\(T_{i-1\_i} = \operatorname{Rot}_{z}(\theta ) \cdot \operatorname{Trans}_{z}(d) \cdot \operatorname{Trans}_{x}(a) \cdot \operatorname{Rot}_{x}(\alpha )\)</td><td>有 standard（上式）和 modified（Craig，顺序是 \(\operatorname{Rot}_{x} \operatorname{Trans}_{x} \operatorname{Rot}_{z} \operatorname{Trans}_{z}\)）两套 convention，参数表不能混用。revolute joint 的变量是 \(\theta\)，prismatic 是 d</td></tr>
+    <tr><td><strong>Product of exponentials（PoE）</strong></td><td>不放中间 frame。只需要 zero configuration 时的末端 pose \(M\) 和每个关节的 screw axis \(S_{i}\)：<br>\(T(q) = e^{[S_1]q_1} \cdots e^{[S_{n}]q_{n}} \cdot M\)</td><td>Modern Robotics 的写法，没有 DH 的 frame 摆放规则要记</td></tr>
+    <tr><td><strong>URDF</strong></td><td>每个 joint 记录 parent → child 的固定 transform（<code>xyz</code> + <code>rpy</code>）和转轴 <code>axis</code>。FK = 固定 transform × 绕 axis 转 \(q\)，逐级相乘</td><td>实际工程里最常见；KDL、Pinocchio、MuJoCo 都是读模型文件自动算</td></tr>
   </table></div>
   <h3>几个术语</h3>
   <ul>
     <li><strong>Degree of freedom（DOF）</strong>：独立关节数。空间中任意 pose 需要 6 个，所以通用机械臂是 6-DOF。</li>
-    <li><strong>Redundant</strong>：DOF 比任务需要的多（7-DOF 的 Franka、iiwa）。同一个末端 pose 对应无穷多组 q，多出来的自由度可以用来避障、避 singularity。</li>
+    <li><strong>Redundant</strong>：DOF 比任务需要的多（7-DOF 的 Franka、iiwa）。同一个末端 pose 对应无穷多组 \(q\)，多出来的自由度可以用来避障、避 singularity。</li>
     <li><strong>Workspace</strong>：末端能到达的所有位置是 reachable workspace；能以任意朝向到达的是 dexterous workspace，后者小得多。</li>
   </ul>
 </section>
@@ -798,13 +1059,13 @@ y = l₁s₁ + l₂s₁₂
       <button class="pre" data-arm="60,-90,-40">elbow 90°</button>
     </div>
     <div class="ctl" id="arm-ctl"></div>
-    <p class="try"><b>试一试：</b>① 点“完全伸直”：Jacobian 的各列（箭头）变成平行，ellipse 塌成一条线，σ<sub>min</sub> = 0。末端此刻无法沿 arm 的方向运动。② 选 pseudoinverse，把目标拖到 workspace 外面：arm 伸直后开始抖，‖Δq‖ 的原始值暴涨。换成 damped least squares 再拖出去：稳稳地停在边界上。③ 选 2-link，看两条半透明的 arm：同一个目标有 elbow-up 和 elbow-down 两个解析解。④ 3-link 下勾上 null-space：末端不动，arm 的形状在变。</p>
+    <p class="try"><b>试一试：</b>① 点“完全伸直”：Jacobian 的各列（箭头）变成平行，ellipse 塌成一条线，\(\sigma_{\min} = 0\)。末端此刻无法沿 arm 的方向运动。② 选 pseudoinverse，把目标拖到 workspace 外面：arm 伸直后开始抖，\(\lVert\Delta q\rVert\) 的原始值暴涨。换成 damped least squares 再拖出去：稳稳地停在边界上。③ 选 2-link，看两条半透明的 arm：同一个目标有 elbow-up 和 elbow-down 两个解析解。④ 3-link 下勾上 null-space：末端不动，arm 的形状在变。</p>
   </div>
 </section>
 
 <section id="ik">
   <h2><span class="n">14</span>Inverse kinematics</h2>
-  <p><strong>Inverse kinematics（IK）</strong>：已知目标 pose <span class="m">x<sub>d</sub></span>，求 q 使得 <span class="m">FK(q) = x<sub>d</sub></span>。FK 是代入求值，IK 是解一组非线性方程，所以难：</p>
+  <p><strong>Inverse kinematics（IK）</strong>：已知目标 pose \(x_{d}\)，求 \(q\) 使得 \(\operatorname{FK}(q) = x_{d}\)。FK 是代入求值，IK 是解一组非线性方程，所以难：</p>
   <div class="tw"><table>
     <tr><th>情况</th><th>例子</th></tr>
     <tr><td><strong>无解</strong></td><td>目标在 workspace 外面；或者位置够得着但朝向做不到；或者解超出 joint limit</td></tr>
@@ -813,67 +1074,130 @@ y = l₁s₁ + l₂s₁₂
     <tr><td><strong>没有闭式解</strong></td><td>一般结构的 arm 只能数值求解。有闭式解的充分条件（Pieper）：有三根相邻的关节轴交于一点（spherical wrist）或互相平行。这也是工业臂都这么设计的原因</td></tr>
   </table></div>
   <h3>Analytical IK：2-link 的推导</h3>
-  <p>目标 <span class="m">(x, y)</span>。base、elbow、末端构成一个三角形，三条边是 <span class="m">l₁</span>、<span class="m">l₂</span> 和 <span class="m">r = √(x² + y²)</span>。对 elbow 处的角用 law of cosines：</p>
-  <div class="eq">cos q₂ = (x² + y² − l₁² − l₂²) / (2 l₁ l₂)
-q₂ = ± acos(…)                                 正负号对应 elbow-down / elbow-up
-q₁ = atan2(y, x) − atan2( l₂ sin q₂,  l₁ + l₂ cos q₂ )</div>
-  <p><span class="m">|cos q₂| &gt; 1</span> 说明够不着。<span class="m">cos q₂ = ±1</span> 时两个解合并成一个，正好是 singularity。6-DOF 的解析解思路类似：spherical wrist 把问题拆成“前三个关节定 wrist center 的位置，后三个关节定朝向”（kinematic decoupling）。工具：IKFast 可以自动生成解析解的代码。</p>
+  <p>目标 \((x, y)\)。base、elbow、末端构成一个三角形，三条边是 \(l_1\)、\(l_2\) 和 \(r = \sqrt{x^2 + y^2}\)。对 elbow 处的角用 law of cosines：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\cos q_2 &= \frac{x^2 + y^2 - l_1^2 - l_2^2}{2\, l_1 l_2} \\
+q_2 &= \pm\arccos(\cdots) && \text{正负号对应 elbow-down / elbow-up} \\
+q_1 &= \operatorname{atan2}(y, x) - \operatorname{atan2}\big( l_2 \sin q_2,\ l_1 + l_2 \cos q_2 \big)
+\end{aligned}
+\]
+<div class="sym">
+  <span>\((x, y)\)</span><span>目标位置</span>
+  <span>\(l_1,\ l_2\)</span><span>两根 link 的长度</span>
+  <span>\(q_1,\ q_2\)</span><span>要求的两个关节角</span>
+  <span>\(\operatorname{atan2}(y,x)\)</span><span>两个参数的反正切</span>
+</div>
+</div>
+  <p>\(|\cos q_2| \gt 1\) 说明够不着。\(\cos q_2 = \pm 1\) 时两个解合并成一个，正好是 singularity。6-DOF 的解析解思路类似：spherical wrist 把问题拆成“前三个关节定 wrist center 的位置，后三个关节定朝向”（kinematic decoupling）。工具：IKFast 可以自动生成解析解的代码。</p>
   <h3>Numerical IK：用 Jacobian 迭代</h3>
-  <p>在当前 q 附近把 FK 线性化：<span class="m">Δx ≈ J(q) · Δq</span>。每一步算误差 <span class="m">e = x<sub>d</sub> − FK(q)</span>，求一个 <span class="m">Δq</span> 让误差变小，更新 <span class="m">q ← q + Δq</span>，重复到收敛。三种求 <span class="m">Δq</span> 的方法：</p>
+  <p>在当前 \(q\) 附近把 FK 线性化：\(\Delta x \approx J(q) \cdot \Delta q\)。每一步算误差 \(e = x_{d} - \operatorname{FK}(q)\)，求一个 \(\Delta q\) 让误差变小，更新 \(q \leftarrow q + \Delta q\)，重复到收敛。三种求 \(\Delta q\) 的方法：</p>
   <div class="tw"><table>
-    <tr><th>方法</th><th>Δq =</th><th>本质</th><th>特点</th></tr>
-    <tr><td>Jacobian transpose</td><td class="m">α · Jᵀ e</td><td>对 <span class="m">½‖e‖²</span> 做 gradient descent</td><td>不用求逆，永远不会爆；收敛慢，各方向速度不均匀</td></tr>
-    <tr><td>Pseudoinverse</td><td class="m">J⁺ e,　J⁺ = Jᵀ(JJᵀ)⁻¹</td><td>Newton–Raphson / Gauss–Newton</td><td>收敛快；redundant 时给出 <span class="m">‖Δq‖</span> 最小的解；singularity 附近 <span class="m">(JJᵀ)⁻¹</span> 爆掉</td></tr>
-    <tr><td>Damped least squares（DLS）</td><td class="m">Jᵀ(JJᵀ + λ²I)⁻¹ e</td><td>Levenberg–Marquardt：最小化 <span class="m">‖JΔq − e‖² + λ²‖Δq‖²</span></td><td>λ 小时接近 pseudoinverse，λ 大时接近 transpose。singularity 附近稳定，代价是那里精度略降。实际中的默认选择</td></tr>
+    <tr><th>方法</th><th>\(\Delta q =\)</th><th>本质</th><th>特点</th></tr>
+    <tr><td>Jacobian transpose</td><td>\(\alpha \cdot J^{\top} e\)</td><td>对 \(\tfrac12 \|e\|^2\) 做 gradient descent</td><td>不用求逆，永远不会爆；收敛慢，各方向速度不均匀</td></tr>
+    <tr><td>Pseudoinverse</td><td>\(J^+ e,\quad J^+ = J^\top (J J^\top)^{-1}\)</td><td>Newton–Raphson / Gauss–Newton</td><td>收敛快；redundant 时给出 \(\|\Delta q\|\) 最小的解；singularity 附近 \((J J^{\top})^{-1}\) 爆掉</td></tr>
+    <tr><td>Damped least squares（DLS）</td><td>\(J^{\top}(J J^{\top} + \lambda ^2I)^{-1} e\)</td><td>Levenberg–Marquardt：最小化 \(\|J\Delta q - e\|^2 + \lambda ^2\|\Delta q\|^2\)</td><td>\(\lambda\) 小时接近 pseudoinverse，\(\lambda\) 大时接近 transpose。singularity 附近稳定，代价是那里精度略降。实际中的默认选择</td></tr>
   </table></div>
-  <p>完整的 6-DOF 误差是位置加朝向：<span class="m">e = [ p<sub>d</sub> − p ;  log(R<sub>d</sub>Rᵀ) ]</span>，朝向误差用 §05 的 rotation vector。</p>
+  <p>完整的 6-DOF 误差是位置加朝向：\(e = \begin{bmatrix} p_d - p \\ \log(R_d R^\top) \end{bmatrix}\)，朝向误差用 §05 的 rotation vector。</p>
   <h3>Numerical IK 的 pitfalls</h3>
   <ul>
-    <li><strong>只找到一个解</strong>，而且是离初值最近的那个。初值不同，结果不同。连续运动时用当前 q 做初值，保证解连续不跳变；全局求解时用多个随机初值重启（TRAC-IK 的做法）。</li>
+    <li><strong>只找到一个解</strong>，而且是离初值最近的那个。初值不同，结果不同。连续运动时用当前 \(q\) 做初值，保证解连续不跳变；全局求解时用多个随机初值重启（TRAC-IK 的做法）。</li>
     <li><strong>Local minima</strong>：特别是加了 joint limit 之后会卡住。</li>
     <li><strong>Joint limit</strong>：纯 pseudoinverse 不管 limit。做法是 clamp、在 null-space 里推离 limit，或者直接写成带约束的优化问题（SQP）。</li>
-    <li><strong>解的选择</strong>：多个解里选哪个？一般选离当前 q 最近的、离 joint limit 和 singularity 最远的、不碰撞的。</li>
+    <li><strong>解的选择</strong>：多个解里选哪个？一般选离当前 \(q\) 最近的、离 joint limit 和 singularity 最远的、不碰撞的。</li>
   </ul>
   <h3>Redundancy 与 null-space</h3>
-  <p>redundant arm 的 J 是“扁”的（行少列多），存在一些关节速度不会让末端动，它们构成 J 的 <strong>null-space</strong>。<span class="m">(I − J⁺J)</span> 把任意向量投影到 null-space 里：</p>
-  <div class="eq">q̇ = J⁺ ẋ  +  (I − J⁺J) · q̇₀
-     主任务     次要任务：不影响末端</div>
-  <p><span class="m">q̇₀</span> 常取某个目标函数的 gradient：远离 joint limit、增大 manipulability、远离障碍物、保持舒服的姿势。实验台里勾上 null-space 看到的就是这一项。</p>
+  <p>redundant arm 的 \(J\) 是“扁”的（行少列多），存在一些关节速度不会让末端动，它们构成 \(J\) 的 <strong>null-space</strong>。\((I - J^+J)\) 把任意向量投影到 null-space 里：</p>
+  <div class="eq">
+\[
+\dot{q} = \underbrace{J^+ \dot{x}}_{\text{主任务}} + \underbrace{(I - J^+ J)\, \dot{q}_0}_{\text{次要任务：不影响末端}}
+\]
+<div class="sym">
+  <span>\(\dot{q}\)</span><span>关节速度</span>
+  <span>\(\dot{x}\)</span><span>末端期望速度</span>
+  <span>\(J\)</span><span>Jacobian</span>
+  <span>\(J^+\)</span><span>\(J\) 的 pseudoinverse</span>
+  <span>\(I\)</span><span>单位矩阵（n×n）</span>
+  <span>\(I - J^+J\)</span><span>到 \(J\) 的 null-space 的投影矩阵</span>
+  <span>\(\dot{q}_0\)</span><span>任意给定的关节速度（次要任务想要的运动）</span>
+</div>
+</div>
+  <p>\(\dot{q}_0\) 常取某个目标函数的 gradient：远离 joint limit、增大 manipulability、远离障碍物、保持舒服的姿势。实验台里勾上 null-space 看到的就是这一项。</p>
 </section>
 
 <section id="jacobian">
   <h2><span class="n">15</span>Jacobian</h2>
   <p>Jacobian 是 FK 对关节角的导数，把<strong>关节速度</strong>映射成<strong>末端速度</strong>：</p>
-  <div class="eq">ẋ = J(q) · q̇            J = ∂FK/∂q ,   完整形式是 6 × n： <span class="mat" style="--c:1"><span>v</span><span>ω</span></span> = J q̇</div>
-  <p>它是 q 的函数：arm 的形状变了，J 就变了。它是 manipulation 里出现频率最高的一个矩阵。</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\dot{x} &= J(q)\, \dot{q}, \qquad J = \frac{\partial\, \mathrm{FK}}{\partial q} \\
+\begin{bmatrix} v \\ \omega \end{bmatrix} &= J\, \dot{q} \qquad \text{（完整形式，J 是 } 6 \times n \text{）}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\dot{x}\)</span><span>末端速度</span>
+  <span>\(\dot{q}\)</span><span>关节速度</span>
+  <span>\(q,\ n\)</span><span>关节角向量，关节数</span>
+  <span>\(\mathrm{FK}(q)\)</span><span>forward kinematics：由 \(q\) 算出的末端 pose</span>
+  <span>\(v,\ \omega\)</span><span>末端的线速度和 angular velocity</span>
+  <span>\(J(q)\)</span><span>Jacobian，随 \(q\) 变化</span>
+</div>
+</div>
+  <p>它是 \(q\) 的函数：arm 的形状变了，\(J\) 就变了。它是 manipulation 里出现频率最高的一个矩阵。</p>
   <h3>每一列的含义</h3>
-  <p><strong>第 i 列 = 只有关节 i 以单位速度转动时，末端的速度。</strong>对 revolute joint，末端绕关节轴 <span class="m">ẑ<sub>i</sub></span> 做圆周运动：</p>
-  <div class="eq">revolute:    J<sub>i</sub> = <span class="mat" style="--c:1"><span>ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>)</span><span>ẑ<sub>i</sub></span></span>        prismatic:    J<sub>i</sub> = <span class="mat" style="--c:1"><span>ẑ<sub>i</sub></span><span>0</span></span></div>
-  <p>线速度是 <span class="m">ω × r</span>：垂直于“关节到末端的连线”，大小正比于这段距离。实验台里的彩色箭头就是这些列，可以验证每个箭头都垂直于对应关节到末端的连线。这样逐列写出来的叫 <strong>geometric Jacobian</strong>。</p>
+  <p><strong>第 i 列 = 只有关节 i 以单位速度转动时，末端的速度。</strong>对 revolute joint，末端绕关节轴 \(\hat{z}_{i}\) 做圆周运动：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\text{revolute:}\quad J_i &= \begin{bmatrix} \hat{z}_i \times (p_{\text{ee}} - p_i) \\ \hat{z}_i \end{bmatrix} \\
+\text{prismatic:}\quad J_i &= \begin{bmatrix} \hat{z}_i \\ 0 \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(J_i\)</span><span>Jacobian 的第 i 列</span>
+  <span>\(\hat{z}_i\)</span><span>关节 i 的转轴（或移动方向）单位向量</span>
+  <span>\(p_i\)</span><span>关节 i 的位置</span>
+  <span>\(p_{\text{ee}}\)</span><span>end-effector 的位置</span>
+  <span>\(\times\)</span><span>叉积</span>
+</div>
+</div>
+  <p>线速度是 \(\omega \times r\)：垂直于“关节到末端的连线”，大小正比于这段距离。实验台里的彩色箭头就是这些列，可以验证每个箭头都垂直于对应关节到末端的连线。这样逐列写出来的叫 <strong>geometric Jacobian</strong>。</p>
   <p>2-link planar arm 直接对 FK 求偏导也能得到：</p>
-  <div class="eq">J = <span class="mat" style="--c:2"><span>−l₁s₁ − l₂s₁₂</span><span>−l₂s₁₂</span><span>l₁c₁ + l₂c₁₂</span><span>l₂c₁₂</span></span>          det(J) = l₁ l₂ sin q₂</div>
-  <p>补充：如果朝向用 Euler angles 之类的参数表示，对参数求导得到的是 <strong>analytic Jacobian</strong>，它和 geometric Jacobian 差一个把 Euler rate 换成 ω 的矩阵（§04 那个），并且继承了 Euler angles 的 singularity。</p>
+  <div class="eq">
+\[
+J = \begin{bmatrix} -l_1 s_1 - l_2 s_{12} & -l_2 s_{12} \\ l_1 c_1 + l_2 c_{12} & l_2 c_{12} \end{bmatrix}, \qquad \det(J) = l_1 l_2 \sin q_2
+\]
+<div class="sym">
+  <span>\(J\)</span><span>2-link arm 末端位置 \((x,y)\) 对 \((q_1,q_2)\) 的 Jacobian（\(2\times 2\)）</span>
+  <span>\(l_1,\ l_2\)</span><span>link 长度</span>
+  <span>\(c_1,\ s_{12}\)</span><span>\(\cos q_1\)、\(\sin(q_1+q_2)\) 的缩写，其余同理</span>
+  <span>\(\det(J)\)</span><span>\(J\) 的行列式，为 0 即 singular</span>
+</div>
+</div>
+  <p>补充：如果朝向用 Euler angles 之类的参数表示，对参数求导得到的是 <strong>analytic Jacobian</strong>，它和 geometric Jacobian 差一个把 Euler rate 换成 \(\omega\) 的矩阵（§04 那个），并且继承了 Euler angles 的 singularity。</p>
   <h3>Jacobian 的六个用途</h3>
   <ol>
-    <li><strong>速度映射</strong>：<span class="m">ẋ = J q̇</span>。反过来 <span class="m">q̇ = J⁺ ẋ</span> 叫 resolved-rate control，用来让末端走直线、做 visual servoing、teleoperation。</li>
+    <li><strong>速度映射</strong>：\(\dot{x} = J \dot{q}\)。反过来 \(\dot{q} = J^+ \dot{x}\) 叫 resolved-rate control，用来让末端走直线、做 visual servoing、teleoperation。</li>
     <li><strong>Numerical IK</strong>：§14 的三种迭代都靠它。</li>
-    <li><strong>力的映射（statics）</strong>：<span class="m">τ = Jᵀ F</span>。末端要对外施加力 F，各关节需要出的 torque 是 <span class="m">JᵀF</span>。推导用 virtual work：关节做的功等于末端做的功，<span class="m">τᵀq̇ = Fᵀẋ = FᵀJq̇</span> 对任意 <span class="m">q̇</span> 成立。这是 impedance control（§22）的基础，也可以反过来用关节 torque 估计外力。</li>
-    <li><strong>Singularity 分析</strong>：J 掉 rank 的地方（§16）。</li>
-    <li><strong>Manipulability</strong>：对 J 做 SVD，<span class="m">J = UΣVᵀ</span>。所有满足 <span class="m">‖q̇‖ = 1</span> 的关节速度，映射到 task space 是一个椭球，主轴方向是 U 的列，半轴长是 singular value <span class="m">σ<sub>i</sub></span>。长轴方向末端容易动，短轴方向难动。力的椭球正好相反（半轴 <span class="m">1/σ<sub>i</sub></span>）：<strong>容易动的方向不容易出力，难动的方向能出大力</strong>。</li>
-    <li><strong>误差传播</strong>：关节的小误差 <span class="m">δq</span> 造成末端误差 <span class="m">J δq</span>；covariance 传播是 <span class="m">JΣJᵀ</span>。</li>
+    <li><strong>力的映射（statics）</strong>：\(\tau = J^{\top} F\)。末端要对外施加力 \(F\)，各关节需要出的 torque 是 \(J^{\top}F\)。推导用 virtual work：关节做的功等于末端做的功，\(\tau ^{\top}\dot{q} = F^{\top}\dot{x} = F^{\top}J\dot{q}\) 对任意 \(\dot{q}\) 成立。这是 impedance control（§22）的基础，也可以反过来用关节 torque 估计外力。</li>
+    <li><strong>Singularity 分析</strong>：\(J\) 掉 rank 的地方（§16）。</li>
+    <li><strong>Manipulability</strong>：对 \(J\) 做 SVD，\(J = U\Sigma V^{\top}\)。所有满足 \(\|\dot{q}\| = 1\) 的关节速度，映射到 task space 是一个椭球，主轴方向是 \(U\) 的列，半轴长是 singular value \(\sigma _{i}\)。长轴方向末端容易动，短轴方向难动。力的椭球正好相反（半轴 \(1/\sigma _{i}\)）：<strong>容易动的方向不容易出力，难动的方向能出大力</strong>。</li>
+    <li><strong>误差传播</strong>：关节的小误差 \(\delta q\) 造成末端误差 \(J \delta q\)；covariance 传播是 \(J\Sigma J^{\top}\)。</li>
   </ol>
-  <div class="note"><span class="q">一个细节</span><p>J 是在哪个 frame 里表达的要说清楚：末端速度写在 base frame 里还是 ee frame 里，两者差一个 rotation。另外注意 Modern Robotics 的 space Jacobian 不是“末端速度在 base frame 里的表达”：它给的是 spatial twist，线速度部分是和 base 原点重合的那个点的速度；它和 body Jacobian 之间差一个 adjoint。上面逐列写出的 geometric Jacobian 才是末端点的速度。算误差 e 用的 frame 必须和 J 一致。检查 J 实现对不对的最简单方法：和 finite difference <span class="m">(FK(q + εe<sub>i</sub>) − FK(q))/ε</span> 对比。</p></div>
+  <div class="note"><span class="q">一个细节</span><p>\(J\) 是在哪个 frame 里表达的要说清楚：末端速度写在 base frame 里还是 ee frame 里，两者差一个 rotation。另外注意 Modern Robotics 的 space Jacobian 不是“末端速度在 base frame 里的表达”：它给的是 spatial twist，线速度部分是和 base 原点重合的那个点的速度；它和 body Jacobian 之间差一个 adjoint。上面逐列写出的 geometric Jacobian 才是末端点的速度。算误差 \(e\) 用的 frame 必须和 \(J\) 一致。检查 \(J\) 实现对不对的最简单方法：和 finite difference \((\operatorname{FK}(q + \varepsilon e_{i}) - \operatorname{FK}(q))/\varepsilon\) 对比。</p></div>
 </section>
 
 <section id="singularity">
   <h2><span class="n">16</span>Singularity</h2>
-  <p><strong>Singularity</strong> 是 J 掉 rank 的 configuration：J 的列不再张满 task space，末端在某个方向上<strong>瞬时无法运动</strong>，不管关节怎么转。</p>
+  <p><strong>Singularity</strong> 是 \(J\) 掉 rank 的 configuration：\(J\) 的列不再张满 task space，末端在某个方向上<strong>瞬时无法运动</strong>，不管关节怎么转。</p>
   <h3>会发生什么</h3>
   <ul>
     <li><strong>丢失一个方向的运动能力。</strong>例如 arm 完全伸直时，末端无法沿 arm 的方向再向外或向内动（一阶近似下）。</li>
-    <li><strong>附近关节速度爆炸。</strong><span class="m">q̇ = J⁻¹ẋ</span>，J 接近 singular 时 <span class="m">J⁻¹</span> 的元素趋于无穷。让末端以正常速度走一条经过 singularity 附近的直线，某些关节需要转得极快。真机上表现为突然甩动、超速报警停机。</li>
+    <li><strong>附近关节速度爆炸。</strong>\(\dot{q} = J^{-1}\dot{x}\)，\(J\) 接近 singular 时 \(J^{-1}\) 的元素趋于无穷。让末端以正常速度走一条经过 singularity 附近的直线，某些关节需要转得极快。真机上表现为突然甩动、超速报警停机。</li>
     <li><strong>IK 的解分支在这里汇合。</strong>elbow-up 和 elbow-down 在伸直时变成同一个解；有的 singularity 上有无穷多解。</li>
-    <li><strong>力的一面</strong>：在 singular 方向上，<span class="m">τ = JᵀF = 0</span>。结构本身就能扛住这个方向的力，电机不用出力。人伸直手臂推墙、锁住膝盖站立，利用的就是这一点。</li>
+    <li><strong>力的一面</strong>：在 singular 方向上，\(\tau = J^{\top}F = 0\)。结构本身就能扛住这个方向的力，电机不用出力。人伸直手臂推墙、锁住膝盖站立，利用的就是这一点。</li>
   </ul>
   <h3>分类</h3>
   <div class="tw"><table>
@@ -884,15 +1208,27 @@ q₁ = atan2(y, x) − atan2( l₂ sin q₂,  l₁ + l₂ cos q₂ )</div>
   </table></div>
   <p>wrist singularity 和 §04 的 gimbal lock 是同一个现象：三轴交于一点的 wrist 就是一组机械的 Euler angles，中间那根轴转到特定角度时，第一和第三根轴共线。</p>
   <h3>怎么检测</h3>
-  <div class="eq">det(J) = 0                         只适用于方阵
-σ<sub>min</sub>(J) → 0                       最小的 singular value，最直接
-w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipulability，椭球的体积
-κ = σ<sub>max</sub> / σ<sub>min</sub>                 condition number，越大越接近 singular</div>
-  <p>实际中不是判断“等于 0”，而是给 <span class="m">σ<sub>min</sub></span> 或 w 设一个阈值，低于它就认为太近了。</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\det(J) &= 0 && \text{只适用于方阵} \\
+\sigma_{\min}(J) &\to 0 && \text{最小的 singular value，最直接} \\
+w &= \sqrt{\det(JJ^\top)} = \sigma_1\sigma_2\cdots\sigma_m && \text{Yoshikawa 的 manipulability，椭球的体积} \\
+\kappa &= \sigma_{\max}/\sigma_{\min} && \text{condition number，越大越接近 singular}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\sigma_i\)</span><span>\(J\) 的 singular values，\(\sigma_{\max}\)、\(\sigma_{\min}\) 是最大和最小的那个</span>
+  <span>\(m\)</span><span>task space 的维数（\(J\) 的行数）</span>
+  <span>\(w\)</span><span>manipulability</span>
+  <span>\(\kappa\)</span><span>condition number</span>
+</div>
+</div>
+  <p>实际中不是判断“等于 0”，而是给 \(\sigma _{\min }\) 或 \(w\) 设一个阈值，低于它就认为太近了。</p>
   <h3>怎么处理</h3>
   <ul>
-    <li><strong>Damped least squares</strong>：给求逆加阻尼，singularity 附近牺牲一点跟踪精度换取有界的关节速度。λ 可以随 <span class="m">σ<sub>min</sub></span> 变小而自动加大。</li>
-    <li><strong>在 joint space 里规划和插值</strong>：singularity 只在 Cartesian → joint 的换算里出问题。直接插值 q 可以平稳穿过。</li>
+    <li><strong>Damped least squares</strong>：给求逆加阻尼，singularity 附近牺牲一点跟踪精度换取有界的关节速度。\(\lambda\) 可以随 \(\sigma _{\min }\) 变小而自动加大。</li>
+    <li><strong>在 joint space 里规划和插值</strong>：singularity 只在 Cartesian → joint 的换算里出问题。直接插值 \(q\) 可以平稳穿过。</li>
     <li><strong>规划时避开</strong>：把 manipulability 低于阈值的区域当作障碍，或者放进 cost。</li>
     <li><strong>用 redundancy</strong>：7-DOF arm 在 null-space 里调整姿势，保持 manipulability。</li>
     <li><strong>布局上避开</strong>：让工作区域落在 workspace 的中部，不要让任务贴着边界或者正好在 base 的正上方。</li>
@@ -901,13 +1237,13 @@ w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipul
 
 <section id="cspace">
   <h2><span class="n">17</span>Configuration space</h2>
-  <p>Motion planning 的问题：从 <span class="m">q<sub>start</sub></span> 到 <span class="m">q<sub>goal</sub></span>，找一条连续的、不碰撞、不超 joint limit 的 path。关键的抽象是 <strong>configuration space（C-space）</strong>：以关节角为坐标轴的空间。</p>
+  <p>Motion planning 的问题：从 \(q_{\text{start}}\) 到 \(q_{\text{goal}}\)，找一条连续的、不碰撞、不超 joint limit 的 path。关键的抽象是 <strong>configuration space（C-space）</strong>：以关节角为坐标轴的空间。</p>
   <ul>
     <li>arm 的一个完整姿态，在 C-space 里只是<strong>一个点</strong>。</li>
-    <li>workspace 里的障碍物，映射成 C-space 里的一片区域 <strong>C<sub>obs</sub></strong>：所有会让 arm 的任何部分撞上障碍的 q。其余部分是 <strong>C<sub>free</sub></strong>。</li>
-    <li>于是“给一个有形状的 arm 找路”变成了“在 C<sub>free</sub> 里给一个<strong>点</strong>找路”。</li>
+    <li>workspace 里的障碍物，映射成 C-space 里的一片区域 <strong>\(C_{\text{obs}}\)</strong>：所有会让 arm 的任何部分撞上障碍的 \(q\)。其余部分是 <strong>\(C_{\text{free}}\)</strong>。</li>
+    <li>于是“给一个有形状的 arm 找路”变成了“在 \(C_{\text{free}}\) 里给一个<strong>点</strong>找路”。</li>
   </ul>
-  <p>代价是 C<sub>obs</sub> 的形状很怪，而且维度等于 DOF（6 或 7 维），没法显式画出来。下面用 2-link arm 把它画出来看一眼，因为只有 2 维的时候能画：</p>
+  <p>代价是 \(C_{\text{obs}}\) 的形状很怪，而且维度等于 DOF（6 或 7 维），没法显式画出来。下面用 2-link arm 把它画出来看一眼，因为只有 2 维的时候能画：</p>
   <div class="lab">
     <div class="lab-views two">
       <div>
@@ -915,7 +1251,7 @@ w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipul
         <svg id="cs-svg" class="drag" viewBox="0 0 340 340" role="img" aria-label="2-link arm 和障碍物"></svg>
       </div>
       <div>
-        <h4>C-space：横轴 q₁，纵轴 q₂（点击或拖动来改变 arm 的姿态）</h4>
+        <h4>C-space：横轴 \(q_1\)，纵轴 \(q_2\)（点击或拖动来改变 arm 的姿态）</h4>
         <canvas id="cs-cv" class="drag" width="720" height="720" role="img" aria-label="C-space 图"></canvas>
       </div>
     </div>
@@ -927,7 +1263,7 @@ w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipul
       <span class="live" id="cs-out"></span>
     </div>
     <div class="legend">
-      <span><span class="sw" style="background:var(--line-strong);height:10px"></span>C<sub>obs</sub>：会碰撞的 configuration</span>
+      <span><span class="sw" style="background:var(--line-strong);height:10px"></span>\(C_{\text{obs}}\)：会碰撞的 configuration</span>
       <span style="color:var(--ok)">● start</span><span style="color:var(--x)">● goal</span>
       <span style="color:var(--accent)"><span class="sw" style="background:var(--accent)"></span>RRT 找到的 path</span>
     </div>
@@ -938,7 +1274,7 @@ w = √det(JJᵀ) = σ₁σ₂···σ<sub>m</sub>         Yoshikawa 的 manipul
   <div class="tw"><table>
     <tr><th>类别</th><th>代表</th><th>思路</th><th>适用</th></tr>
     <tr><td>Grid / graph search</td><td>A*、Dijkstra</td><td>把 C-space 切成格子再搜索</td><td>低维（移动机器人的 2D / 3D）。格子数随维度指数增长，6 维以上不可行</td></tr>
-    <tr><td>Sampling-based</td><td>RRT、RRT-Connect、PRM、RRT*</td><td>不显式构造 C<sub>obs</sub>，只随机采样并调用 collision checker</td><td>高维 arm 的主流方法（§18）</td></tr>
+    <tr><td>Sampling-based</td><td>RRT、RRT-Connect、PRM、RRT*</td><td>不显式构造 \(C_{\text{obs}}\)，只随机采样并调用 collision checker</td><td>高维 arm 的主流方法（§18）</td></tr>
     <tr><td>Optimization-based</td><td>CHOMP、STOMP、TrajOpt</td><td>把一条初始 trajectory 当作优化变量，往低 cost 的方向推</td><td>要平滑、要快、障碍不太复杂（§19）</td></tr>
   </table></div>
   <p>描述 planner 好坏的术语：<strong>complete</strong>（有解就一定能找到，无解能报告无解）；<strong>resolution complete</strong>（在给定分辨率下 complete，如 A*）；<strong>probabilistically complete</strong>（有解的话，采样数趋于无穷时找到的概率趋于 1，如 RRT，但无解时不会停）；<strong>asymptotically optimal</strong>（采样数趋于无穷时收敛到最优解，如 RRT*）。</p>
@@ -1009,7 +1345,7 @@ loop:
   <div class="tw"><table>
     <tr><th>名字</th><th>改了什么</th><th>效果</th></tr>
     <tr><td><strong>RRT-Connect</strong></td><td>从 start 和 goal 各长一棵树；每次一棵树延伸后，另一棵树贪心地一直朝新节点长（connect），直到连上或撞到障碍</td><td>实际中比单棵树快很多。MoveIt / OMPL 的默认 planner</td></tr>
-    <tr><td><strong>RRT*</strong></td><td>加入新节点时多做两步：① <em>choose parent</em>：在附近半径 r 内找一个让 cost-to-come 最小的节点当 parent；② <em>rewire</em>：看附近的节点改成经过新节点会不会更短，会就改 parent。r 随节点数 n 按 <span class="m">(log n / n)<sup>1/d</sup></span> 缩小</td><td>asymptotically optimal；每步更贵，收敛慢</td></tr>
+    <tr><td><strong>RRT*</strong></td><td>加入新节点时多做两步：① <em>choose parent</em>：在附近半径 r 内找一个让 cost-to-come 最小的节点当 parent；② <em>rewire</em>：看附近的节点改成经过新节点会不会更短，会就改 parent。r 随节点数 n 按 \((\log n / n)^{1/d}\) 缩小</td><td>asymptotically optimal；每步更贵，收敛慢</td></tr>
     <tr><td><strong>Informed RRT*</strong></td><td>找到第一条 path 后，只在“可能让 path 变短”的椭球区域里采样（以 start、goal 为焦点）</td><td>收敛快得多</td></tr>
     <tr><td><strong>Kinodynamic RRT</strong></td><td>不采样位置而是采样 control input，用动力学前向积分来延伸</td><td>能处理不能随意转向的系统（车、无人机）</td></tr>
     <tr><td><strong>PRM</strong></td><td>不是树。先随机撒很多点，把相邻且无碰撞的点连成一张 graph（roadmap），之后每次查询在 graph 上跑 A*</td><td>multi-query：环境不变、要规划很多次时划算</td></tr>
@@ -1021,14 +1357,27 @@ loop:
 <section id="trajopt">
   <h2><span class="n">19</span>Trajectory optimization</h2>
   <p>换一个思路：不去“搜索”一条路，而是先随便给一条 trajectory（比如从 start 到 goal 的直线，哪怕它穿过障碍），然后把它当成<strong>优化变量</strong>，一点点往好的方向推。</p>
-  <div class="eq">ξ = (q₁, q₂, …, q<sub>N</sub>)                         trajectory 离散成 N 个 waypoint
-
-min<sub>ξ</sub>   U(ξ) = w<sub>smooth</sub> · Σ ‖q<sub>k+1</sub> − q<sub>k</sub>‖²  +  w<sub>obs</sub> · Σ c( d(q<sub>k</sub>) )
-          └──── smoothness ────┘       └── obstacle ──┘
-s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</div>
+  <div class="eq">
+\[
+\begin{aligned}
+\xi &= (q_1, q_2, \dots, q_N) && \text{trajectory 离散成 N 个 waypoint} \\
+\min_{\xi}\ U(\xi) &= \underbrace{w_{\text{smooth}} \sum_k \lVert q_{k+1} - q_k \rVert^2}_{\text{smoothness}} + \underbrace{w_{\text{obs}} \sum_k c\big(d(q_k)\big)}_{\text{obstacle}} \\
+\text{s.t.}\quad & \text{起点终点固定；joint limit；velocity / acceleration limit；}\dots
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\xi\)</span><span>整条 trajectory（所有 waypoint 的集合），是优化变量</span>
+  <span>\(q_k\)</span><span>第 k 个 waypoint 的关节角</span>
+  <span>\(N\)</span><span>waypoint 的个数</span>
+  <span>\(U(\xi)\)</span><span>总 cost</span>
+  <span>\(w_{\text{smooth}},\ w_{\text{obs}}\)</span><span>两项 cost 的权重</span>
+  <span>\(d(q)\)</span><span>configuration \(q\) 到最近障碍的 signed distance</span>
+  <span>\(c(d)\)</span><span>obstacle cost，离障碍越近越大</span>
+</div>
+</div>
   <ul>
     <li><strong>Smoothness cost</strong>：相邻 waypoint 的差的平方和，相当于把 trajectory 当成一根橡皮筋，自然状态是拉直的。也可以用 acceleration 或 jerk 的平方。</li>
-    <li><strong>Obstacle cost</strong>：<span class="m">d</span> 是到最近障碍的 signed distance（通常预先算成一张 signed distance field）。<span class="m">c(d)</span> 在离障碍超过安全距离 ε 时为 0，越近越大。它的 gradient 指向远离障碍的方向。</li>
+    <li><strong>Obstacle cost</strong>：\(d\) 是到最近障碍的 signed distance（通常预先算成一张 signed distance field）。\(c(d)\) 在离障碍超过安全距离 \(\varepsilon\) 时为 0，越近越大。它的 gradient 指向远离障碍的方向。</li>
   </ul>
   <p>优化的过程就是这两股力的平衡：obstacle cost 把 trajectory 推离障碍，smoothness cost 把它拉直。</p>
   <div class="lab">
@@ -1049,12 +1398,12 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
       <div class="blk"><div class="kv" id="to-out"></div></div>
       <div class="blk"><h4>total cost 随迭代的变化</h4><svg id="to-plot" viewBox="0 0 300 90" style="width:100%;height:auto;display:block"></svg></div>
     </div>
-    <p class="try"><b>试一试：</b>① 点运行，看直线被推出障碍。② 运行中拖动障碍物，trajectory 实时跟着变形：这就是 optimization-based 方法适合做 replanning 的原因。③ 把初始 trajectory 换成“向上弯”和“向下弯”分别运行：最后停在障碍的不同侧。gradient descent 只能找到离初值最近的 local minimum，不会自己翻过障碍去试另一边。④ 把 w<sub>obs</sub> 拉到很小：trajectory 宁可擦着障碍也要直。⑤ 把一个障碍的圆心正好拖到直线上再重置运行：两侧的推力对称，可能卡住。点“加一点随机扰动”帮它跳出来，这是 STOMP 的思路。</p>
+    <p class="try"><b>试一试：</b>① 点运行，看直线被推出障碍。② 运行中拖动障碍物，trajectory 实时跟着变形：这就是 optimization-based 方法适合做 replanning 的原因。③ 把初始 trajectory 换成“向上弯”和“向下弯”分别运行：最后停在障碍的不同侧。gradient descent 只能找到离初值最近的 local minimum，不会自己翻过障碍去试另一边。④ 把 \(w_{\text{obs}}\) 拉到很小：trajectory 宁可擦着障碍也要直。⑤ 把一个障碍的圆心正好拖到直线上再重置运行：两侧的推力对称，可能卡住。点“加一点随机扰动”帮它跳出来，这是 STOMP 的思路。</p>
   </div>
   <h3>三个代表算法</h3>
   <div class="tw"><table>
     <tr><th>算法</th><th>怎么优化</th><th>要点</th></tr>
-    <tr><td><strong>CHOMP</strong></td><td>covariant gradient descent：<span class="m">ξ ← ξ − η · A⁻¹ ∇U</span></td><td>A 是 smoothness cost 的 Hessian。乘 <span class="m">A⁻¹</span> 的效果是：某一个 waypoint 受到的推力会平滑地分摊到整条 trajectory 上，而不是只把那一个点顶出去。上面的实验台用的就是这个更新</td></tr>
+    <tr><td><strong>CHOMP</strong></td><td>covariant gradient descent：\(\xi \leftarrow \xi - \eta \cdot A^{-1} \nabla U\)</td><td>\(A\) 是 smoothness cost 的 Hessian。乘 \(A^{-1}\) 的效果是：某一个 waypoint 受到的推力会平滑地分摊到整条 trajectory 上，而不是只把那一个点顶出去。上面的实验台用的就是这个更新</td></tr>
     <tr><td><strong>STOMP</strong></td><td>不用 gradient。每轮在当前 trajectory 周围采样一批带噪声的 trajectory，按 cost 加权平均</td><td>cost 可以不可导（比如直接用 collision checker 的 0/1 结果）；随机性有助于跳出 local minimum</td></tr>
     <tr><td><strong>TrajOpt</strong></td><td>sequential convex optimization（SQP）：每轮把问题在当前点附近近似成 QP 来解</td><td>碰撞写成约束（带 hinge penalty），不是 cost；用 convex shape 之间的 signed distance；检查相邻 waypoint 之间扫过的体积，不容易漏掉薄障碍</td></tr>
   </table></div>
@@ -1070,7 +1419,7 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
   </table></div>
   <p>实际系统经常两者结合：先用 RRT-Connect 找一条可行的 path，再用它做初值交给 trajectory optimization 打磨。</p>
   <h3>Path 和 trajectory</h3>
-  <p><strong>Path</strong> 只有几何：<span class="m">q(s), s ∈ [0, 1]</span>。<strong>Trajectory</strong> 带时间：<span class="m">q(t)</span>，于是有 velocity 和 acceleration。从 path 到 trajectory 的那一步叫 time parameterization，常见的做法：</p>
+  <p><strong>Path</strong> 只有几何：\(q(s), s \in [0, 1]\)。<strong>Trajectory</strong> 带时间：\(q(t)\)，于是有 velocity 和 acceleration。从 path 到 trajectory 的那一步叫 time parameterization，常见的做法：</p>
   <ul>
     <li><strong>Trapezoidal velocity profile</strong>：匀加速 → 匀速 → 匀减速。最简单，acceleration 不连续。</li>
     <li><strong>Cubic polynomial</strong>：4 个系数，满足两端的 position 和 velocity。acceleration 连续但两端不为 0。</li>
@@ -1081,9 +1430,19 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
 
 <section id="pid">
   <h2><span class="n">20</span>PID control</h2>
-  <p>有了 trajectory <span class="m">q<sub>d</sub>(t)</span>，还需要让电机真的跟上它。最基本的 feedback controller 是 PID：根据误差 <span class="m">e = q<sub>d</sub> − q</span> 算控制量 u。</p>
-  <div class="eq">u(t) = K<sub>p</sub> · e(t)  +  K<sub>i</sub> · ∫e(τ)dτ  +  K<sub>d</sub> · ė(t)
-        现在         过去          未来</div>
+  <p>有了 trajectory \(q_{d}(t)\)，还需要让电机真的跟上它。最基本的 feedback controller 是 PID：根据误差 \(e = q_{d} - q\) 算控制量 u。</p>
+  <div class="eq">
+\[
+u(t) = \underbrace{K_p\, e(t)}_{\text{现在}} + \underbrace{K_i \int e(\tau)\, d\tau}_{\text{过去}} + \underbrace{K_d\, \dot{e}(t)}_{\text{未来}}
+\]
+<div class="sym">
+  <span>\(u(t)\)</span><span>控制量（例如电机 torque）</span>
+  <span>\(e(t)\)</span><span>误差，\(e = q_d - q\)</span>
+  <span>\(K_p,\ K_i,\ K_d\)</span><span>P、I、D 三项的增益</span>
+  <span>\(\tau\)</span><span>积分变量（时间）</span>
+  <span>\(\dot{e}\)</span><span>误差的变化率</span>
+</div>
+</div>
   <figure class="fig">
     <svg viewBox="0 0 680 150" role="img" aria-label="PID feedback loop 框图">
       <text x="14" y="64" class="d-s">reference r</text>
@@ -1103,19 +1462,33 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
   <h3>三项各自干什么</h3>
   <div class="tw"><table>
     <tr><th>项</th><th>作用</th><th>单独用的问题</th></tr>
-    <tr><td><strong>P</strong>（proportional）</td><td>误差越大推得越用力。像一根连着目标的弹簧</td><td>只有弹簧没有阻尼，会 overshoot 和振荡；有恒定 disturbance（重力、摩擦）时停在 <span class="m">e = d / K<sub>p</sub></span> 处，有 steady-state error</td></tr>
+    <tr><td><strong>P</strong>（proportional）</td><td>误差越大推得越用力。像一根连着目标的弹簧</td><td>只有弹簧没有阻尼，会 overshoot 和振荡；有恒定 disturbance（重力、摩擦）时停在 \(e = d / K_{p}\) 处，有 steady-state error</td></tr>
     <tr><td><strong>I</strong>（integral）</td><td>把误差累加起来。只要误差不为 0 它就一直增长，直到把误差推到 0。消除 steady-state error</td><td>反应慢；加大 overshoot；会 windup</td></tr>
     <tr><td><strong>D</strong>（derivative）</td><td>看误差的变化趋势，快到目标时提前刹车。像 damper，增加阻尼、减小 overshoot</td><td>放大 measurement noise；对恒定误差没有作用</td></tr>
   </table></div>
-  <p>把 PD 控制用在一个质量 m 上：<span class="m">m ẍ = K<sub>p</sub>(x<sub>d</sub> − x) − K<sub>d</sub> ẋ</span>，这就是一个 mass–spring–damper，<span class="m">K<sub>p</sub></span> 是 spring stiffness，<span class="m">K<sub>d</sub></span> 是 damping：</p>
-  <div class="eq">natural frequency  ω<sub>n</sub> = √(K<sub>p</sub> / m)          damping ratio  ζ = K<sub>d</sub> / (2√(K<sub>p</sub> m))
-
-ζ &lt; 1 underdamped（振荡）      ζ = 1 critically damped（最快且不 overshoot）      ζ &gt; 1 overdamped（慢）</div>
+  <p>把 PD 控制用在一个质量 \(m\) 上：\(m \ddot{x} = K_{p}(x_{d} - x) - K_{d} \dot{x}\)，这就是一个 mass–spring–damper，\(K_{p}\) 是 spring stiffness，\(K_{d}\) 是 damping：</p>
+  <div class="eq">
+\[
+\begin{aligned}
+\omega_n &= \sqrt{K_p / m} && \text{natural frequency} \\
+\zeta &= \frac{K_d}{2\sqrt{K_p\, m}} && \text{damping ratio} \\
+\zeta \lt 1 &: \text{underdamped（振荡）} \\
+\zeta = 1 &: \text{critically damped（最快且不 overshoot）} \\
+\zeta \gt 1 &: \text{overdamped（慢）}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(m\)</span><span>被控制的质量</span>
+  <span>\(K_p,\ K_d\)</span><span>spring stiffness、damping</span>
+  <span>\(\omega_n\)</span><span>自然振荡频率</span>
+  <span>\(\zeta\)</span><span>阻尼比</span>
+</div>
+</div>
   <p>这个“虚拟弹簧 + 阻尼”的图像在 §22 的 impedance control 里会再次出现。</p>
   <div class="lab">
     <div class="lab-views one">
       <div>
-        <h4>Step response：plant 是 m ẍ + b ẋ = u − d（m = 1，b = 1）。t = 0 时 reference 从 0 跳到 1；t = 3 s 时加上恒定 disturbance d</h4>
+        <h4>Step response：plant 是 \(m\ddot{x} + b\dot{x} = u - d\)（\(m = 1\)，\(b = 1\)）。\(t = 0\) 时 reference 从 0 跳到 1；\(t = 3\) s 时加上恒定 disturbance \(d\)</h4>
         <svg id="pid-svg" viewBox="0 0 680 400" role="img" aria-label="PID step response"></svg>
       </div>
     </div>
@@ -1123,8 +1496,8 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
       <button class="pre" data-pid="20,0,0,2,50,0,0,0">只有 P</button>
       <button class="pre" data-pid="40,0,12,2,50,0,0,0">PD</button>
       <button class="pre" data-pid="80,60,16,2,50,0,0,0">PID</button>
-      <button class="pre" data-pid="200,0,2,2,50,0,0,0">K<sub>p</sub> 太大</button>
-      <button class="pre" data-pid="30,60,8,2,6,0,0,0">windup（u<sub>max</sub> 很小）</button>
+      <button class="pre" data-pid="200,0,2,2,50,0,0,0">\(K_{p}\) 太大</button>
+      <button class="pre" data-pid="30,60,8,2,6,0,0,0">windup（\(u_{\max }\) 很小）</button>
       <button class="pre" data-pid="80,60,16,2,50,0.001,0,0">有 sensor noise</button>
     </div>
     <div class="opts">
@@ -1135,26 +1508,26 @@ s.t.   起点终点固定；joint limit；velocity / acceleration limit；…</d
       <div class="blk"><h4>前 3 s（step response）</h4><div class="kv" id="pid-m1"></div></div>
       <div class="blk"><h4>后 3 s（disturbance rejection）</h4><div class="kv" id="pid-m2"></div></div>
     </div>
-    <p class="try"><b>试一试：</b>按顺序点预设。① “只有 P”：振荡，而且 3 s 之后被 disturbance 推开回不来，steady-state error = d / K<sub>p</sub> = 0.1。② “PD”：振荡没了，但 steady-state error 还在。③ “PID”：3 s 之后被推开，然后 I 项把它拉回 1，steady-state error 消除；代价是 step response 又有了一点 overshoot。④ “windup”：u 被卡在 u<sub>max</sub>，期间 I 项一直在累加，到了目标也刹不住，大幅 overshoot。勾上 anti-windup 再看。⑤ “有 sensor noise”：看下面 u 的曲线，D 项把 noise 放大了。把 D filter 的时间常数调到 0.02 s 再看。</p>
+    <p class="try"><b>试一试：</b>按顺序点预设。① “只有 P”：振荡，而且 3 s 之后被 disturbance 推开回不来，steady-state error \(= d/K_p = 0.1\)。② “PD”：振荡没了，但 steady-state error 还在。③ “PID”：3 s 之后被推开，然后 I 项把它拉回 1，steady-state error 消除；代价是 step response 又有了一点 overshoot。④ “windup”：u 被卡在 \(u_{\max }\)，期间 I 项一直在累加，到了目标也刹不住，大幅 overshoot。勾上 anti-windup 再看。⑤ “有 sensor noise”：看下面 u 的曲线，D 项把 noise 放大了。把 D filter 的时间常数调到 0.02 s 再看。</p>
   </div>
   <h3>调参</h3>
   <div class="tw"><table>
     <tr><th>把它调大</th><th>Rise time</th><th>Overshoot</th><th>Settling time</th><th>Steady-state error</th></tr>
-    <tr><td class="m">K<sub>p</sub></td><td>变短</td><td>变大</td><td>变化不大</td><td>变小</td></tr>
-    <tr><td class="m">K<sub>i</sub></td><td>变短</td><td>变大</td><td>变长</td><td>消除</td></tr>
-    <tr><td class="m">K<sub>d</sub></td><td>变化不大</td><td>变小</td><td>变短</td><td>无影响</td></tr>
+    <tr><td>\(K_{p}\)</td><td>变短</td><td>变大</td><td>变化不大</td><td>变小</td></tr>
+    <tr><td>\(K_{i}\)</td><td>变短</td><td>变大</td><td>变长</td><td>消除</td></tr>
+    <tr><td>\(K_{d}\)</td><td>变化不大</td><td>变小</td><td>变短</td><td>无影响</td></tr>
   </table></div>
   <ul>
-    <li><strong>手动调</strong>：先全设为 0。加 <span class="m">K<sub>p</sub></span> 到响应够快、开始振荡；加 <span class="m">K<sub>d</sub></span> 把振荡压下去；最后加一点 <span class="m">K<sub>i</sub></span> 消除 steady-state error。</li>
-    <li><strong>Ziegler–Nichols</strong>：只用 P，加大到等幅振荡，记下此时的 gain <span class="m">K<sub>u</sub></span> 和振荡周期 <span class="m">T<sub>u</sub></span>，取 <span class="m">K<sub>p</sub> = 0.6K<sub>u</sub></span>、<span class="m">K<sub>i</sub> = 1.2K<sub>u</sub>/T<sub>u</sub></span>、<span class="m">K<sub>d</sub> = 0.075K<sub>u</sub>T<sub>u</sub></span>。结果偏激进，当作起点。</li>
+    <li><strong>手动调</strong>：先全设为 0。加 \(K_{p}\) 到响应够快、开始振荡；加 \(K_{d}\) 把振荡压下去；最后加一点 \(K_{i}\) 消除 steady-state error。</li>
+    <li><strong>Ziegler–Nichols</strong>：只用 P，加大到等幅振荡，记下此时的 gain \(K_{u}\) 和振荡周期 \(T_{u}\)，取 \(K_{p} = 0.6K_{u}\)、\(K_{i} = 1.2K_{u}/T_{u}\)、\(K_{d} = 0.075K_{u}T_{u}\)。结果偏激进，当作起点。</li>
   </ul>
   <h3>实际实现里必须处理的事</h3>
   <ul>
     <li><strong>Integral windup</strong>：actuator saturate 时误差消不掉，积分项越积越大；等误差反向后要很久才能“放完”，造成大 overshoot。Anti-windup：saturate 时停止积分（clamping / conditional integration），或者把超出部分反馈回去减小积分（back-calculation），或者直接给积分项设上下限。</li>
-    <li><strong>Derivative kick</strong>：reference 突变时 <span class="m">ė</span> 是一个尖峰。改成只对 measurement 求导：用 <span class="m">−K<sub>d</sub> ẏ</span> 代替 <span class="m">K<sub>d</sub> ė</span>。</li>
+    <li><strong>Derivative kick</strong>：reference 突变时 \(\dot{e}\) 是一个尖峰。改成只对 measurement 求导：用 \(-K_{d} \dot{y}\) 代替 \(K_{d} \dot{e}\)。</li>
     <li><strong>Noise</strong>：求导放大高频 noise。给 D 项加 low-pass filter，或者直接用 velocity sensor / encoder 差分后滤波的速度。</li>
-    <li><strong>Feedforward</strong>：已知的东西不要等误差出现再纠正。<span class="m">u = u<sub>ff</sub> + PID(e)</span>，比如 gravity compensation、按期望 acceleration 算出的 torque。feedback 只负责处理模型没覆盖的部分。</li>
-    <li><strong>Sampling rate</strong>：离散实现里 loop 频率要远高于系统带宽，<span class="m">dt</span> 要稳定。关节层的 loop 通常是 1 kHz 或更高。</li>
+    <li><strong>Feedforward</strong>：已知的东西不要等误差出现再纠正。\(u = u_{\text{ff}} + \operatorname{PID}(e)\)，比如 gravity compensation、按期望 acceleration 算出的 torque。feedback 只负责处理模型没覆盖的部分。</li>
+    <li><strong>Sampling rate</strong>：离散实现里 loop 频率要远高于系统带宽，\(\mathrm{d}t\) 要稳定。关节层的 loop 通常是 1 kHz 或更高。</li>
     <li><strong>Cascaded loops</strong>：电机驱动里通常是 position loop → velocity loop → current（torque）loop 三层嵌套，内层比外层快一个量级。</li>
   </ul>
   <pre>integral, prev_y = 0.0, y0
@@ -1173,19 +1546,31 @@ def pid_step(r, y, dt):
 <section id="armctl">
   <h2><span class="n">21</span>从 PID 到 arm control</h2>
   <p>单个关节可以当成一个独立的 plant 来调 PID，但 arm 是多个关节耦合在一起的。它的 dynamics：</p>
-  <div class="eq">M(q) q̈  +  C(q, q̇) q̇  +  g(q)  =  τ  +  Jᵀ F<sub>ext</sub>
-inertia    Coriolis/centrifugal  gravity   电机    外力</div>
+  <div class="eq">
+\[
+M(q)\, \ddot{q} + C(q, \dot{q})\, \dot{q} + g(q) = \tau + J^\top F_{\text{ext}}
+\]
+<div class="sym">
+  <span>\(q,\ \dot{q},\ \ddot{q}\)</span><span>关节角、关节速度、关节加速度</span>
+  <span>\(M(q)\)</span><span>inertia matrix</span>
+  <span>\(C(q,\dot{q})\,\dot{q}\)</span><span>Coriolis / centrifugal 项</span>
+  <span>\(g(q)\)</span><span>重力在各关节产生的 torque</span>
+  <span>\(\tau\)</span><span>电机 torque</span>
+  <span>\(F_{\text{ext}}\)</span><span>末端受到的外力</span>
+  <span>\(J^\top\)</span><span>把末端外力映射成关节 torque 的 Jacobian transpose</span>
+</div>
+</div>
   <ul>
-    <li><span class="m">M(q)</span>：inertia matrix，随姿态变化。arm 伸直时 shoulder 感受到的 inertia 比收拢时大得多。非对角元素表示关节之间的耦合：一个关节加速会在别的关节上产生 torque。</li>
-    <li><span class="m">g(q)</span>：重力在各关节上产生的 torque，也随姿态变化。</li>
+    <li>\(M(q)\)：inertia matrix，随姿态变化。arm 伸直时 shoulder 感受到的 inertia 比收拢时大得多。非对角元素表示关节之间的耦合：一个关节加速会在别的关节上产生 torque。</li>
+    <li>\(g(q)\)：重力在各关节上产生的 torque，也随姿态变化。</li>
   </ul>
   <p>从简单到复杂的几种控制方案：</p>
   <div class="tw"><table>
     <tr><th>方案</th><th>Control law</th><th>说明</th></tr>
-    <tr><td>Independent joint PID</td><td class="m">τ<sub>i</sub> = PID(q<sub>d,i</sub> − q<sub>i</sub>)</td><td>把耦合和重力都当成 disturbance。减速比大的工业臂上很好用：减速器把 link 侧的动力学缩小了减速比的平方倍，电机几乎只看到自己的 rotor</td></tr>
-    <tr><td>PD + gravity compensation</td><td class="m">τ = K<sub>p</sub>e + K<sub>d</sub>ė + g(q)</td><td>用模型直接抵消重力，不需要 I 项。对定点控制可以证明全局稳定。torque-controlled arm 上最常用的基础 controller</td></tr>
-    <tr><td>Computed torque control（inverse dynamics control）</td><td class="m">τ = M(q)·(q̈<sub>d</sub> + K<sub>d</sub>ė + K<sub>p</sub>e) + C q̇ + g</td><td>用完整模型抵消所有非线性，剩下的误差动力学是线性、解耦的：<span class="m">ë + K<sub>d</sub>ė + K<sub>p</sub>e = 0</span>。高速跟踪性能好，但依赖准确的模型</td></tr>
-    <tr><td>Operational space control</td><td class="m">τ = Jᵀ F + …</td><td>直接在 task space 里设计 control law，再用 <span class="m">Jᵀ</span> 映射成关节 torque。impedance control 属于这一类</td></tr>
+    <tr><td>Independent joint PID</td><td>\(\tau _{i} = \operatorname{PID}(q_{d,i} - q_{i})\)</td><td>把耦合和重力都当成 disturbance。减速比大的工业臂上很好用：减速器把 link 侧的动力学缩小了减速比的平方倍，电机几乎只看到自己的 rotor</td></tr>
+    <tr><td>PD + gravity compensation</td><td>\(\tau = K_{p}e + K_{d}\dot{e} + g(q)\)</td><td>用模型直接抵消重力，不需要 I 项。对定点控制可以证明全局稳定。torque-controlled arm 上最常用的基础 controller</td></tr>
+    <tr><td>Computed torque control（inverse dynamics control）</td><td>\(\tau = M(q)\cdot (\ddot{q}_{d} + K_{d}\dot{e} + K_{p}e) + C \dot{q} + g\)</td><td>用完整模型抵消所有非线性，剩下的误差动力学是线性、解耦的：\(\ddot{e} + K_{d}\dot{e} + K_{p}e = 0\)。高速跟踪性能好，但依赖准确的模型</td></tr>
+    <tr><td>Operational space control</td><td>\(\tau = J^{\top} F + \ldots\)</td><td>直接在 task space 里设计 control law，再用 \(J^{\top}\) 映射成关节 torque。impedance control 属于这一类</td></tr>
   </table></div>
   <p>一个硬件上的区分：<strong>position-controlled</strong> 的机器人（多数工业臂、UR 的常规接口）对外只接受 position / velocity 指令，内部的高增益 loop 你碰不到；<strong>torque-controlled</strong> 的机器人（Franka、iiwa）带 joint torque sensor，允许以 1 kHz 直接发 torque 指令。后三种方案和下一节的 impedance control 需要后者。</p>
 </section>
@@ -1197,8 +1582,23 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
   <p>反过来，pure force control 在没有接触时没有东西可以“推”，会一直加速。</p>
   <h3>思路：控制力和运动之间的关系</h3>
   <p>impedance control 不去单独控制位置或者力，而是规定<strong>末端被推离目标时应该怎样回应</strong>。让末端表现得像一个连在目标位置上的 mass–spring–damper：</p>
-  <div class="eq">F = K · (x<sub>d</sub> − x) + D · (ẋ<sub>d</sub> − ẋ)                  想要的末端行为：虚拟 spring + damper
-τ = Jᵀ F + g(q)                                映射成关节 torque，并补偿重力</div>
+  <div class="eq">
+\[
+\begin{aligned}
+F &= K\, (x_d - x) + D\, (\dot{x}_d - \dot{x}) && \text{想要的末端行为：虚拟 spring + damper} \\
+\tau &= J^\top F + g(q) && \text{映射成关节 torque，并补偿重力}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(x,\ \dot{x}\)</span><span>末端当前位置和速度</span>
+  <span>\(x_d,\ \dot{x}_d\)</span><span>末端目标位置和速度</span>
+  <span>\(K,\ D\)</span><span>stiffness 和 damping 矩阵</span>
+  <span>\(F\)</span><span>虚拟 spring-damper 给出的末端力</span>
+  <span>\(\tau\)</span><span>最终发给电机的关节 torque</span>
+  <span>\(J\)</span><span>Jacobian</span>
+  <span>\(g(q)\)</span><span>重力补偿项</span>
+</div>
+</div>
   <figure class="fig">
     <svg viewBox="0 0 680 120" role="img" aria-label="虚拟 spring 和 damper 把末端连到目标位置">
       <line x1="40" y1="20" x2="40" y2="100" class="d-ln"/>
@@ -1209,25 +1609,25 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
       <line x1="430" y1="60" x2="346" y2="60" class="d-ln" marker-end="url(#arr2)"/><text x="392" y="50" text-anchor="middle" class="d-s">F_ext</text>
       <rect x="440" y="20" width="14" height="80" class="d-box"/><text x="520" y="64" text-anchor="middle" class="d-s">环境 / 人的手</text>
     </svg>
-    <figcaption>K 小：软，被推就让，接触力小，位置精度差。K 大：硬，接近 position control。K 和 D 不是为了“调到误差最小”，而是任务对交互行为的规定。</figcaption>
+    <figcaption>\(K\) 小：软，被推就让，接触力小，位置精度差。\(K\) 大：硬，接近 position control。\(K\) 和 \(D\) 不是为了“调到误差最小”，而是任务对交互行为的规定。</figcaption>
   </figure>
   <ul>
-    <li><strong>不需要 force sensor</strong>：力是通过 <span class="m">Jᵀ</span> 和电机 torque 实现的。但需要 torque-controlled 的机器人，而且关节摩擦要小或者有 joint torque sensor 做补偿。</li>
-    <li><strong>稳态接触力可以预测</strong>：末端被表面挡住时，<span class="m">F = K · (x<sub>d</sub> − x<sub>surface</sub>)</span>。想用 5 N 的力压住桌面，就把目标设在桌面以下 <span class="m">5/K</span> 米处。</li>
-    <li><strong>各方向可以不同</strong>：K 是一个矩阵。插孔时，沿孔的方向硬一点（要推进去），横向软一点（让孔壁把 peg 自然导正）。</li>
-    <li><strong>D 的选择</strong>：按 critical damping，<span class="m">D = 2ζ√(K·m)</span>，ζ 取 0.7 – 1。</li>
+    <li><strong>不需要 force sensor</strong>：力是通过 \(J^{\top}\) 和电机 torque 实现的。但需要 torque-controlled 的机器人，而且关节摩擦要小或者有 joint torque sensor 做补偿。</li>
+    <li><strong>稳态接触力可以预测</strong>：末端被表面挡住时，\(F = K \cdot (x_{d} - x_{\text{surface}})\)。想用 5 N 的力压住桌面，就把目标设在桌面以下 \(5/K\) 米处。</li>
+    <li><strong>各方向可以不同</strong>：\(K\) 是一个矩阵。插孔时，沿孔的方向硬一点（要推进去），横向软一点（让孔壁把 peg 自然导正）。</li>
+    <li><strong>\(D\) 的选择</strong>：按 critical damping，\(D = 2\zeta\sqrt{K\cdot m}\)，\(\zeta\) 取 0.7 – 1。</li>
     <li><strong>没有 I 项</strong>：I 项会把“被挡住的位置误差”一直累加成越来越大的力，正好破坏了 compliance。</li>
   </ul>
   <div class="lab">
     <div class="lab-views one">
       <div>
-        <h4>1-D 仿真：质量 m = 1 kg 的末端从 x = 0 出发，目标在 2.5 s 内匀速移到 x<sub>d</sub>；途中有一面很硬的墙（stiffness 20 000 N/m）</h4>
+        <h4>1-D 仿真：质量 \(m = 1\) kg 的末端从 \(x = 0\) 出发，目标在 2.5 s 内匀速移到 \(x_{d}\)；途中有一面很硬的墙（stiffness 20 000 N/m）</h4>
         <svg id="imp-svg" viewBox="0 0 680 430" role="img" aria-label="impedance control 接触仿真"></svg>
       </div>
     </div>
     <div class="presets">预设：
-      <button class="pre" data-imp="200,1,0.6,0.5,0">compliant（K = 200）</button>
-      <button class="pre" data-imp="3000,1,0.6,0.5,0">stiff（K = 3000）</button>
+      <button class="pre" data-imp="200,1,0.6,0.5,0">compliant（\(K = 200\)）</button>
+      <button class="pre" data-imp="3000,1,0.6,0.5,0">stiff（\(K = 3000\)）</button>
       <button class="pre" data-imp="3000,1,0.6,0.5,3000">stiff + I 项（像 position controller）</button>
       <button class="pre" data-imp="200,0.2,0.6,0.5,0">damping 太小</button>
       <button class="pre" data-imp="200,1,0.4,0.5,0">目标在墙前面（不接触）</button>
@@ -1236,23 +1636,23 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
     <div class="out">
       <div class="blk"><div class="kv" id="imp-out"></div></div>
     </div>
-    <p class="try"><b>试一试：</b>① “compliant”：目标在墙后 10 cm，撞上时有一个约 30 N 的峰值，随后稳定在 K × 0.1 ≈ 20 N。② “stiff”：同样的 10 cm 误差，稳态接触力约 260 N。③ “stiff + I 项”：力不停地涨，直到 actuator 饱和（上限 400 N）。这就是 position controller 顶到障碍物时发生的事。④ “damping 太小”：撞墙后反复弹跳。⑤ 拖 x<sub>d</sub> 滑块，验证稳态力 ≈ K·(x<sub>d</sub> − x<sub>wall</sub>)。</p>
+    <p class="try"><b>试一试：</b>① “compliant”：目标在墙后 10 cm，撞上时有一个约 30 N 的峰值，随后稳定在 \(K \times 0.1 \approx 20\) N。② “stiff”：同样的 10 cm 误差，稳态接触力约 260 N。③ “stiff + I 项”：力不停地涨，直到 actuator 饱和（上限 400 N）。这就是 position controller 顶到障碍物时发生的事。④ “damping 太小”：撞墙后反复弹跳。⑤ 拖 \(x_d\) 滑块，验证稳态力 \(\approx K\cdot(x_d - x_{\text{wall}})\)。</p>
   </div>
   <h3>Impedance 与 admittance</h3>
   <p>两者追求同一个目标行为（让末端像 mass–spring–damper），因果方向相反：</p>
   <div class="tw"><table>
     <tr><th></th><th>Impedance control</th><th>Admittance control</th></tr>
     <tr><td>输入 → 输出</td><td>测量<strong>运动</strong>（位置偏差）→ 输出<strong>力</strong></td><td>测量<strong>力</strong>（force/torque sensor）→ 输出<strong>运动</strong>（位置指令）</td></tr>
-    <tr><td>需要的硬件</td><td>torque-controlled arm（Franka、iiwa）</td><td>position-controlled arm + wrist F/T sensor（UR、多数工业臂）</td></tr>
+    <tr><td>需要的硬件</td><td>torque-controlled arm（Franka、iiwa）</td><td>position-controlled arm + wrist \(F\)/T sensor（UR、多数工业臂）</td></tr>
     <tr><td>擅长</td><td>和硬的环境接触时稳定</td><td>自由空间里位置准（底层还是高增益 position loop）</td></tr>
     <tr><td>弱点</td><td>自由空间里受摩擦和模型误差影响，位置精度差；很难渲染出很大的 stiffness</td><td>和很硬的环境接触时容易不稳定（振荡）；受 sensor noise 和 delay 影响</td></tr>
   </table></div>
   <h3>相关概念</h3>
   <ul>
     <li><strong>Hybrid position / force control</strong>：把 task space 的方向分成两组。被环境约束住的方向（如垂直于桌面）做 force control，自由的方向（沿桌面）做 position control，用一个 selection matrix 切换。需要知道接触的几何。</li>
-    <li><strong>Joint impedance</strong>：同样的想法用在 joint space：<span class="m">τ = K(q<sub>d</sub> − q) + D(q̇<sub>d</sub> − q̇) + g(q)</span>。形式上就是低增益的 PD + gravity compensation。</li>
-    <li><strong>Variable impedance</strong>：K 随任务阶段变化：自由运动时硬，接近接触时变软。也可以让 learning policy 输出 K。</li>
-    <li>和 PD 的关系：公式几乎一样。区别在出发点：PD 调 gain 是为了让 tracking error 尽量小；impedance control 的 K、D 是对交互行为的规定，会故意取小，并且依靠模型补偿（重力、惯性）而不是高增益来保证自由空间里的精度。</li>
+    <li><strong>Joint impedance</strong>：同样的想法用在 joint space：\(\tau = K(q_{d} - q) + D(\dot{q}_{d} - \dot{q}) + g(q)\)。形式上就是低增益的 PD + gravity compensation。</li>
+    <li><strong>Variable impedance</strong>：\(K\) 随任务阶段变化：自由运动时硬，接近接触时变软。也可以让 learning policy 输出 \(K\)。</li>
+    <li>和 PD 的关系：公式几乎一样。区别在出发点：PD 调 gain 是为了让 tracking error 尽量小；impedance control 的 \(K\)、\(D\) 是对交互行为的规定，会故意取小，并且依靠模型补偿（重力、惯性）而不是高增益来保证自由空间里的精度。</li>
   </ul>
 </section>
 
@@ -1268,46 +1668,46 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
 
   <h3>Rotation 与 transform</h3>
   <details class="qa"><summary>1. Rotation matrix 的三列代表什么？为什么它的 inverse 等于 transpose？</summary><div class="a">
-    <p><span class="m">R<sub>a_b</sub></span> 的三列是 frame b 的 x、y、z 轴在 frame a 里的坐标。三根轴互相垂直且长度为 1，所以 <span class="m">RᵀR</span> 的每个元素是两列的内积：对角线是 1，其余是 0，即 <span class="m">RᵀR = I</span>，于是 <span class="m">R⁻¹ = Rᵀ</span>。几何上，transpose 之后行变成列，得到的是 a 的轴在 b 里的坐标，正好是反方向的 rotation。</p>
+    <p>\(R_{a\_b}\) 的三列是 frame b 的 x、y、z 轴在 frame a 里的坐标。三根轴互相垂直且长度为 1，所以 \(R^{\top}R\) 的每个元素是两列的内积：对角线是 1，其余是 0，即 \(R^{\top}R = I\)，于是 \(R^{-1} = R^{\top}\)。几何上，transpose 之后行变成列，得到的是 a 的轴在 b 里的坐标，正好是反方向的 rotation。</p>
   </div></details>
-  <details class="qa"><summary>2. 一个 3×3 矩阵满足什么条件才是 rotation matrix？测量得到的 R 不满足怎么办？</summary><div class="a">
-    <p><span class="m">RᵀR = I</span> 且 <span class="m">det(R) = +1</span>。det 为 −1 的是 reflection。带噪声的估计值通常不严格满足，做 SVD <span class="m">R = UΣVᵀ</span>，取 <span class="m">UVᵀ</span>；如果它的 det 是 −1，把 U 的最后一列取反再乘。这给出 Frobenius norm 意义下最近的 rotation。</p>
+  <details class="qa"><summary>2. 一个 \(3\times 3\) 矩阵满足什么条件才是 rotation matrix？测量得到的 \(R\) 不满足怎么办？</summary><div class="a">
+    <p>\(R^{\top}R = I\) 且 \(\det (R) = +1\)。det 为 −1 的是 reflection。带噪声的估计值通常不严格满足，做 SVD \(R = U\Sigma V^{\top}\)，取 \(U V^{\top}\)；如果它的 det 是 −1，把 \(U\) 的最后一列取反再乘。这给出 Frobenius norm 意义下最近的 rotation。</p>
   </div></details>
   <details class="qa"><summary>3. Gimbal lock 是什么？怎么避免？</summary><div class="a">
-    <p>用 Euler angles 时，中间那个角转到特定值（ZYX 顺序下是 pitch = ±90°），第一根和第三根转轴变得共线，三个角只能表达两个方向的转动，丢了一个自由度。表现为同一姿态对应无穷多组角度、反解时角度突变、Euler rate 到 angular velocity 的矩阵不可逆。</p>
+    <p>用 Euler angles 时，中间那个角转到特定值（ZYX 顺序下是 \(\text{pitch} = \pm 90^\circ\)），第一根和第三根转轴变得共线，三个角只能表达两个方向的转动，丢了一个自由度。表现为同一姿态对应无穷多组角度、反解时角度突变、Euler rate 到 angular velocity 的矩阵不可逆。</p>
     <p>它是参数化的 singularity，不是物体真的卡住。任何 3 参数表示都有。避免方法：内部计算、存储、插值用 quaternion 或 rotation matrix，只在显示给人看时转成 Euler angles；或者选一个让 singularity 落在工作范围之外的轴顺序。</p>
   </div></details>
   <details class="qa"><summary>4. 为什么大家用 quaternion？它有什么缺点？</summary><div class="a">
     <p>优点：没有 gimbal lock；只有 4 个数；组合是一次 quaternion 乘法，比矩阵便宜；数值漂移后 normalize 一下就修正了，而修正 rotation matrix 要做 SVD；插值（SLERP）简单且走最短路径。</p>
-    <p>缺点：不直观；有 double cover（q 和 −q 是同一个 rotation）；有 unit norm 约束，放进 optimizer 时要用 3 维的 local 增量；存储顺序（wxyz / xyzw）和 Hamilton / JPL convention 容易混。</p>
+    <p>缺点：不直观；有 double cover（\(q\) 和 \(-q\) 是同一个 rotation）；有 unit norm 约束，放进 optimizer 时要用 3 维的 local 增量；存储顺序（wxyz / xyzw）和 Hamilton / JPL convention 容易混。</p>
   </div></details>
-  <details class="qa"><summary>5. q 和 −q 表示同一个 rotation，实际中会带来什么问题？</summary><div class="a">
+  <details class="qa"><summary>5. \(q\) 和 \(-q\) 表示同一个 rotation，实际中会带来什么问题？</summary><div class="a">
     <ul>
-      <li>插值：不检查符号会绕远路。SLERP 前若 <span class="m">q₀·q₁ &lt; 0</span>，把一个取反。</li>
-      <li>比较和 loss：要用 <span class="m">|q₁·q₂|</span>，不能逐分量相减。</li>
-      <li>时间序列：逐帧从 R 提取的 q 可能突然变号，滤波或求导前要对齐符号。</li>
+      <li>插值：不检查符号会绕远路。SLERP 前若 \(q_0\cdot q_1 \lt 0\)，把一个取反。</li>
+      <li>比较和 loss：要用 \(|q_1\cdot q_2|\)，不能逐分量相减。</li>
+      <li>时间序列：逐帧从 \(R\) 提取的 \(q\) 可能突然变号，滤波或求导前要对齐符号。</li>
       <li>平均：先统一符号再平均并 normalize（或者用基于特征向量的方法）。</li>
-      <li>反馈控制：误差 quaternion 的 w 为负时取反，否则会朝大于 180° 的方向转。</li>
+      <li>反馈控制：误差 quaternion 的 \(w\) 为负时取反，否则会朝大于 180° 的方向转。</li>
     </ul>
   </div></details>
   <details class="qa"><summary>6. 怎么在两个 orientation 之间插值？为什么不直接对 Euler angles 做线性插值？</summary><div class="a">
-    <p>用 SLERP：<span class="m">[sin((1−t)Ω)q₀ + sin(tΩ)q₁] / sin Ω</span>，其中 <span class="m">cos Ω = q₀·q₁</span>。它等价于绕一根固定轴匀速转过去，是最短路径，angular velocity 恒定。先做 shortest-path 检查；Ω 很小时退化为 lerp 再 normalize。等价的写法是 <span class="m">R(t) = R₀ · exp(t · log(R₀ᵀR₁))</span>。</p>
+    <p>用 SLERP：\([\sin ((1-t)\Omega )q_0 + \sin (t\Omega )q_1] / \sin \Omega\)，其中 \(\cos \Omega = q_0\cdot q_1\)。它等价于绕一根固定轴匀速转过去，是最短路径，angular velocity 恒定。先做 shortest-path 检查；\(\Omega\) 很小时退化为 lerp 再 normalize。等价的写法是 \(R(t) = R_0 \cdot \exp (t \cdot \log (R_0^{\top}R_1))\)。</p>
     <p>Euler angles 线性插值的问题：路径不是最短的，转速不均匀，结果依赖轴顺序，经过 gimbal lock 附近时会乱转，还有 ±180° 的跳变。</p>
   </div></details>
   <details class="qa"><summary>7. 怎么衡量两个 rotation 差多少？控制里的 orientation error 怎么算？</summary><div class="a">
-    <p>相对 rotation <span class="m">R<sub>e</sub> = R<sub>d</sub>Rᵀ</span>，它的转角 <span class="m">θ = acos((trace(R<sub>e</sub>) − 1)/2)</span> 就是两者的“距离”（geodesic distance）。用 quaternion 是 <span class="m">θ = 2·acos(|q₁·q₂|)</span>。</p>
-    <p>控制里需要一个 3 维向量：取 <span class="m">e = log(R<sub>d</sub>Rᵀ)</span>，即转轴乘转角；或者用误差 quaternion 的向量部分（小角度时约等于前者的一半）。不能把两组 Euler angles 相减。</p>
+    <p>相对 rotation \(R_{e} = R_{d}R^{\top}\)，它的转角 \(\theta = \operatorname{acos}((\operatorname{trace}(R_{e}) - 1)/2)\) 就是两者的“距离”（geodesic distance）。用 quaternion 是 \(\theta = 2\cdot \operatorname{acos}(|q_1\cdot q_2|)\)。</p>
+    <p>控制里需要一个 3 维向量：取 \(e = \log (R_{d}R^{\top})\)，即转轴乘转角；或者用误差 quaternion 的向量部分（小角度时约等于前者的一半）。不能把两组 Euler angles 相减。</p>
   </div></details>
-  <details class="qa"><summary>8. A·B 和 B·A 有什么区别？左乘和右乘分别是什么意思？</summary><div class="a">
-    <p>3D rotation 不可交换。<span class="m">R·ΔR</span>（右乘）表示在<strong>当前 body frame</strong> 里再做一个 <span class="m">ΔR</span>；<span class="m">ΔR·R</span>（左乘）表示在 <strong>fixed / world frame</strong> 里做 <span class="m">ΔR</span>。例子：夹爪沿自己的 z 轴前进用右乘 <span class="m">T·Trans(0,0,d)</span>；沿 world 的 z 轴上升用左乘 <span class="m">Trans(0,0,d)·T</span>。</p>
-    <p>由此也得到：intrinsic ZYX 和 extrinsic XYZ 是同一个矩阵 <span class="m">R<sub>z</sub>R<sub>y</sub>R<sub>x</sub></span>。</p>
+  <details class="qa"><summary>8. \(A \cdot B\) 和 \(B \cdot A\) 有什么区别？左乘和右乘分别是什么意思？</summary><div class="a">
+    <p>3D rotation 不可交换。\(R\cdot \Delta R\)（右乘）表示在<strong>当前 body frame</strong> 里再做一个 \(\Delta R\)；\(\Delta R\cdot R\)（左乘）表示在 <strong>fixed / world frame</strong> 里做 \(\Delta R\)。例子：夹爪沿自己的 z 轴前进用右乘 \(T\cdot \operatorname{Trans}(0,0,d)\)；沿 world 的 z 轴上升用左乘 \(\operatorname{Trans}(0,0,d)\cdot T\)。</p>
+    <p>由此也得到：intrinsic ZYX 和 extrinsic XYZ 是同一个矩阵 \(R_{z}R_{y}R_{x}\)。</p>
   </div></details>
   <details class="qa"><summary>9. 写出 SE(3) 的 inverse。为什么 translation 不是简单取负？</summary><div class="a">
-    <p><span class="m">T⁻¹ = [Rᵀ, −Rᵀt; 0, 1]</span>。从 <span class="m">p<sub>a</sub> = R p<sub>b</sub> + t</span> 解出 <span class="m">p<sub>b</sub> = Rᵀ(p<sub>a</sub> − t) = Rᵀp<sub>a</sub> − Rᵀt</span>。<span class="m">t</span> 是 b 的原点在 a 里的坐标；inverse 需要的是 a 的原点在 b 里的坐标，方向相反并且要换到 b 的轴上表达，所以多一个 <span class="m">Rᵀ</span>。</p>
+    <p>\(T^{-1} = \begin{bmatrix} R^\top & -R^\top t \\ 0 & 1 \end{bmatrix}\)。从 \(p_{a} = R p_{b} + t\) 解出 \(p_{b} = R^{\top}(p_{a} - t) = R^{\top}p_{a} - R^{\top}t\)。\(t\) 是 b 的原点在 a 里的坐标；inverse 需要的是 a 的原点在 b 里的坐标，方向相反并且要换到 b 的轴上表达，所以多一个 \(R^{\top}\)。</p>
   </div></details>
   <details class="qa"><summary>10. 已知 T_base_cam 和 T_cam_tag，求 T_base_tag。如果已知的是 T_base_tag 和 T_base_cam，求 T_cam_tag 呢？</summary><div class="a">
-    <p><span class="m">T<sub>base_tag</sub> = T<sub>base_cam</sub> · T<sub>cam_tag</sub></span>，相邻的 cam 相消。</p>
-    <p><span class="m">T<sub>cam_tag</sub> = (T<sub>base_cam</sub>)⁻¹ · T<sub>base_tag</sub> = T<sub>cam_base</sub> · T<sub>base_tag</sub></span>。左边的已知量从左边乘 inverse 消掉。检查方法永远是看下标能不能连起来。</p>
+    <p>\(T_{\text{base\_tag}} = T_{\text{base\_cam}} \cdot T_{\text{cam\_tag}}\)，相邻的 cam 相消。</p>
+    <p>\(T_{\text{cam\_tag}} = (T_{\text{base\_cam}})^{-1} \cdot T_{\text{base\_tag}} = T_{\text{cam\_base}} \cdot T_{\text{base\_tag}}\)。左边的已知量从左边乘 inverse 消掉。检查方法永远是看下标能不能连起来。</p>
   </div></details>
   <details class="qa"><summary>11. 相机测到的物体 pose 换到 base frame 之后，位置差了几厘米。你怎么排查？</summary><div class="a">
     <ol>
@@ -1318,21 +1718,21 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
     </ol>
   </div></details>
   <details class="qa"><summary>12. Axis-angle 和 rotation vector 是什么？exponential map 用在哪？</summary><div class="a">
-    <p>任何 rotation 等价于绕一根单位轴 <span class="m">ω̂</span> 转角度 <span class="m">θ</span>。<span class="m">r = θω̂</span> 是 rotation vector，3 个数、没有约束。Rodrigues 公式 <span class="m">R = I + sinθ·K + (1−cosθ)·K²</span> 就是 <span class="m">exp([r]<sub>×</sub>)</span>。</p>
-    <p>用途：① 表示 orientation error；② 优化时作为 R 的 3 维增量，<span class="m">R ← R·exp([δ]<sub>×</sub>)</span>，避免约束和 singularity；③ 积分 angular velocity。缺点：θ = 0 时轴无定义，θ 接近 π 时提取轴的数值不稳定，不能直接相加来组合。</p>
+    <p>任何 rotation 等价于绕一根单位轴 \(\hat{\omega}\) 转角度 \(\theta\)。\(r = \theta \hat{\omega}\) 是 rotation vector，3 个数、没有约束。Rodrigues 公式 \(R = I + \sin \theta \cdot K + (1-\cos \theta )\cdot K^2\) 就是 \(\exp ([r]_{\times })\)。</p>
+    <p>用途：① 表示 orientation error；② 优化时作为 \(R\) 的 3 维增量，\(R \leftarrow R\cdot \exp ([\delta ]_{\times })\)，避免约束和 singularity；③ 积分 angular velocity。缺点：\(\theta = 0\) 时轴无定义，\(\theta\) 接近 \(\pi\) 时提取轴的数值不稳定，不能直接相加来组合。</p>
   </div></details>
 
   <h3>Hand-eye calibration</h3>
-  <details class="qa"><summary>13. AX = XB 是怎么来的？A、B、X 各是什么？</summary><div class="a">
-    <p>以 eye-in-hand 为例：target 固定在桌上，所以对每个姿态 <span class="m">T<sub>base_target</sub> = T<sub>base_ee,i</sub> · X · T<sub>cam_target,i</sub></span> 都相同，<span class="m">X = T<sub>ee_cam</sub></span>。取两个姿态令其相等并整理，得 <span class="m">A X = X B</span>，其中 <span class="m">A = T<sub>base_ee,j</sub>⁻¹T<sub>base_ee,i</sub></span> 是 end-effector 的相对运动（来自 FK），<span class="m">B = T<sub>cam_target,j</sub>T<sub>cam_target,i</sub>⁻¹</span> 是 camera 的相对运动（来自视觉）。直觉：A 和 B 是同一次刚体运动在两个 frame 里的表达，X 是这两个 frame 之间的固定关系。</p>
+  <details class="qa"><summary>13. \(AX = XB\) 是怎么来的？\(A\)、\(B\)、\(X\) 各是什么？</summary><div class="a">
+    <p>以 eye-in-hand 为例：target 固定在桌上，所以对每个姿态 \(T_{\text{base\_target}} = T_{\text{base\_ee},i} \cdot X \cdot T_{\text{cam\_target},i}\) 都相同，\(X = T_{\text{ee\_cam}}\)。取两个姿态令其相等并整理，得 \(A X = X B\)，其中 \(A = T_{\text{base\_ee},j}^{-1}T_{\text{base\_ee},i}\) 是 end-effector 的相对运动（来自 FK），\(B = T_{\text{cam\_target},j}T_{\text{cam\_target},i}^{-1}\) 是 camera 的相对运动（来自视觉）。直觉：\(A\) 和 \(B\) 是同一次刚体运动在两个 frame 里的表达，\(X\) 是这两个 frame 之间的固定关系。</p>
   </div></details>
   <details class="qa"><summary>14. Hand-eye calibration 至少需要几组数据？对运动有什么要求？</summary><div class="a">
-    <p>至少 2 次相对运动，也就是 3 个姿态，并且两次运动的转轴不能平行。原因：rotation 部分等价于 <span class="m">α = R<sub>X</sub>β</span>（α、β 是 A、B 的转轴乘转角）。一对向量只能确定 <span class="m">R<sub>X</sub></span> 到“绕这根轴任意转”的程度，需要两对不平行的向量才能唯一确定。translation 方程 <span class="m">(R<sub>A</sub> − I)t<sub>X</sub> = …</span> 的系数矩阵 rank 为 2，同样需要两根不同的轴。纯 translation 的运动对 <span class="m">t<sub>X</sub></span> 没有约束。</p>
+    <p>至少 2 次相对运动，也就是 3 个姿态，并且两次运动的转轴不能平行。原因：rotation 部分等价于 \(\alpha = R_{X}\beta\)（\(\alpha\)、\(\beta\) 是 \(A\)、\(B\) 的转轴乘转角）。一对向量只能确定 \(R_{X}\) 到“绕这根轴任意转”的程度，需要两对不平行的向量才能唯一确定。translation 方程 \((R_{A} - I)t_{X} = \ldots\) 的系数矩阵 rank 为 2，同样需要两根不同的轴。纯 translation 的运动对 \(t_{X}\) 没有约束。</p>
     <p>实际中采 15 – 30 个姿态，绕多根轴、转角尽量大，用 least squares 平均掉噪声。</p>
   </div></details>
   <details class="qa"><summary>15. Eye-in-hand 和 eye-to-hand 有什么区别？各自标定的是什么？</summary><div class="a">
-    <p>Eye-in-hand：相机装在末端，求 <span class="m">T<sub>ee_cam</sub></span>，标定时 target 固定在环境里。优点是可以凑近看、精度高、没有手臂遮挡问题；缺点是视野随手动，抓取的最后阶段可能看不到物体。</p>
-    <p>Eye-to-hand：相机固定在外面，求 <span class="m">T<sub>base_cam</sub></span>，标定时 target 装在末端。优点是视野固定、能看全局；缺点是手臂可能挡住物体，离得远精度低。两者都是 AX = XB，只是 A 的构造方式不同。</p>
+    <p>Eye-in-hand：相机装在末端，求 \(T_{\text{ee\_cam}}\)，标定时 target 固定在环境里。优点是可以凑近看、精度高、没有手臂遮挡问题；缺点是视野随手动，抓取的最后阶段可能看不到物体。</p>
+    <p>Eye-to-hand：相机固定在外面，求 \(T_{\text{base\_cam}}\)，标定时 target 装在末端。优点是视野固定、能看全局；缺点是手臂可能挡住物体，离得远精度低。两者都是 \(AX = XB\)，只是 \(A\) 的构造方式不同。</p>
   </div></details>
 
   <h3>Kinematics</h3>
@@ -1340,37 +1740,37 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
     <p>FK：关节角 → 末端 pose，把每个关节的 transform 连乘，解唯一、有闭式。IK：末端 pose → 关节角，是解非线性方程组：可能无解（workspace 外、超 joint limit），可能有多个解（6R 最多 8 或 16 个），redundant 时有无穷多个，一般结构没有闭式解，数值解依赖初值、可能卡在 local minimum，在 singularity 附近不稳定。</p>
   </div></details>
   <details class="qa"><summary>17. 推一下 2-link planar arm 的 IK。</summary><div class="a">
-    <p>目标 <span class="m">(x, y)</span>。由 law of cosines：<span class="m">cos q₂ = (x² + y² − l₁² − l₂²)/(2l₁l₂)</span>，<span class="m">q₂ = ±acos(·)</span>，两个符号对应 elbow-up 和 elbow-down。然后 <span class="m">q₁ = atan2(y, x) − atan2(l₂ sin q₂, l₁ + l₂ cos q₂)</span>：第一项是目标的方位角，第二项是 link 1 和“base 到目标连线”之间的夹角。<span class="m">|cos q₂| &gt; 1</span> 时无解。</p>
+    <p>目标 \((x, y)\)。由 law of cosines：\(\cos q_2 = (x^2 + y^2 - l_1^2 - l_2^2)/(2l_1l_2)\)，\(q_2 = \pm \operatorname{acos}(\cdot )\)，两个符号对应 elbow-up 和 elbow-down。然后 \(q_1 = \operatorname{atan2}(y, x) - \operatorname{atan2}(l_2 \sin q_2, l_1 + l_2 \cos q_2)\)：第一项是目标的方位角，第二项是 link 1 和“base 到目标连线”之间的夹角。\(|\cos q_2| \gt 1\) 时无解。</p>
   </div></details>
   <details class="qa"><summary>18. Analytical IK 和 numerical IK 怎么选？</summary><div class="a">
     <p>Analytical：快（微秒级）、给出全部解、没有收敛问题；但只适用于特定结构（如 spherical wrist），每种 arm 要单独推导（或用 IKFast 生成）。Numerical：通用，容易加约束和次要目标，能处理 redundant arm；但只给一个解、依赖初值、可能不收敛、慢一些。能用 analytical 的场合（工业 6R、需要枚举所有解来选最优）优先用它；7-DOF 或非标准结构用 numerical。</p>
   </div></details>
   <details class="qa"><summary>19. Jacobian 是什么？怎么得到某一列？它有哪些用途？</summary><div class="a">
-    <p><span class="m">ẋ = J(q)q̇</span>，是 FK 对 q 的偏导，6×n。第 i 列是关节 i 单独以单位速度运动时末端的 twist：revolute joint 是 <span class="m">[ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>); ẑ<sub>i</sub>]</span>，prismatic 是 <span class="m">[ẑ<sub>i</sub>; 0]</span>。</p>
-    <p>用途：速度映射和 resolved-rate control；numerical IK；力映射 <span class="m">τ = JᵀF</span>；判断 singularity；manipulability 分析；误差和 covariance 传播。</p>
+    <p>\(\dot{x} = J(q)\dot{q}\)，是 FK 对 \(q\) 的偏导，\(6\times n\)。第 i 列是关节 i 单独以单位速度运动时末端的 twist：revolute joint 是 \(\begin{bmatrix} \hat{z}_i \times (p_{\text{ee}} - p_i) \\ \hat{z}_i \end{bmatrix}\)，prismatic 是 \(\begin{bmatrix} \hat{z}_i \\ 0 \end{bmatrix}\)。</p>
+    <p>用途：速度映射和 resolved-rate control；numerical IK；力映射 \(\tau = J^{\top}F\)；判断 singularity；manipulability 分析；误差和 covariance 传播。</p>
   </div></details>
-  <details class="qa"><summary>20. τ = Jᵀ F 是怎么来的？</summary><div class="a">
-    <p>Virtual work / 功率守恒：关节输出的功率等于末端对外输出的功率，<span class="m">τᵀq̇ = Fᵀẋ</span>。代入 <span class="m">ẋ = Jq̇</span> 得 <span class="m">τᵀq̇ = FᵀJq̇</span>，对任意 <span class="m">q̇</span> 成立，所以 <span class="m">τ = JᵀF</span>。它说明：想在末端施加某个力，不需要 force sensor，直接算出关节 torque 即可；在 singularity 处某些方向的 F 对应 <span class="m">τ = 0</span>，结构自己扛着。</p>
+  <details class="qa"><summary>20. \(\tau = J^\top F\) 是怎么来的？</summary><div class="a">
+    <p>Virtual work / 功率守恒：关节输出的功率等于末端对外输出的功率，\(\tau ^{\top}\dot{q} = F^{\top}\dot{x}\)。代入 \(\dot{x} = J\dot{q}\) 得 \(\tau ^{\top}\dot{q} = F^{\top}J\dot{q}\)，对任意 \(\dot{q}\) 成立，所以 \(\tau = J^{\top}F\)。它说明：想在末端施加某个力，不需要 force sensor，直接算出关节 torque 即可；在 singularity 处某些方向的 \(F\) 对应 \(\tau = 0\)，结构自己扛着。</p>
   </div></details>
   <details class="qa"><summary>21. Singularity 是什么？物理上会发生什么？怎么检测和处理？</summary><div class="a">
-    <p>J 掉 rank 的 configuration。末端在某个方向上瞬时不能动；在附近，要让末端沿那个方向以有限速度运动，关节速度趋于无穷；IK 的不同解分支在这里汇合。典型的有 elbow 伸直（boundary）、wrist 的 joint 4 和 6 共线、wrist center 落在 joint 1 轴线上。</p>
-    <p>检测：<span class="m">σ<sub>min</sub>(J)</span>、manipulability <span class="m">√det(JJᵀ)</span>、condition number。处理：damped least squares；在 joint space 里规划；规划时避开低 manipulability 区域；redundant arm 用 null-space 调姿势；把工作区域安排在 workspace 中部。</p>
+    <p>\(J\) 掉 rank 的 configuration。末端在某个方向上瞬时不能动；在附近，要让末端沿那个方向以有限速度运动，关节速度趋于无穷；IK 的不同解分支在这里汇合。典型的有 elbow 伸直（boundary）、wrist 的 joint 4 和 6 共线、wrist center 落在 joint 1 轴线上。</p>
+    <p>检测：\(\sigma _{\min }(J)\)、manipulability \(\sqrt{\det(JJ^\top)}\)、condition number。处理：damped least squares；在 joint space 里规划；规划时避开低 manipulability 区域；redundant arm 用 null-space 调姿势；把工作区域安排在 workspace 中部。</p>
   </div></details>
   <details class="qa"><summary>22. Pseudoinverse、damped least squares、Jacobian transpose 三种 IK 有什么区别？</summary><div class="a">
-    <p>Pseudoinverse <span class="m">J⁺e</span>：最小二乘意义下的精确解，收敛快（Newton 型），redundant 时取 norm 最小的 <span class="m">Δq</span>；但 singularity 附近 <span class="m">1/σ<sub>min</sub></span> 爆炸。</p>
-    <p>DLS <span class="m">Jᵀ(JJᵀ + λ²I)⁻¹e</span>：每个 singular value 方向上的增益从 <span class="m">1/σ</span> 变成 <span class="m">σ/(σ² + λ²)</span>，σ 大时几乎不变，σ → 0 时趋于 0 而不是无穷。稳定，代价是 singular 方向上收敛慢。</p>
-    <p>Transpose <span class="m">αJᵀe</span>：gradient descent，不求逆，绝不会爆，计算最便宜；收敛慢。它能用是因为 <span class="m">Jᵀe</span> 是 <span class="m">½‖e‖²</span> 的负 gradient 方向。</p>
+    <p>Pseudoinverse \(J^+e\)：最小二乘意义下的精确解，收敛快（Newton 型），redundant 时取 norm 最小的 \(\Delta q\)；但 singularity 附近 \(1/\sigma _{\min }\) 爆炸。</p>
+    <p>DLS \(J^{\top}(J J^{\top} + \lambda ^2I)^{-1}e\)：每个 singular value 方向上的增益从 \(1/\sigma\) 变成 \(\sigma /(\sigma ^2 + \lambda ^2)\)，\(\sigma\) 大时几乎不变，\(\sigma \to 0\) 时趋于 0 而不是无穷。稳定，代价是 singular 方向上收敛慢。</p>
+    <p>Transpose \(\alpha J^{\top}e\)：gradient descent，不求逆，绝不会爆，计算最便宜；收敛慢。它能用是因为 \(J^{\top}e\) 是 \(\tfrac12 \|e\|^2\) 的负 gradient 方向。</p>
   </div></details>
   <details class="qa"><summary>23. Redundant arm 的 null-space 是什么？能用来干什么？</summary><div class="a">
-    <p>当关节数多于 task 维度时，存在不改变末端的关节运动，即满足 <span class="m">Jq̇ = 0</span> 的 <span class="m">q̇</span>，构成 J 的 null-space。<span class="m">q̇ = J⁺ẋ + (I − J⁺J)q̇₀</span>，第二项把任意的 <span class="m">q̇₀</span> 投影进 null-space，用来在不影响主任务的前提下做次要任务：避开 joint limit、避开障碍、远离 singularity、保持某个偏好的姿势（像人的 elbow 可以在手不动时摆动）。</p>
+    <p>当关节数多于 task 维度时，存在不改变末端的关节运动，即满足 \(J\dot{q} = 0\) 的 \(\dot{q}\)，构成 \(J\) 的 null-space。\(\dot{q} = J^+\dot{x} + (I - J^+J)\dot{q}_0\)，第二项把任意的 \(\dot{q}_0\) 投影进 null-space，用来在不影响主任务的前提下做次要任务：避开 joint limit、避开障碍、远离 singularity、保持某个偏好的姿势（像人的 elbow 可以在手不动时摆动）。</p>
   </div></details>
 
   <h3>Motion planning</h3>
   <details class="qa"><summary>24. 什么是 configuration space？为什么要在里面规划？</summary><div class="a">
-    <p>以所有关节变量为坐标的空间，arm 的一个完整姿态是其中一个点。障碍物映射成 C<sub>obs</sub>（所有会碰撞的 configuration）。这样，带形状的机器人的规划问题变成点在 C<sub>free</sub> 里的规划问题，可以用统一的算法处理。难点是 C-space 维度高、C<sub>obs</sub> 无法显式表示，所以用 sampling-based 方法，只把 collision checker 当黑盒调用。</p>
+    <p>以所有关节变量为坐标的空间，arm 的一个完整姿态是其中一个点。障碍物映射成 \(C_{\text{obs}}\)（所有会碰撞的 configuration）。这样，带形状的机器人的规划问题变成点在 \(C_{\text{free}}\) 里的规划问题，可以用统一的算法处理。难点是 C-space 维度高、\(C_{\text{obs}}\) 无法显式表示，所以用 sampling-based 方法，只把 collision checker 当黑盒调用。</p>
   </div></details>
   <details class="qa"><summary>25. 讲一下 RRT 的流程。它为什么能快速探索？</summary><div class="a">
-    <p>从 start 建树。循环：随机采样 <span class="m">q<sub>rand</sub></span>（以小概率直接取 goal）；找树上最近的节点 <span class="m">q<sub>near</sub></span>；从它朝 <span class="m">q<sub>rand</sub></span> 走一个 step size 得到 <span class="m">q<sub>new</sub></span>；如果这段无碰撞就加入树；<span class="m">q<sub>new</sub></span> 够近 goal 就回溯出 path。</p>
+    <p>从 start 建树。循环：随机采样 \(q_{\text{rand}}\)（以小概率直接取 goal）；找树上最近的节点 \(q_{\text{near}}\)；从它朝 \(q_{\text{rand}}\) 走一个 step size 得到 \(q_{\text{new}}\)；如果这段无碰撞就加入树；\(q_{\text{new}}\) 够近 goal 就回溯出 path。</p>
     <p>快速探索来自 Voronoi bias：树外围节点的 Voronoi region 大，被随机点选中的概率高，所以树优先向未探索区域延伸。性质：probabilistically complete，不 optimal，single-query。</p>
   </div></details>
   <details class="qa"><summary>26. RRT、RRT*、RRT-Connect、PRM 怎么区分？</summary><div class="a">
@@ -1389,7 +1789,7 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
     <p>Optimization-based：输出直接平滑，简单环境里很快，容易加各种 cost 和约束；但只做 local 优化，依赖初值，会卡在 local minimum，没有找到解的保证。常见的组合是先 sampling 找可行解，再 optimization 打磨。</p>
   </div></details>
   <details class="qa"><summary>29. Path 和 trajectory 有什么区别？</summary><div class="a">
-    <p>Path 是纯几何的一串 configuration，没有时间。Trajectory 是时间的函数 <span class="m">q(t)</span>，包含 velocity 和 acceleration。planner 通常输出 path，再经过 time parameterization（trapezoidal profile、polynomial、TOPP-RA）得到满足动力学限制的 trajectory，controller 跟踪的是 trajectory。</p>
+    <p>Path 是纯几何的一串 configuration，没有时间。Trajectory 是时间的函数 \(q(t)\)，包含 velocity 和 acceleration。planner 通常输出 path，再经过 time parameterization（trapezoidal profile、polynomial、TOPP-RA）得到满足动力学限制的 trajectory，controller 跟踪的是 trajectory。</p>
   </div></details>
   <details class="qa"><summary>30. Cubic 和 quintic polynomial trajectory 的区别？</summary><div class="a">
     <p>Cubic 有 4 个系数，可以满足起点和终点的 position、velocity 共 4 个边界条件，acceleration 在端点处不为 0，多段拼接时 acceleration 会跳变。Quintic 有 6 个系数，还能指定两端的 acceleration（通常为 0），acceleration 连续、jerk 有界，运动更平滑，对机械的冲击小。</p>
@@ -1408,17 +1808,17 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
     <p>① 放大高频 measurement noise，让控制量抖动、电机发热：加 low-pass filter 或用滤波后的速度信号。② Derivative kick：reference 阶跃时误差的导数是尖峰：改成只对 measurement 求导。③ 离散求导对采样周期的抖动敏感。</p>
   </div></details>
   <details class="qa"><summary>34. 只用 PD 控制一个受重力的关节，会有什么现象？怎么改进？</summary><div class="a">
-    <p>会有 steady-state error：平衡时 <span class="m">K<sub>p</sub>e = g(q)</span>，所以 <span class="m">e = g(q)/K<sub>p</sub></span>，手臂“垂”一点。改进：加 I 项；或者更好的是加 gravity compensation feedforward，<span class="m">τ = K<sub>p</sub>e + K<sub>d</sub>ė + g(q)</span>，直接用模型抵消重力，没有 I 项的副作用。</p>
+    <p>会有 steady-state error：平衡时 \(K_{p}e = g(q)\)，所以 \(e = g(q)/K_{p}\)，手臂“垂”一点。改进：加 I 项；或者更好的是加 gravity compensation feedforward，\(\tau = K_{p}e + K_{d}\dot{e} + g(q)\)，直接用模型抵消重力，没有 I 项的副作用。</p>
   </div></details>
   <details class="qa"><summary>35. 为什么接触任务不用纯 position control？讲一下 impedance control，以及它和 admittance control 的区别。</summary><div class="a">
-    <p>Position control 等效于很硬的弹簧，环境也硬，毫米级的位置误差就会产生很大的接触力，带 I 项还会一直加到饱和。Impedance control 不单独控制位置或力，而是让末端表现得像连在目标上的 spring–damper：<span class="m">F = K(x<sub>d</sub> − x) + D(ẋ<sub>d</sub> − ẋ)</span>，<span class="m">τ = JᵀF + g(q)</span>。K 小就 compliant，接触力 ≈ K × 位置偏差，是可预测、有界的。</p>
-    <p>Impedance：测运动、输出力，用在 torque-controlled arm 上，硬接触时稳定。Admittance：测力（F/T sensor）、输出位置指令，用在 position-controlled arm 上，自由空间精度高但硬接触时容易不稳定。</p>
+    <p>Position control 等效于很硬的弹簧，环境也硬，毫米级的位置误差就会产生很大的接触力，带 I 项还会一直加到饱和。Impedance control 不单独控制位置或力，而是让末端表现得像连在目标上的 spring–damper：\(F = K(x_{d} - x) + D(\dot{x}_{d} - \dot{x})\)，\(\tau = J^{\top}F + g(q)\)。\(K\) 小就 compliant，接触力 \(\approx K \times\) 位置偏差，是可预测、有界的。</p>
+    <p>Impedance：测运动、输出力，用在 torque-controlled arm 上，硬接触时稳定。Admittance：测力（\(F\)/T sensor）、输出位置指令，用在 position-controlled arm 上，自由空间精度高但硬接触时容易不稳定。</p>
   </div></details>
   <details class="qa"><summary>36. 完整讲一遍：相机看到桌上一个带 AprilTag 的方块，机械臂把它抓起来。</summary><div class="a">
     <ol>
-      <li><strong>感知</strong>：检测 tag 角点，用 intrinsics 解出 <span class="m">T<sub>cam_tag</sub></span>。</li>
-      <li><strong>Transform chain</strong>：<span class="m">T<sub>base_obj</sub> = T<sub>base_ee</sub>·T<sub>ee_cam</sub>·T<sub>cam_tag</sub>·T<sub>tag_obj</sub></span>，其中 <span class="m">T<sub>ee_cam</sub></span> 来自 hand-eye calibration，<span class="m">T<sub>base_ee</sub></span> 来自 FK。</li>
-      <li><strong>Grasp pose</strong>：<span class="m">T<sub>base_ee</sub>* = T<sub>base_obj</sub>·T<sub>obj_grasp</sub></span>，再沿 approach 方向后退一段得到 pre-grasp pose。</li>
+      <li><strong>感知</strong>：检测 tag 角点，用 intrinsics 解出 \(T_{\text{cam\_tag}}\)。</li>
+      <li><strong>Transform chain</strong>：\(T_{\text{base\_obj}} = T_{\text{base\_ee}}\cdot T_{\text{ee\_cam}}\cdot T_{\text{cam\_tag}}\cdot T_{\text{tag\_obj}}\)，其中 \(T_{\text{ee\_cam}}\) 来自 hand-eye calibration，\(T_{\text{base\_ee}}\) 来自 FK。</li>
+      <li><strong>Grasp pose</strong>：\(T_{\text{base\_ee}}^{*} = T_{\text{base\_obj}}\cdot T_{\text{obj\_grasp}}\)，再沿 approach 方向后退一段得到 pre-grasp pose。</li>
       <li><strong>IK</strong>：把 pre-grasp 和 grasp pose 解成关节角，选离当前姿态近、离 joint limit 和 singularity 远、无碰撞的解。</li>
       <li><strong>Motion planning</strong>：joint space 里 RRT-Connect 规划到 pre-grasp，shortcut + time parameterization；pre-grasp 到 grasp 走 Cartesian 直线。</li>
       <li><strong>Control</strong>：关节 controller 跟踪 trajectory；接近和闭合夹爪阶段用 impedance control 或者降低 stiffness，容忍几毫米的位置误差。</li>
@@ -1432,34 +1832,34 @@ inertia    Coriolis/centrifugal  gravity   电机    外力</div>
   <h2><span class="n">24</span>公式速查表</h2>
   <div class="tw"><table>
     <tr><th>主题</th><th>公式</th><th>备注</th></tr>
-    <tr><td>SO(3)</td><td class="m">RᵀR = I, det R = +1, R⁻¹ = Rᵀ</td><td>列 = 子 frame 的轴</td></tr>
-    <tr><td>换坐标</td><td class="m">p<sub>a</sub> = R<sub>a_b</sub> p<sub>b</sub> + t<sub>a_b</sub></td><td>t = b 的原点在 a 里的坐标</td></tr>
-    <tr><td>组合</td><td class="m">T<sub>a_c</sub> = T<sub>a_b</sub> T<sub>b_c</sub></td><td>相邻下标相消</td></tr>
-    <tr><td>SE(3) inverse</td><td class="m">T⁻¹ = [Rᵀ, −Rᵀt; 0, 1]</td><td>不是 −t</td></tr>
-    <tr><td>左乘 / 右乘</td><td class="m">ΔT·T / T·ΔT</td><td>world frame / body frame</td></tr>
-    <tr><td>ZYX Euler</td><td class="m">R = R<sub>z</sub>(yaw) R<sub>y</sub>(pitch) R<sub>x</sub>(roll)</td><td>pitch = ±90° 时 gimbal lock</td></tr>
-    <tr><td>反解 Euler</td><td class="m">pitch = −asin R₃₁, yaw = atan2(R₂₁, R₁₁), roll = atan2(R₃₂, R₃₃)</td><td></td></tr>
-    <tr><td>Rodrigues</td><td class="m">R = I + sinθ·K + (1 − cosθ)·K², K = [ω̂]<sub>×</sub></td><td>= exp(θK)</td></tr>
-    <tr><td>Log map</td><td class="m">θ = acos((tr R − 1)/2)</td><td>θ = 0, π 要特殊处理</td></tr>
-    <tr><td>Quaternion</td><td class="m">q = (cos(θ/2), ω̂ sin(θ/2)),　p′ = q p q*</td><td>q 与 −q 等价</td></tr>
-    <tr><td>Quaternion 乘法</td><td class="m">(w₁w₂ − v₁·v₂,　w₁v₂ + w₂v₁ + v₁×v₂)</td><td>Hamilton</td></tr>
-    <tr><td>SLERP</td><td class="m">[sin((1−t)Ω)q₀ + sin(tΩ)q₁]/sin Ω</td><td>先保证 q₀·q₁ ≥ 0</td></tr>
-    <tr><td>Rotation 的距离</td><td class="m">θ = 2 acos|q₁·q₂| = acos((tr(R₁ᵀR₂) − 1)/2)</td><td></td></tr>
-    <tr><td>Hand-eye</td><td class="m">AX = XB;　R<sub>A</sub>R<sub>X</sub> = R<sub>X</sub>R<sub>B</sub>,　(R<sub>A</sub> − I)t<sub>X</sub> = R<sub>X</sub>t<sub>B</sub> − t<sub>A</sub></td><td>≥ 2 次运动，转轴不平行</td></tr>
-    <tr><td>2-link FK</td><td class="m">x = l₁c₁ + l₂c₁₂,　y = l₁s₁ + l₂s₁₂</td><td></td></tr>
-    <tr><td>2-link IK</td><td class="m">c₂ = (x² + y² − l₁² − l₂²)/(2l₁l₂),　q₁ = atan2(y,x) − atan2(l₂s₂, l₁ + l₂c₂)</td><td>q₂ 取 ± 两个解</td></tr>
-    <tr><td>Jacobian</td><td class="m">ẋ = Jq̇,　J<sub>i</sub> = [ẑ<sub>i</sub> × (p<sub>ee</sub> − p<sub>i</sub>); ẑ<sub>i</sub>]</td><td>revolute joint</td></tr>
-    <tr><td>2-link det</td><td class="m">det J = l₁l₂ sin q₂</td><td>q₂ = 0, π 时 singular</td></tr>
-    <tr><td>Statics</td><td class="m">τ = JᵀF</td><td>virtual work</td></tr>
-    <tr><td>Pseudoinverse</td><td class="m">J⁺ = Jᵀ(JJᵀ)⁻¹</td><td>行满 rank 时</td></tr>
-    <tr><td>DLS</td><td class="m">Δq = Jᵀ(JJᵀ + λ²I)⁻¹e</td><td>增益 σ/(σ² + λ²)</td></tr>
-    <tr><td>Null-space</td><td class="m">q̇ = J⁺ẋ + (I − J⁺J)q̇₀</td><td>redundant arm</td></tr>
-    <tr><td>Manipulability</td><td class="m">w = √det(JJᵀ) = Πσ<sub>i</sub></td><td>→ 0 即 singular</td></tr>
-    <tr><td>PID</td><td class="m">u = K<sub>p</sub>e + K<sub>i</sub>∫e + K<sub>d</sub>ė</td><td></td></tr>
-    <tr><td>二阶系统</td><td class="m">ω<sub>n</sub> = √(K<sub>p</sub>/m),　ζ = K<sub>d</sub>/(2√(K<sub>p</sub>m))</td><td>ζ = 1 critically damped</td></tr>
-    <tr><td>Arm dynamics</td><td class="m">M(q)q̈ + C(q,q̇)q̇ + g(q) = τ + JᵀF<sub>ext</sub></td><td></td></tr>
-    <tr><td>Computed torque</td><td class="m">τ = M(q̈<sub>d</sub> + K<sub>d</sub>ė + K<sub>p</sub>e) + Cq̇ + g</td><td>误差动力学线性解耦</td></tr>
-    <tr><td>Impedance</td><td class="m">τ = Jᵀ[K(x<sub>d</sub> − x) + D(ẋ<sub>d</sub> − ẋ)] + g(q)</td><td>接触力 ≈ K·Δx</td></tr>
+    <tr><td>SO(3)</td><td>\(R^{\top}R = I, \det R = +1, R^{-1} = R^{\top}\)</td><td>列 = 子 frame 的轴</td></tr>
+    <tr><td>换坐标</td><td>\(p_{a} = R_{a\_b} p_{b} + t_{a\_b}\)</td><td>\(t\) = b 的原点在 a 里的坐标</td></tr>
+    <tr><td>组合</td><td>\(T_{a\_c} = T_{a\_b} T_{b\_c}\)</td><td>相邻下标相消</td></tr>
+    <tr><td>SE(3) inverse</td><td>\(T^{-1} = \begin{bmatrix} R^\top & -R^\top t \\ 0 & 1 \end{bmatrix}\)</td><td>不是 \(-t\)</td></tr>
+    <tr><td>左乘 / 右乘</td><td>\(\Delta T\cdot T / T\cdot \Delta T\)</td><td>world frame / body frame</td></tr>
+    <tr><td>ZYX Euler</td><td>\(R = R_{z}(\operatorname{yaw}) R_{y}(\operatorname{pitch}) R_{x}(\operatorname{roll})\)</td><td>\(\text{pitch} = \pm 90^\circ\) 时 gimbal lock</td></tr>
+    <tr><td>反解 Euler</td><td>\(\operatorname{pitch} = -\operatorname{asin} R_{31}, \operatorname{yaw} = \operatorname{atan2}(R_{21}, R_{11}), \operatorname{roll} = \operatorname{atan2}(R_{32}, R_{33})\)</td><td></td></tr>
+    <tr><td>Rodrigues</td><td>\(R = I + \sin \theta \cdot K + (1 - \cos \theta )\cdot K^2, K = [\hat{\omega}]_{\times }\)</td><td>\(= \exp(\theta K)\)</td></tr>
+    <tr><td>Log map</td><td>\(\theta = \operatorname{acos}((\operatorname{tr} R - 1)/2)\)</td><td>\(\theta = 0,\ \pi\) 要特殊处理</td></tr>
+    <tr><td>Quaternion</td><td>\(q = (\cos (\theta /2), \hat{\omega} \sin (\theta /2)),\quad p' = q p q^{*}\)</td><td>\(q\) 与 \(-q\) 等价</td></tr>
+    <tr><td>Quaternion 乘法</td><td>\((w_1w_2 - v_1\cdot v_2,\quad w_1v_2 + w_2v_1 + v_1\times v_2)\)</td><td>Hamilton</td></tr>
+    <tr><td>SLERP</td><td>\([\sin ((1-t)\Omega )q_0 + \sin (t\Omega )q_1]/\sin \Omega\)</td><td>先保证 \(q_0\cdot q_1 \ge 0\)</td></tr>
+    <tr><td>Rotation 的距离</td><td>\(\theta = 2 \operatorname{acos}|q_1\cdot q_2| = \operatorname{acos}((\operatorname{tr}(R_1^{\top}R_2) - 1)/2)\)</td><td></td></tr>
+    <tr><td>Hand-eye</td><td>\(A X = X B;\quad R_{A}R_{X} = R_{X}R_{B},\quad (R_{A} - I)t_{X} = R_{X}t_{B} - t_{A}\)</td><td>至少 2 次运动，转轴不平行</td></tr>
+    <tr><td>2-link FK</td><td>\(x = l_1c_1 + l_2c_{12},\quad y = l_1s_1 + l_2s_{12}\)</td><td></td></tr>
+    <tr><td>2-link IK</td><td>\(c_2 = (x^2 + y^2 - l_1^2 - l_2^2)/(2l_1l_2),\quad q_1 = \operatorname{atan2}(y,x) - \operatorname{atan2}(l_2s_2, l_1 + l_2c_2)\)</td><td>\(q_2\) 取正负号，对应两个解</td></tr>
+    <tr><td>Jacobian</td><td>\(\dot{x} = J\dot{q},\quad J_i = \begin{bmatrix} \hat{z}_i \times (p_{\text{ee}} - p_i) \\ \hat{z}_i \end{bmatrix}\)</td><td>revolute joint</td></tr>
+    <tr><td>2-link det</td><td>\(\det J = l_1l_2 \sin q_2\)</td><td>\(q_2 = 0,\ \pi\) 时 singular</td></tr>
+    <tr><td>Statics</td><td>\(\tau = J^{\top}F\)</td><td>virtual work</td></tr>
+    <tr><td>Pseudoinverse</td><td>\(J^+ = J^{\top}(J J^{\top})^{-1}\)</td><td>行满 rank 时</td></tr>
+    <tr><td>DLS</td><td>\(\Delta q = J^{\top}(J J^{\top} + \lambda ^2I)^{-1}e\)</td><td>增益 \(\sigma/(\sigma^2 + \lambda^2)\)</td></tr>
+    <tr><td>Null-space</td><td>\(\dot{q} = J^+\dot{x} + (I - J^+J)\dot{q}_0\)</td><td>redundant arm</td></tr>
+    <tr><td>Manipulability</td><td>\(w = \sqrt{\det(JJ^\top)} = \prod_i \sigma_i\)</td><td>\(\to 0\) 即 singular</td></tr>
+    <tr><td>PID</td><td>\(u = K_{p}e + K_{i}\int e + K_{d}\dot{e}\)</td><td></td></tr>
+    <tr><td>二阶系统</td><td>\(\omega_n = \sqrt{K_p/m},\quad \zeta = K_d/(2\sqrt{K_p m})\)</td><td>\(\zeta = 1\) 时 critically damped</td></tr>
+    <tr><td>Arm dynamics</td><td>\(M(q)\ddot{q} + C(q,\dot{q})\dot{q} + g(q) = \tau + J^{\top}F_{\text{ext}}\)</td><td></td></tr>
+    <tr><td>Computed torque</td><td>\(\tau = M(\ddot{q}_{d} + K_{d}\dot{e} + K_{p}e) + C\dot{q} + g\)</td><td>误差动力学线性解耦</td></tr>
+    <tr><td>Impedance</td><td>\(\tau = J^{\top}[K(x_{d} - x) + D(\dot{x}_{d} - \dot{x})] + g(q)\)</td><td>接触力 \(\approx K\cdot\Delta x\)</td></tr>
   </table></div>
   <p class="cap">相关笔记：<a href="apriltag-pose-estimation.html"><code>apriltag-pose-estimation.html</code></a>（camera model、homography、从 H 恢复 pose，以及这一页开头用到的那条 transform chain）。</p>
 </section>

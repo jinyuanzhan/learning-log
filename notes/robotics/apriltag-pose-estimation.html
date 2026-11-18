@@ -60,7 +60,118 @@ li{margin-bottom:6px}
 strong{font-weight:600}
 code,.m{font-family:var(--mono);font-size:.92em}
 .cx{color:var(--x)}.cy{color:var(--y)}.cz{color:var(--z)}.ca{color:var(--accent)}.cr{color:var(--ray)}
-.eq{font-family:var(--mono);font-size:15px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+.eq{padding:6px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+/* KaTeX 公式 */
+.katex{font-size:1.08em}
+.katex-display{margin:.7em 0;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14.5px;line-height:1.6;margin:0 0 10px;padding-top:10px;border-top:1px dashed var(--line)}
+.sym>span:nth-child(2n+1){text-align:right}
+.sym>span:nth-child(2n){color:var(--muted)}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note p:last-child,.note ul:last-child{margin-bottom:0}
+.note .q{font-weight:600;display:block;margin-bottom:4px}
+.note.say{border-left-color:var(--ok)}
+.note.say p{font-size:15px}
+.tw{overflow-x:auto;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:13px;white-space:nowrap}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:0 0 14px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 14px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:620px}
+.cap{font-size:13px;color:var(--muted);margin-top:8px}
+figure{margin:0}
+.d-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1}
+.d-hbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+.d-t{fill:var(--ink);font-size:14px;font-family:var(--body);font-weight:500}
+.d-s{fill:var(--muted);font-size:12px;font-family:var(--body)}
+.d-a{fill:var(--accent);font-size:12.5px;font-family:var(--body)}
+.d-ln{stroke:var(--muted);fill:none;stroke-width:1.5}
+.d-acc{stroke:var(--accent);fill:none;stroke-width:1.5}
+/* 实验台 */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 14px}
+.lab h4{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;align-items:center;font-size:13px;color:var(--muted)}
+button.pre{font:inherit;font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:5px 12px;cursor:pointer}
+button.pre:hover{border-color:var(--accent);color:var(--accent)}
+button.pre.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13.5px;margin:0 0 12px;align-items:center}
+.opts label{display:inline-flex;gap:6px;align-items:center}
+.opts output{font-family:var(--mono);font-size:13px;min-width:3em}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--accent);margin:0}
+.stage{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.stage-main{flex:0 1 560px;max-width:100%;min-width:0}
+.stage-side{flex:1 1 220px;min-width:0;font-size:13.5px}
+.stage-side h4:first-child{margin-top:0}
+svg.cv{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;touch-action:none}
+.w-grid{stroke:var(--line);stroke-width:1}
+.w-poly{fill:none;stroke:var(--line-strong);stroke-width:1.5;stroke-dasharray:5 4}
+.w-traj{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.w-dot{fill:var(--accent)}
+.w-wp circle{fill:var(--a2);stroke:var(--surface);stroke-width:2;cursor:grab}
+.w-wp.stop circle{fill:var(--bad)}
+.w-wp text{fill:var(--on-agent);font-family:var(--mono);font-size:11px;font-weight:500;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.w-wp .w-lbl{fill:var(--muted);font-family:var(--body);font-size:11.5px}
+.s-ax{stroke:var(--line-strong);stroke-width:1}
+.s-lim{stroke:var(--bad);stroke-width:1.2;stroke-dasharray:5 4}
+.s-tick{stroke:var(--a2);stroke-width:1;stroke-dasharray:2 3}
+.s-v{fill:none;stroke:var(--accent);stroke-width:2.2}
+.s-t{fill:var(--muted);font-family:var(--mono);font-size:10.5px}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;font-size:13.5px;align-items:baseline}
+.kv>span:nth-child(2n){font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv>span:nth-child(2n+1){color:var(--muted);white-space:nowrap}
+.live{font-size:13.5px;line-height:1.65;margin:10px 0 0}
+.live p{margin:0 0 8px}
+.pill{display:inline-block;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;font-family:var(--body);margin-left:6px}
+.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.try{font-size:14px;color:var(--muted);margin:12px 0 0;max-width:none}
+.try b{color:var(--ink);font-weight:600}
+details.qa{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 8px;max-width:46em}
+details.qa summary{cursor:pointer;padding:10px 16px;font-weight:500;list-style-position:outside}
+details.qa summary::marker{color:var(--accent)}
+details.qa[open] summary{border-bottom:1px solid var(--line)}
+details.qa .a{padding:12px 16px 2px}
+details.qa .a p,details.qa .a ul,details.qa .a ol{max-width:none}
+details.code{max-width:none}
+details.code .a{padding:12px 12px 0}
+@media (max-width:900px){
+  .page{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:20px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{flex-direction:row;flex-wrap:wrap}
+  header.top h1{font-size:28px}
+}
+@media (max-width:640px){.page{padding-left:16px;padding-right:16px}}
+@media print{nav.toc{display:none}.page{display:block}details.qa .a{display:block}}
+/* notes-panel:start */
+/* ---- 笔记抽屉（notes panel） ---- */
+.np-tab{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:60;writing-mode:vertical-rl;letter-spacing:.2em;font:500 14px/1 var(--body,system-ui,sans-serif);color:var(--surface,#fff);background:var(--accent,#4F46C8);border:0;border-radius:8px 0 0 8px;padding:14px 8px;cursor:pointer;box-shadow:-2px 2px 10px rgba(0,0,0,.15)}
+.np-tab:hover{padding-right:11px}
+.np-tab:focus-visible,.np button:focus-visible{outline:2px solid var(--accent,#4F46C8);outline-offset:2px}
+.np-tab .np-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-top:6px;opacity:0}
+.np-tab.has .np-dot{opacity:1}
+.np{position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(420px,100vw);box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:14px 16px 12px;background:var(--surface,#fff);color:var(--ink,#1A2233);border-left:1px solid var(--line-strong,#B9C1CE);box-shadow:-8px 0 24px rgba(0,0,0,.12);font-family:var(--body,system-ui,sans-serif);transform:translateX(100%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s}
+.np.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.np-open .np-tab{right:min(420px,100vw)}
+.np-head{display:flex;align-items:center;gap:10px}
+.np-head strong{font-size:16px}
+.np-st{font-size:12px;color:var(--muted,#5A6578);flex:1}
+.np-st.warn{color:var(--bad,#D2413C)}
+.np-x{font-size:22px;line-height:1;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:var(--muted,#5A6578);cursor:pointer}
+.np-x:hover{background:var(--bg,#F5F7FA);color:var(--ink,#1A2233)}
+.np-tools,.np-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.np-tools button,.np-foot button{font:inherit;font-size:12.5px;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line-strong,#B9C1CE);border-radius:6px;padding:4px 10px;cursor:pointer}
+.np-tools button:hover,.np-foot button:hover{border-color:var(--accent,#4F46C8);color:var(--accent,#4F46C8)}
+.np-ta{flex:1;min-height:120px;width:100%;box-sizing:border-box;resize:none;font-family:var(--mono,Menlo,monospace);font-size:13.5px;line-height:1.65;color:var(--ink,#1A2233);background:var(--bg,#F5F7FA);border:1px solid var(--line,#DCE1E9);border-radius:8px;padding:12px 14px;tab-size:4}
+.np-ta:focus{outline:none;border-color:var(--accent,#4F46C8);box-shadow:0 0 0 3px var(--accent-soft,#ECEBFA)}
+.np-count{margin-left:auto;font-size:12px;color:var(--muted,#5A6578)}
+.np-hint{margin:0;font-size:12px;line-height:1.5;color:var(--muted,#5A6578)}
+/* 宽屏：打开笔记时正文往左让位，边看边记 */
+@media (min-width:1100px){html.np-open body{margin-right:420px}}
+@media (max-width:640px){.np-open .np-tab{display:none}.np{padding:12px}}
+@media (prefers-reduced-motion:reduce){.np,.np.open{transition:none}}
+@media print{.np,.np-tab{display:none}}
+/* notes-panel:end */
 .mat{position:relative;display:inline-grid;vertical-align:middle;margin:0 .15em;grid-template-columns:repeat(var(--c,3),auto);gap:.2em 1em;padding:.35em .8em;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mat::before,.mat::after{content:"";position:absolute;top:0;bottom:0;width:.42em;border:1.5px solid currentColor}
 .mat::before{left:0;border-right:0}
@@ -164,6 +275,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 @media print{.np,.np-tab{display:none}}
 /* notes-panel:end */
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false})"></script>
 </head>
 <body>
 <div class="page">
@@ -173,12 +287,12 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     <li><a href="#big-picture">全局图景</a></li>
     <li><a href="#lab">交互实验台</a></li>
     <li><a href="#frames">坐标系与外参</a></li>
-    <li><a href="#intrinsics">相机模型与内参 K</a></li>
+    <li><a href="#intrinsics">相机模型与内参 \(K\)</a></li>
     <li><a href="#projection">完整投影方程</a></li>
-    <li><a href="#homography">单应矩阵 H</a></li>
-    <li><a href="#dlt">四个角点解 H</a></li>
+    <li><a href="#homography">单应矩阵 \(H\)</a></li>
+    <li><a href="#dlt">四个角点解 \(H\)</a></li>
     <li><a href="#svd-review">SVD 复习</a></li>
-    <li><a href="#pose">从 H 恢复位姿</a></li>
+    <li><a href="#pose">从 \(H\) 恢复位姿</a></li>
     <li><a href="#decode">解码 tag 的 ID</a></li>
     <li><a href="#chain">Pick and place 变换链</a></li>
     <li><a href="#pitfalls">局限与调试清单</a></li>
@@ -197,28 +311,28 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   <p>AprilTag 是贴在物体上的黑白方块图案。相机拍到它，可以得到两样东西：</p>
   <ul>
     <li><strong>ID</strong>：这是哪一个 tag。由内部的黑白格子编码。</li>
-    <li><strong>位姿</strong>：tag 相对相机的位置和朝向，共 6 个数。位置 <span class="m">t</span> 是 3 个数，说明 tag 中心在哪里。朝向 <span class="m">R</span> 有 3 个自由度，说明 tag 怎么转的。</li>
+    <li><strong>位姿</strong>：tag 相对相机的位置和朝向，共 6 个数。位置 \(t\) 是 3 个数，说明 tag 中心在哪里。朝向 \(R\) 有 3 个自由度，说明 tag 怎么转的。</li>
   </ul>
   <p>整个计算是一条流水线，后面每一节讲其中一步：</p>
   <ol>
     <li>在图像中找到 tag 的四个角点，读出它们的像素坐标。</li>
-    <li>用四组对应点列方程，解出单应矩阵 <span class="m ca">H</span>（用 SVD）。</li>
-    <li>用内参 <span class="m">K</span> 拆开 <span class="m ca">H</span>，得到 <span class="m">R</span> 和 <span class="m">t</span>。</li>
-    <li>用 <span class="m ca">H</span> 读出内部格子的黑白，得到 ID。</li>
+    <li>用四组对应点列方程，解出单应矩阵 <span class="ca">\(H\)</span>（用 SVD）。</li>
+    <li>用内参 \(K\) 拆开 <span class="ca">\(H\)</span>，得到 \(R\) 和 \(t\)。</li>
+    <li>用 <span class="ca">\(H\)</span> 读出内部格子的黑白，得到 ID。</li>
     <li>把相机到 tag 的位姿，沿变换链传回机械臂基座。</li>
   </ol>
   <p>有三个概念贯穿始终，先分清楚：</p>
   <div class="tw"><table>
     <tr><th>概念</th><th>它是什么</th><th>什么时候变</th><th>从哪里来</th></tr>
-    <tr><td>相机坐标系</td><td>原点在光心，Z 轴朝前，X 朝右，Y 朝下</td><td>相机移动时</td><td>约定</td></tr>
-    <tr><td>内参 <span class="m">K</span></td><td>相机自身的属性：一条光线落在哪个像素</td><td>不变（换镜头或改分辨率才变）</td><td>相机标定</td></tr>
-    <tr><td>外参 <span class="m">[R | t]</span></td><td>两个坐标系之间的刚体关系，这里是 tag 相对相机</td><td>tag 或相机一动就变</td><td>AprilTag 实时算出</td></tr>
+    <tr><td>相机坐标系</td><td>原点在光心，\(Z\) 轴朝前，\(X\) 朝右，\(Y\) 朝下</td><td>相机移动时</td><td>约定</td></tr>
+    <tr><td>内参 \(K\)</td><td>相机自身的属性：一条光线落在哪个像素</td><td>不变（换镜头或改分辨率才变）</td><td>相机标定</td></tr>
+    <tr><td>外参 \([R \mid t]\)</td><td>两个坐标系之间的刚体关系，这里是 tag 相对相机</td><td>tag 或相机一动就变</td><td>AprilTag 实时算出</td></tr>
   </table></div>
 </section>
 
 <section id="lab">
   <h2><span class="n">02</span>交互实验台</h2>
-  <p>左图是第三视角，可以看到相机、图像平面和 tag 的空间关系。右图是相机实际拍到的图像。程序只拿右图的四个角点像素和 <span class="m">K</span>，解出 <span class="m ca">H</span>，再反推位姿。后面各节的数字都跟着这里的滑块变化。</p>
+  <p>左图是第三视角，可以看到相机、图像平面和 tag 的空间关系。右图是相机实际拍到的图像。程序只拿右图的四个角点像素和 \(K\)，解出 <span class="ca">\(H\)</span>，再反推位姿。后面各节的数字都跟着这里的滑块变化。</p>
   <div class="lab">
     <div class="lab-views">
       <div>
@@ -228,14 +342,14 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
       <div>
         <h4>相机看到的图像（320 × 240 像素）</h4>
         <svg id="vimg" viewBox="0 0 320 240" role="img" aria-label="相机图像"></svg>
-        <p class="cap">红点是检测到的角点。黑白格子用解出的 H 画出，坐标轴用反推的位姿画出。</p>
+        <p class="cap">红点是检测到的角点。黑白格子用解出的 \(H\) 画出，坐标轴用反推的位姿画出。</p>
       </div>
     </div>
     <div class="legend">
-      <span><span class="sw" style="background:var(--accent)"></span>t：tag 相对相机的位置</span>
-      <span><span class="sw" style="background:var(--x)"></span>X 轴</span>
-      <span><span class="sw" style="background:var(--y)"></span>Y 轴</span>
-      <span><span class="sw" style="background:var(--z)"></span>Z 轴</span>
+      <span><span class="sw" style="background:var(--accent)"></span>\(t\)：tag 相对相机的位置</span>
+      <span><span class="sw" style="background:var(--x)"></span>\(X\) 轴</span>
+      <span><span class="sw" style="background:var(--y)"></span>\(Y\) 轴</span>
+      <span><span class="sw" style="background:var(--z)"></span>\(Z\) 轴</span>
       <span><span class="sw" style="background:var(--ray)"></span>成像光线</span>
     </div>
     <div class="presets">
@@ -248,20 +362,20 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
     <div class="ctl" id="ctl"></div>
     <div class="out">
       <div class="blk">
-        <h4>内参 K（已知）</h4>
+        <h4>内参 \(K\)（已知）</h4>
         <div class="live" id="k-mat"></div>
       </div>
       <div class="blk">
-        <h4>由四个角点解出的 H（h33 归一为 1）</h4>
+        <h4>由四个角点解出的 \(H\)（\(h_{33}\) 归一为 1）</h4>
         <div class="live" id="h-mat"></div>
-        <div class="cols3"><span>含 r1<br>tag 的 X 轴</span><span>含 r2<br>tag 的 Y 轴</span><span>含 t<br>tag 中心的像素</span></div>
+        <div class="cols3"><span>含 \(r_{1}\)<br>tag 的 \(X\) 轴</span><span>含 \(r_{2}\)<br>tag 的 \(Y\) 轴</span><span>含 \(t\)<br>tag 中心的像素</span></div>
       </div>
       <div class="blk">
         <h4>位姿对比</h4>
         <div class="cmp" id="pose-cmp"></div>
       </div>
       <div class="blk">
-        <h4>四组对应点（解 H 的全部输入）</h4>
+        <h4>四组对应点（解 \(H\) 的全部输入）</h4>
         <table class="amat" id="corr-tab"></table>
       </div>
     </div>
@@ -269,33 +383,53 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
   <h3>值得亲手试的几件事</h3>
   <ul>
     <li><strong>只动焦距</strong>：tag 和相机都没动，外参不变。图像平面离光心变远，图像里的 tag 变大。内参只管光线怎么变成像素。</li>
-    <li><strong>动上下或左右平移</strong>：H 的第三列跟着变。这一列就是 tag 中心的像素坐标。</li>
-    <li><strong>只旋转</strong>：H 的第三列不变，因为 tag 绕自己的中心转，中心没有移动。前两列在变。</li>
-    <li><strong>把所有旋转归零</strong>：H 的第三行前两个数是 0，图像里是正方形。一倾斜，这两个数不再为 0，正方形变成梯形。透视效果藏在这两个数里。</li>
+    <li><strong>动上下或左右平移</strong>：\(H\) 的第三列跟着变。这一列就是 tag 中心的像素坐标。</li>
+    <li><strong>只旋转</strong>：\(H\) 的第三列不变，因为 tag 绕自己的中心转，中心没有移动。前两列在变。</li>
+    <li><strong>把所有旋转归零</strong>：\(H\) 的第三行前两个数是 0，图像里是正方形。一倾斜，这两个数不再为 0，正方形变成梯形。透视效果藏在这两个数里。</li>
     <li><strong>加像素噪声并拉远</strong>：反推的位姿开始偏离真值，角度比位置偏得更多。</li>
   </ul>
 </section>
 
 <section id="frames">
   <h2><span class="n">03</span>坐标系与外参</h2>
-  <p>同一个点，在不同坐标系里有不同的坐标。tag 的左上角在 tag 自己的坐标系里永远是 <span class="m">(−0.025, −0.025, 0)</span>，但在相机坐标系里的坐标取决于 tag 摆在哪里。外参就是换算规则：</p>
-  <div class="eq">P<sub>c</sub> = R · P<sub>tag</sub> + t</div>
+  <p>同一个点，在不同坐标系里有不同的坐标。tag 的左上角在 tag 自己的坐标系里永远是 \((-0.025, -0.025, 0)\)，但在相机坐标系里的坐标取决于 tag 摆在哪里。外参就是换算规则：</p>
+  <div class="eq">
+\[
+P_c = R\,P_{\text{tag}} + t
+\]
+<div class="sym">
+  <span>\(P_c\)</span><span>点在相机坐标系中的坐标</span>
+  <span>\(P_{\text{tag}}\)</span><span>同一个点在 tag 坐标系中的坐标</span>
+  <span>\(R\)</span><span>3×3 旋转矩阵，tag 的三个轴在相机坐标系中的方向</span>
+  <span>\(t\)</span><span>tag 中心在相机坐标系中的坐标</span>
+</div>
+</div>
   <div class="tw"><table>
     <tr><th>符号</th><th>含义</th><th>单位</th><th>例子</th></tr>
-    <tr><td class="m">P<sub>tag</sub></td><td>点在 tag 坐标系中的坐标。原点在 tag 中心，X 朝右，Y 朝下，Z 垂直纸面朝里</td><td>米</td><td class="m">(0.025, 0, 0)</td></tr>
-    <tr><td class="m">R</td><td>3×3 旋转矩阵。它的三列 <span class="m"><span class="cx">r1</span> <span class="cy">r2</span> <span class="cz">r3</span></span> 是 tag 的 X、Y、Z 轴在相机坐标系中的方向</td><td>无</td><td>正对相机时是单位矩阵</td></tr>
-    <tr><td class="m">t</td><td>tag 中心在相机坐标系中的坐标</td><td>米</td><td class="m">(0.08, 0, 0.40)</td></tr>
-    <tr><td class="m">P<sub>c</sub></td><td>同一个点在相机坐标系中的坐标</td><td>米</td><td class="m">(0.105, 0, 0.40)</td></tr>
+    <tr><td>\(P_{\text{tag}}\)</td><td>点在 tag 坐标系中的坐标。原点在 tag 中心，\(X\) 朝右，\(Y\) 朝下，\(Z\) 垂直纸面朝里</td><td>米</td><td>\((0.025, 0, 0)\)</td></tr>
+    <tr><td>\(R\)</td><td>\(3\times 3\) 旋转矩阵。它的三列 <span class="cx">\(r_1\)</span> <span class="cy">\(r_2\)</span> <span class="cz">\(r_3\)</span> 是 tag 的 \(X,\ Y,\ Z\) 轴在相机坐标系中的方向</td><td>无</td><td>正对相机时是单位矩阵</td></tr>
+    <tr><td>\(t\)</td><td>tag 中心在相机坐标系中的坐标</td><td>米</td><td>\((0.08, 0, 0.40)\)</td></tr>
+    <tr><td>\(P_{c}\)</td><td>同一个点在相机坐标系中的坐标</td><td>米</td><td>\((0.105, 0, 0.40)\)</td></tr>
   </table></div>
-  <p>表中的例子是 tag 正对相机的情形：<span class="m">R</span> 是单位矩阵，所以 <span class="m">P<sub>c</sub> = (0.025, 0, 0) + (0.08, 0, 0.40)</span>。</p>
-  <div class="note"><p><span class="q">怎样读 R</span>看列。第一列回答"tag 的 X 轴现在指向相机的哪个方向"。例如 <span class="m cx">r1 = (0, 1, 0)</span> 表示 tag 的 X 轴指向相机的 Y 方向（朝下），也就是 tag 在平面内转了 90°。</p></div>
-  <h3>4×4 的写法</h3>
-  <p>把 <span class="m">R</span> 和 <span class="m">t</span> 拼成一个 4×4 矩阵 <span class="m">T</span>，换坐标系就变成一次矩阵乘法。多个变换首尾相接时，直接连乘即可。第 11 节会用到。</p>
-  <div class="eq">T<sub>cam_tag</sub> = <span class="mat" style="--c:2"><span>R</span><span>t</span><span>0 0 0</span><span>1</span></span> <span style="color:var(--muted)">下标读作"tag 在 cam 坐标系中的位姿"</span></div>
+  <p>表中的例子是 tag 正对相机的情形：\(R\) 是单位矩阵，所以 \(P_{c} = (0.025, 0, 0) + (0.08, 0, 0.40)\)。</p>
+  <div class="note"><p><span class="q">怎样读 \(R\)</span>看列。第一列回答"tag 的 \(X\) 轴现在指向相机的哪个方向"。例如 <span class="cx">\(r_1 = (0, 1, 0)\)</span> 表示 tag 的 \(X\) 轴指向相机的 \(Y\) 方向（朝下），也就是 tag 在平面内转了 \(90^\circ\)。</p></div>
+  <h3>\(4\times 4\) 的写法</h3>
+  <p>把 \(R\) 和 \(t\) 拼成一个 \(4\times 4\) 矩阵 \(T\)，换坐标系就变成一次矩阵乘法。多个变换首尾相接时，直接连乘即可。第 11 节会用到。</p>
+  <div class="eq">
+\[
+T_{\text{cam\_tag}} = \begin{bmatrix} R & t \\ \mathbf{0}^\top & 1 \end{bmatrix} \qquad \text{下标读作“tag 在 cam 坐标系中的位姿”}
+\]
+<div class="sym">
+  <span>\(T_{\text{cam\_tag}}\)</span><span>4×4 齐次变换矩阵：tag 在相机（cam）坐标系中的位姿</span>
+  <span>\(R\)</span><span>3×3 旋转矩阵</span>
+  <span>\(t\)</span><span>平移向量（3×1）</span>
+  <span>\(\mathbf{0}^\top\)</span><span>1×3 的零行 \((0,0,0)\)，用来凑成 4×4</span>
+</div>
+</div>
 </section>
 
 <section id="intrinsics">
-  <h2><span class="n">04</span>相机模型与内参 K</h2>
+  <h2><span class="n">04</span>相机模型与内参 \(K\)</h2>
   <p>针孔相机的成像只有一条规则：物体上的点、光心、像点，三者在一条直线上。从侧面看是一对相似三角形。</p>
   <figure class="fig">
     <svg viewBox="0 0 640 262" role="img" aria-label="针孔相机侧视图：点 P 的光线穿过图像平面到达光心，形成相似三角形">
@@ -321,48 +455,111 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
       <line x1="80" y1="244" x2="240" y2="244" class="d-ln" marker-start="url(#arr)" marker-end="url(#arr)"/>
       <text x="160" y="238" text-anchor="middle" class="d-s">f（焦距）</text>
     </svg>
-    <figcaption>大三角形的两条直角边是 Xc 和 Zc，小三角形的是像高和 f。两者相似，所以像高 = f · Xc / Zc。同样大的物体，Zc 越大，像越小。</figcaption>
+    <figcaption>大三角形的两条直角边是 \(X_c\) 和 \(Z_c\)，小三角形的是像高和 \(f\)。两者相似，所以像高 = \(f\cdot X_c / Z_c\)。同样大的物体，\(Z_c\) 越大，像越小。</figcaption>
   </figure>
   <p>成像分两步。</p>
   <h3>第一步：除以深度，得到归一化坐标</h3>
-  <div class="eq">x = Xc / Zc，  y = Yc / Zc</div>
-  <p><span class="m">(x, y)</span> 没有单位。它只描述光线的方向，等价于"这条光线在 Z = 1 的平面上打在哪里"。它与相机的焦距和分辨率无关。</p>
-  <h3>第二步：用 K 把归一化坐标变成像素</h3>
-  <div class="eq">u = f<sub>x</sub> · x + c<sub>x</sub>，  v = f<sub>y</sub> · y + c<sub>y</sub>     K = <span class="mat"><span>f<sub>x</sub></span><span>0</span><span>c<sub>x</sub></span><span>0</span><span>f<sub>y</sub></span><span>c<sub>y</sub></span><span>0</span><span>0</span><span>1</span></span></div>
+  <div class="eq">
+\[
+x = \frac{X_c}{Z_c},\qquad y = \frac{Y_c}{Z_c}
+\]
+<div class="sym">
+  <span>\(X_c,\ Y_c,\ Z_c\)</span><span>点在相机坐标系中的坐标，\(Z_c\) 是深度</span>
+  <span>\(x,\ y\)</span><span>归一化坐标，没有单位</span>
+</div>
+</div>
+  <p>\((x, y)\) 没有单位。它只描述光线的方向，等价于"这条光线在 \(Z\) = 1 的平面上打在哪里"。它与相机的焦距和分辨率无关。</p>
+  <h3>第二步：用 \(K\) 把归一化坐标变成像素</h3>
+  <div class="eq">
+\[
+\begin{aligned}
+u &= f_x\,x + c_x, \qquad v = f_y\,y + c_y \\
+K &= \begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(x,\ y\)</span><span>归一化坐标（上一式）</span>
+  <span>\(u,\ v\)</span><span>像素坐标，u 向右，v 向下</span>
+  <span>\(f_x,\ f_y\)</span><span>焦距，用像素衡量</span>
+  <span>\(c_x,\ c_y\)</span><span>主点：光轴打在图像上的像素位置</span>
+  <span>\(K\)</span><span>相机内参矩阵（3×3）</span>
+</div>
+</div>
   <div class="tw"><table>
     <tr><th>符号</th><th>含义</th><th>单位</th><th>实验台中的值</th></tr>
-    <tr><td class="m">f<sub>x</sub>, f<sub>y</sub></td><td>焦距，用像素衡量。等于物理焦距除以单个像素的宽度（或高度）。数值越大，视野越窄，物体在图像中越大</td><td>像素</td><td class="m">400, 400</td></tr>
-    <tr><td class="m">c<sub>x</sub>, c<sub>y</sub></td><td>主点：光轴打在图像上的像素位置，通常接近图像中心。因为像素坐标的原点在左上角，所以要加这个偏移</td><td>像素</td><td class="m">160, 120</td></tr>
-    <tr><td class="m">u, v</td><td>像素坐标。u 向右，v 向下</td><td>像素</td><td>见下例</td></tr>
+    <tr><td>\(f_{x}, f_{y}\)</td><td>焦距，用像素衡量。等于物理焦距除以单个像素的宽度（或高度）。数值越大，视野越窄，物体在图像中越大</td><td>像素</td><td>\(400, 400\)</td></tr>
+    <tr><td>\(c_{x}, c_{y}\)</td><td>主点：光轴打在图像上的像素位置，通常接近图像中心。因为像素坐标的原点在左上角，所以要加这个偏移</td><td>像素</td><td>\(160, 120\)</td></tr>
+    <tr><td>\(u, v\)</td><td>像素坐标。\(u\) 向右，\(v\) 向下</td><td>像素</td><td>见下例</td></tr>
   </table></div>
-  <p><strong>数字例子</strong>：点在相机坐标系中是 <span class="m">(0.08, 0, 0.40)</span>。归一化坐标 <span class="m">x = 0.08 / 0.40 = 0.2</span>，<span class="m">y = 0</span>。像素 <span class="m">u = 400 × 0.2 + 160 = 240</span>，<span class="m">v = 400 × 0 + 120 = 120</span>。</p>
-  <div class="note"><p><span class="q">K 是归一化吗？</span>方向反了一步。<span class="m">K</span> 把归一化坐标变成像素。<span class="m">K⁻¹</span> 把像素变回归一化坐标，所以"归一化"对应的是 <span class="m">K⁻¹</span>。它的作用是把相机的个体差异（焦距、分辨率）去掉，只留下光线方向。</p></div>
-  <div class="note"><p><span class="q">K⁻¹ 我们知道吗？</span>知道。<span class="m">K</span> 来自相机标定：用棋盘格拍几十张照片后由 OpenCV 算出，或由相机驱动直接提供（如 ROS 的 <code>camera_info</code>），课程项目通常直接给定。有了 <span class="m">K</span>，<span class="m">K⁻¹</span> 可以直接写出：</p></div>
-  <div class="eq">K⁻¹ = <span class="mat"><span>1/f<sub>x</sub></span><span>0</span><span>−c<sub>x</sub>/f<sub>x</sub></span><span>0</span><span>1/f<sub>y</sub></span><span>−c<sub>y</sub>/f<sub>y</sub></span><span>0</span><span>0</span><span>1</span></span>   即   x = (u − c<sub>x</sub>) / f<sub>x</sub>，  y = (v − c<sub>y</sub>) / f<sub>y</sub></div>
-  <p>注意一个不可逆的地方：除以 <span class="m">Zc</span> 之后，深度丢失了。一个像素只能还原成一条光线，无法知道点在光线上多远。AprilTag 能恢复深度，靠的是已知 tag 的真实边长。</p>
+  <p><strong>数字例子</strong>：点在相机坐标系中是 \((0.08, 0, 0.40)\)。归一化坐标 \(x = 0.08 / 0.40 = 0.2\)，\(y = 0\)。像素 \(u = 400 \times  0.2 + 160 = 240\)，\(v = 400 \times  0 + 120 = 120\)。</p>
+  <div class="note"><p><span class="q">\(K\) 是归一化吗？</span>方向反了一步。\(K\) 把归一化坐标变成像素。\(K^{-1}\) 把像素变回归一化坐标，所以"归一化"对应的是 \(K^{-1}\)。它的作用是把相机的个体差异（焦距、分辨率）去掉，只留下光线方向。</p></div>
+  <div class="note"><p><span class="q">\(K^{-1}\) 我们知道吗？</span>知道。\(K\) 来自相机标定：用棋盘格拍几十张照片后由 OpenCV 算出，或由相机驱动直接提供（如 ROS 的 <code>camera_info</code>），课程项目通常直接给定。有了 \(K\)，\(K^{-1}\) 可以直接写出：</p></div>
+  <div class="eq">
+\[
+K^{-1} = \begin{bmatrix} 1/f_x & 0 & -c_x/f_x \\ 0 & 1/f_y & -c_y/f_y \\ 0 & 0 & 1 \end{bmatrix}
+\quad\Longleftrightarrow\quad
+x = \frac{u - c_x}{f_x},\quad y = \frac{v - c_y}{f_y}
+\]
+<div class="sym">
+  <span>\(K^{-1}\)</span><span>内参矩阵的逆，把像素变回归一化坐标</span>
+  <span>\(u,\ v\)</span><span>像素坐标</span>
+  <span>\(x,\ y\)</span><span>归一化坐标</span>
+  <span>\(f_x,\ f_y,\ c_x,\ c_y\)</span><span>同上：焦距与主点（像素）</span>
+</div>
+</div>
+  <p>注意一个不可逆的地方：除以 \(Z_c\) 之后，深度丢失了。一个像素只能还原成一条光线，无法知道点在光线上多远。AprilTag 能恢复深度，靠的是已知 tag 的真实边长。</p>
 </section>
 
 <section id="projection">
   <h2><span class="n">05</span>完整投影方程</h2>
   <p>把第 3 节的换坐标系和第 4 节的成像合在一起，就是那条看起来很抽象的式子：</p>
-  <div class="eq">s · <span class="mat" style="--c:1"><span>u</span><span>v</span><span>1</span></span> = K · <span class="mat" style="--c:4"><span class="cx">r<sub>11</sub></span><span class="cy">r<sub>12</sub></span><span class="cz">r<sub>13</sub></span><span>t<sub>x</sub></span><span class="cx">r<sub>21</sub></span><span class="cy">r<sub>22</sub></span><span class="cz">r<sub>23</sub></span><span>t<sub>y</sub></span><span class="cx">r<sub>31</sub></span><span class="cy">r<sub>32</sub></span><span class="cz">r<sub>33</sub></span><span>t<sub>z</sub></span></span> · <span class="mat" style="--c:1"><span>X</span><span>Y</span><span>Z</span><span>1</span></span></div>
+  <div class="eq">
+\[
+s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+= K \begin{bmatrix} r_{11} & r_{12} & r_{13} & t_x \\ r_{21} & r_{22} & r_{23} & t_y \\ r_{31} & r_{32} & r_{33} & t_z \end{bmatrix}
+\begin{bmatrix} X \\ Y \\ Z \\ 1 \end{bmatrix}
+\]
+<div class="sym">
+  <span>\(s\)</span><span>比例因子，等于深度 \(Z_c\)</span>
+  <span>\(u,\ v\)</span><span>像素坐标（齐次形式 \((u,v,1)^\top\)）</span>
+  <span>\(K\)</span><span>相机内参矩阵（3×3）</span>
+  <span>\(r_{ij}\)</span><span>旋转矩阵 R 的第 \(i\) 行第 \(j\) 列元素</span>
+  <span>\(t_x,\ t_y,\ t_z\)</span><span>平移向量 t 的三个分量</span>
+  <span>\(X,\ Y,\ Z\)</span><span>点在 tag 坐标系中的坐标（末尾的 1 是齐次坐标）</span>
+</div>
+</div>
   <p>从右往左读，正好是成像的顺序：</p>
   <div class="tw"><table>
     <tr><th>部分</th><th>含义</th><th>单位</th></tr>
-    <tr><td class="m">[X, Y, Z, 1]ᵀ</td><td>点在 tag 坐标系中的坐标。末尾的 1 是为了让"加 t"也能写成矩阵乘法（齐次坐标）</td><td>米</td></tr>
-    <tr><td class="m">[R | t]</td><td>外参，3×4。乘完得到点在相机坐标系中的坐标 <span class="m">(Xc, Yc, Zc)</span></td><td>R 无单位，t 是米</td></tr>
-    <tr><td class="m">K</td><td>内参，3×3。乘完得到 <span class="m">(f<sub>x</sub>·Xc + c<sub>x</sub>·Zc, f<sub>y</sub>·Yc + c<sub>y</sub>·Zc, Zc)</span></td><td>像素</td></tr>
-    <tr><td class="m">s</td><td>就是深度 <span class="m">Zc</span>。把右边三个数都除以第三个数，才得到 <span class="m">(u, v, 1)</span></td><td>米</td></tr>
-    <tr><td class="m">[u, v, 1]ᵀ</td><td>像素坐标的齐次形式</td><td>像素</td></tr>
+    <tr><td>\([X, Y, Z, 1]^\top\)</td><td>点在 tag 坐标系中的坐标。末尾的 1 是为了让"加 \(t\)"也能写成矩阵乘法（齐次坐标）</td><td>米</td></tr>
+    <tr><td>\([R \mid t]\)</td><td>外参，\(3\times 4\)。乘完得到点在相机坐标系中的坐标 \((X_c, Y_c, Z_c)\)</td><td>\(R\) 无单位，\(t\) 是米</td></tr>
+    <tr><td>\(K\)</td><td>内参，\(3\times 3\)。乘完得到 \((f_{x}\cdot X_c + c_{x}\cdot Z_c, f_{y}\cdot Y_c + c_{y}\cdot Z_c, Z_c)\)</td><td>像素</td></tr>
+    <tr><td>\(s\)</td><td>就是深度 \(Z_c\)。把右边三个数都除以第三个数，才得到 \((u, v, 1)\)</td><td>米</td></tr>
+    <tr><td>\([u, v, 1]^\top\)</td><td>像素坐标的齐次形式</td><td>像素</td></tr>
   </table></div>
-  <p>"除以第三个数"这一步很重要。它意味着右边整体乘以任何非零常数，得到的像素都不变。这个性质在下一节变成"H 只有 8 个自由度"。</p>
+  <p>"除以第三个数"这一步很重要。它意味着右边整体乘以任何非零常数，得到的像素都不变。这个性质在下一节变成"\(H\) 只有 8 个自由度"。</p>
 </section>
 
 <section id="homography">
-  <h2><span class="n">06</span>单应矩阵 H</h2>
-  <p>tag 是一张平面。把 tag 坐标系建在这张平面上，所有点的 <span class="m">Z = 0</span>。代入投影方程，<span class="m cz">r3</span> 那一列永远乘以 0，可以直接删掉：</p>
-  <div class="eq">s · <span class="mat" style="--c:1"><span>u</span><span>v</span><span>1</span></span> = K · <span class="mat" style="--c:3"><span class="cx">r1</span><span class="cy">r2</span><span>t</span></span> · <span class="mat" style="--c:1"><span>X</span><span>Y</span><span>1</span></span> = <span class="ca">H</span> · <span class="mat" style="--c:1"><span>X</span><span>Y</span><span>1</span></span></div>
-  <p><span class="m ca">H = K · [r1 r2 t]</span> 是一个 3×3 矩阵。它把 tag 平面上的点 <span class="m">(X, Y)</span>（米）直接映射到图像上的像素 <span class="m">(u, v)</span>。</p>
+  <h2><span class="n">06</span>单应矩阵 \(H\)</h2>
+  <p>tag 是一张平面。把 tag 坐标系建在这张平面上，所有点的 \(Z = 0\)。代入投影方程，<span class="cz">\(r_3\)</span> 那一列永远乘以 0，可以直接删掉：</p>
+  <div class="eq">
+\[
+s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+= K \begin{bmatrix} r_1 & r_2 & t \end{bmatrix} \begin{bmatrix} X \\ Y \\ 1 \end{bmatrix}
+= H \begin{bmatrix} X \\ Y \\ 1 \end{bmatrix}
+\]
+<div class="sym">
+  <span>\(s\)</span><span>比例因子（深度）</span>
+  <span>\(u,\ v\)</span><span>像素坐标</span>
+  <span>\(K\)</span><span>相机内参矩阵</span>
+  <span>\(r_1,\ r_2\)</span><span>旋转矩阵 R 的前两列（tag 的 X、Y 轴方向）</span>
+  <span>\(t\)</span><span>平移向量</span>
+  <span>\(X,\ Y\)</span><span>点在 tag 平面上的坐标（\(Z=0\)）</span>
+  <span>\(H\)</span><span>单应矩阵（homography）\(=K\,[\,r_1\ r_2\ t\,]\)，3×3</span>
+</div>
+</div>
+  <p><span class="ca">\(H = K \cdot  [r_1 r_2 t]\)</span> 是一个 \(3\times 3\) 矩阵。它把 tag 平面上的点 \((X, Y)\)（米）直接映射到图像上的像素 \((u, v)\)。</p>
   <figure class="fig">
     <svg viewBox="0 0 680 232" role="img" aria-label="坐标变换链：tag 坐标系经外参到相机坐标系，再经内参到图像；H 是直达映射">
       <defs>
@@ -388,107 +585,157 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
       <text x="340" y="182" text-anchor="middle" class="d-t">H = K · [r1 r2 t]</text>
       <text x="340" y="202" text-anchor="middle" class="d-s">平面到像素的直达映射</text>
     </svg>
-    <figcaption>上排是正路，分两步。H 把两步合成一步，但只对平面上的点成立。</figcaption>
+    <figcaption>上排是正路，分两步。\(H\) 把两步合成一步，但只对平面上的点成立。</figcaption>
   </figure>
-  <h3>H 的每一列是什么</h3>
+  <h3>\(H\) 的每一列是什么</h3>
   <div class="tw"><table>
-    <tr><th>H 的列</th><th>等于</th><th>含义</th><th>怎么验证</th></tr>
-    <tr><td>第 1 列</td><td class="m">K · <span class="cx">r1</span></td><td>tag 的 X 轴方向，被 K 包了一层</td><td>在实验台里做面内旋转，前两列变</td></tr>
-    <tr><td>第 2 列</td><td class="m">K · <span class="cy">r2</span></td><td>tag 的 Y 轴方向，被 K 包了一层</td><td>同上</td></tr>
-    <tr><td>第 3 列</td><td class="m">K · t</td><td>代入 <span class="m">(X, Y) = (0, 0)</span> 得到的正是这一列，所以它是 tag 中心的像素（h33 归一后）</td><td>只平移时变，只旋转时不变</td></tr>
+    <tr><th>\(H\) 的列</th><th>等于</th><th>含义</th><th>怎么验证</th></tr>
+    <tr><td>第 1 列</td><td>\(K\,r_1\)</td><td>tag 的 \(X\) 轴方向，被 \(K\) 包了一层</td><td>在实验台里做面内旋转，前两列变</td></tr>
+    <tr><td>第 2 列</td><td>\(K\,r_2\)</td><td>tag 的 \(Y\) 轴方向，被 \(K\) 包了一层</td><td>同上</td></tr>
+    <tr><td>第 3 列</td><td>\(K \cdot  t\)</td><td>代入 \((X, Y) = (0, 0)\) 得到的正是这一列，所以它是 tag 中心的像素（\(h_{33}\) 归一后）</td><td>只平移时变，只旋转时不变</td></tr>
   </table></div>
-  <div class="note"><p><span class="q">H 为什么不包含 tag 的 Z 轴方向？</span>因为 tag 上没有任何一个点离开过 <span class="m">Z = 0</span> 的平面。<span class="m cz">r3</span> 始终乘以 0，它不影响任何一个像素，图像里也就没有关于它的直接信息。但信息并没有丢失：旋转矩阵的三列互相垂直且构成右手系，所以 <span class="m"><span class="cz">r3</span> = <span class="cx">r1</span> × <span class="cy">r2</span></span>，知道前两列就能算出第三列。</p></div>
+  <div class="note"><p><span class="q">\(H\) 为什么不包含 tag 的 \(Z\) 轴方向？</span>因为 tag 上没有任何一个点离开过 \(Z = 0\) 的平面。<span class="cz">\(r_3\)</span> 始终乘以 0，它不影响任何一个像素，图像里也就没有关于它的直接信息。但信息并没有丢失：旋转矩阵的三列互相垂直且构成右手系，所以 \(r_3 = r_1 \times r_2\)，知道前两列就能算出第三列。</p></div>
   <h3>为什么是 8 个未知数</h3>
-  <p><span class="m ca">H</span> 有 9 个元素。但 <span class="m ca">H</span> 和 <span class="m">2·<span class="ca">H</span></span> 算出的像素完全相同，因为最后要除以第三个分量。整体尺度没有意义，所以有效的未知数是 8 个。习惯上把 <span class="m">h<sub>33</sub></span> 归一为 1，或者规定 9 个元素的平方和为 1。</p>
-  <h3>求 H 有什么用</h3>
+  <p><span class="ca">\(H\)</span> 有 9 个元素。但 <span class="ca">\(H\)</span> 和 \(2H\) 算出的像素完全相同，因为最后要除以第三个分量。整体尺度没有意义，所以有效的未知数是 8 个。习惯上把 \(h_{33}\) 归一为 1，或者规定 9 个元素的平方和为 1。</p>
+  <h3>求 \(H\) 有什么用</h3>
   <ul>
-    <li><strong>恢复位姿</strong>：<span class="m">R</span> 和 <span class="m">t</span> 无法直接测量，但 <span class="m ca">H</span> 只用四组对应点就能解出，而它里面正好装着 <span class="m">r1</span>、<span class="m">r2</span>、<span class="m">t</span>。它是位姿的"加密版"，<span class="m">K</span> 是钥匙。</li>
-    <li><strong>解码 ID</strong>：知道 <span class="m ca">H</span>，就能算出 tag 内部任何一点落在图像的哪里，从而去读黑白格子。</li>
+    <li><strong>恢复位姿</strong>：\(R\) 和 \(t\) 无法直接测量，但 <span class="ca">\(H\)</span> 只用四组对应点就能解出，而它里面正好装着 \(r_1,\ r_2,\ t\)。它是位姿的"加密版"，\(K\) 是钥匙。</li>
+    <li><strong>解码 ID</strong>：知道 <span class="ca">\(H\)</span>，就能算出 tag 内部任何一点落在图像的哪里，从而去读黑白格子。</li>
   </ul>
 </section>
 
 <section id="dlt">
-  <h2><span class="n">07</span>四个角点解 H</h2>
+  <h2><span class="n">07</span>四个角点解 \(H\)</h2>
   <p>先分清楚哪些量已知，哪些未知。这是整个推导的关键。</p>
   <div class="tw"><table>
     <tr><th>量</th><th>状态</th><th>为什么</th><th>例子</th></tr>
-    <tr><td class="m">X, Y</td><td><span class="pill known">已知</span></td><td>角点在 tag 自己坐标系中的坐标。tag 是你打印的，边长是你量的。拍照之前就知道，与相机无关</td><td>边长 5 cm 时，四个角是 <span class="m">(±0.025, ±0.025)</span></td></tr>
-    <tr><td class="m">u, v</td><td><span class="pill known">已知</span></td><td>检测算法在图像里找到角点，直接读出像素坐标</td><td>实验台里的红点</td></tr>
-    <tr><td class="m">h<sub>11</sub> … h<sub>33</sub></td><td><span class="pill unk">未知</span></td><td>它描述 tag 怎么摆放，这正是要求的</td><td>实验台里的 H</td></tr>
+    <tr><td>\(X, Y\)</td><td><span class="pill known">已知</span></td><td>角点在 tag 自己坐标系中的坐标。tag 是你打印的，边长是你量的。拍照之前就知道，与相机无关</td><td>边长 5 cm 时，四个角是 \((\pm 0.025, \pm 0.025)\)</td></tr>
+    <tr><td>\(u, v\)</td><td><span class="pill known">已知</span></td><td>检测算法在图像里找到角点，直接读出像素坐标</td><td>实验台里的红点</td></tr>
+    <tr><td>\(h_{11} \ldots  h_{33}\)</td><td><span class="pill unk">未知</span></td><td>它描述 tag 怎么摆放，这正是要求的</td><td>实验台里的 \(H\)</td></tr>
   </table></div>
-  <p>换一个说法：你知道物体的真实形状（X、Y），也看到了它在照片中的样子（u、v），唯一不知道的是它怎么摆的。</p>
+  <p>换一个说法：你知道物体的真实形状（\(X,\ Y\)），也看到了它在照片中的样子（\(u,\ v\)），唯一不知道的是它怎么摆的。</p>
   <h3>一个点给出两个方程</h3>
-  <p>把 <span class="m">H · [X, Y, 1]ᵀ</span> 展开，再除以第三个分量：</p>
-  <div class="eq">u = (h<sub>11</sub>X + h<sub>12</sub>Y + h<sub>13</sub>) / (h<sub>31</sub>X + h<sub>32</sub>Y + h<sub>33</sub>)</div>
+  <p>把 \(H \cdot  [X, Y, 1]^\top\) 展开，再除以第三个分量：</p>
+  <div class="eq">
+\[
+u = \frac{h_{11}X + h_{12}Y + h_{13}}{h_{31}X + h_{32}Y + h_{33}}
+\]
+<div class="sym">
+  <span>\(u\)</span><span>像素横坐标</span>
+  <span>\(h_{ij}\)</span><span>H 的第 \(i\) 行第 \(j\) 列元素（未知）</span>
+  <span>\(X,\ Y\)</span><span>角点在 tag 坐标系中的坐标（已知）</span>
+</div>
+</div>
   <p>把分母乘到左边，再全部移到一侧：</p>
-  <div class="eq">h<sub>11</sub>X + h<sub>12</sub>Y + h<sub>13</sub> − u·h<sub>31</sub>X − u·h<sub>32</sub>Y − u·h<sub>33</sub> = 0</div>
-  <p>式中 X、Y、u 是具体的数字，未知的只有 9 个 h。所以这是关于 h 的线性方程，可以写成"一行系数乘以 h 等于 0"。对 v 做同样的事，再得一行：</p>
-  <div class="eq" style="font-size:14px"><span class="mat" style="--c:9"><span>X</span><span>Y</span><span>1</span><span>0</span><span>0</span><span>0</span><span>−uX</span><span>−uY</span><span>−u</span><span>0</span><span>0</span><span>0</span><span>X</span><span>Y</span><span>1</span><span>−vX</span><span>−vY</span><span>−v</span></span> · h = 0</div>
-  <p>其中 <span class="m">h = [h<sub>11</sub>, h<sub>12</sub>, h<sub>13</sub>, h<sub>21</sub>, h<sub>22</sub>, h<sub>23</sub>, h<sub>31</sub>, h<sub>32</sub>, h<sub>33</sub>]ᵀ</span>，是把 H 按行排成的一列。</p>
+  <div class="eq">
+\[
+h_{11}X + h_{12}Y + h_{13} - u\,h_{31}X - u\,h_{32}Y - u\,h_{33} = 0
+\]
+<div class="sym">
+  <span>\(u\)</span><span>像素横坐标（已知）</span>
+  <span>\(h_{ij}\)</span><span>H 的元素（未知）</span>
+  <span>\(X,\ Y\)</span><span>角点在 tag 坐标系中的坐标（已知）</span>
+</div>
+</div>
+  <p>式中 \(X,\ Y,\ u\) 是具体的数字，未知的只有 9 个 \(h\)。所以这是关于 \(h\) 的线性方程，可以写成"一行系数乘以 \(h\) 等于 0"。对 \(v\) 做同样的事，再得一行：</p>
+  <div class="eq">
+\[
+\begin{bmatrix}
+X & Y & 1 & 0 & 0 & 0 & -uX & -uY & -u \\
+0 & 0 & 0 & X & Y & 1 & -vX & -vY & -v
+\end{bmatrix} h = \mathbf{0}
+\]
+<div class="sym">
+  <span>\(X,\ Y\)</span><span>角点在 tag 坐标系中的坐标（已知）</span>
+  <span>\(u,\ v\)</span><span>角点的像素坐标（已知）</span>
+  <span>\(h\)</span><span>H 的 9 个元素按行排成的列向量（未知）</span>
+  <span>\(\mathbf{0}\)</span><span>零向量</span>
+</div>
+</div>
+  <p>其中 \(h = [h_{11}, h_{12}, h_{13}, h_{21}, h_{22}, h_{23}, h_{31}, h_{32}, h_{33}]^\top\)，是把 \(H\) 按行排成的一列。</p>
   <h3>四个点叠起来</h3>
-  <p>每个角点 2 行，4 个角点共 8 行，得到 8×9 的矩阵 <span class="m">A</span>，方程是 <span class="m">A · h = 0</span>。8 个方程正好对应 8 个自由度，所以最少需要 4 个点。下面是实验台当前状态下真实的 <span class="m">A</span>：</p>
+  <p>每个角点 2 行，4 个角点共 8 行，得到 \(8\times 9\) 的矩阵 \(A\)，方程是 \(A \cdot  h = 0\)。8 个方程正好对应 8 个自由度，所以最少需要 4 个点。下面是实验台当前状态下真实的 \(A\)：</p>
   <div class="tw"><table class="amat" id="a-mat"></table></div>
-  <p class="cap">每两行来自一个角点。前三列和中间三列填的是 X、Y、1（米），后三列混入了像素坐标。拖动实验台，后三列随之变化。</p>
-  <p><span class="m">h = 0</span> 永远满足这个方程，但没有意义。我们要的是非零解，这需要 SVD。</p>
+  <p class="cap">每两行来自一个角点。前三列和中间三列填的是 \(X,\ Y\)、1（米），后三列混入了像素坐标。拖动实验台，后三列随之变化。</p>
+  <p>\(h = 0\) 永远满足这个方程，但没有意义。我们要的是非零解，这需要 SVD。</p>
 </section>
 
 <section id="svd-review">
   <h2><span class="n">08</span>SVD 复习</h2>
   <p>奇异值分解（SVD）说的是：任何矩阵都可以拆成三个简单矩阵的乘积。</p>
-  <div class="eq">A = U · Σ · Vᵀ</div>
+  <div class="eq">
+\[
+A = U\,\Sigma\,V^\top
+\]
+<div class="sym">
+  <span>\(A\)</span><span>被分解的 m×n 矩阵</span>
+  <span>\(U\)</span><span>m×m 正交矩阵</span>
+  <span>\(\Sigma\)</span><span>m×n 矩阵，对角线上是奇异值</span>
+  <span>\(V^\top\)</span><span>n×n 正交矩阵的转置</span>
+</div>
+</div>
   <div class="tw"><table>
-    <tr><th>符号</th><th>形状（A 是 m×n）</th><th>性质</th><th>含义</th></tr>
-    <tr><td class="m">Vᵀ</td><td>n×n</td><td>正交矩阵：各列互相垂直，长度为 1</td><td>把输入旋转到一组特殊的方向上</td></tr>
-    <tr><td class="m">Σ</td><td>m×n</td><td>只有对角线上有数，即奇异值 <span class="m">σ<sub>1</sub> ≥ σ<sub>2</sub> ≥ … ≥ 0</span></td><td>沿每个方向分别缩放</td></tr>
-    <tr><td class="m">U</td><td>m×m</td><td>正交矩阵</td><td>把结果旋转到输出的方向上</td></tr>
+    <tr><th>符号</th><th>形状（\(A\) 是 \(m\times n\)）</th><th>性质</th><th>含义</th></tr>
+    <tr><td>\(V^\top\)</td><td>\(n\times n\)</td><td>正交矩阵：各列互相垂直，长度为 1</td><td>把输入旋转到一组特殊的方向上</td></tr>
+    <tr><td>\(\Sigma\)</td><td>\(m\times n\)</td><td>只有对角线上有数，即奇异值 \(\sigma _{1} \ge  \sigma _{2} \ge  \ldots  \ge  0\)</td><td>沿每个方向分别缩放</td></tr>
+    <tr><td>\(U\)</td><td>\(m\times m\)</td><td>正交矩阵</td><td>把结果旋转到输出的方向上</td></tr>
   </table></div>
-  <p>几何上，任何线性变换都等于"旋转，沿坐标轴缩放，再旋转"。<span class="m">V</span> 的每一列是一个输入方向，对应的奇异值说明 <span class="m">A</span> 把这个方向拉伸了多少倍。</p>
-  <p><strong>一个小例子</strong>：<span class="m">A = [[2, 0], [0, 0.1]]</span>。它把 x 方向拉长 2 倍，把 y 方向压到 0.1 倍。所有长度为 1 的向量里，<span class="m">(1, 0)</span> 被拉得最长，<span class="m">(0, 1)</span> 被压得最短。一般的矩阵也是这样，只是这两个特殊方向不再沿坐标轴，而是 <span class="m">V</span> 的各列。</p>
-  <h3>用途一：解 A · h = 0</h3>
-  <p>为了排除 <span class="m">h = 0</span>，规定 <span class="m">‖h‖ = 1</span>（反正 H 的整体尺度没有意义）。问题变成：在所有长度为 1 的向量里，找一个让 <span class="m">‖A·h‖</span> 最小的。</p>
-  <p>答案是 <strong>V 的最后一列</strong>，即最小奇异值对应的方向。推导只有三行：</p>
+  <p>几何上，任何线性变换都等于"旋转，沿坐标轴缩放，再旋转"。\(V\) 的每一列是一个输入方向，对应的奇异值说明 \(A\) 把这个方向拉伸了多少倍。</p>
+  <p><strong>一个小例子</strong>：\(A = \begin{bmatrix} 2 & 0 \\ 0 & 0.1 \end{bmatrix}\)。它把 \(x\) 方向拉长 2 倍，把 \(y\) 方向压到 0.1 倍。所有长度为 1 的向量里，\((1, 0)\) 被拉得最长，\((0, 1)\) 被压得最短。一般的矩阵也是这样，只是这两个特殊方向不再沿坐标轴，而是 \(V\) 的各列。</p>
+  <h3>用途一：解 \(A h = 0\)</h3>
+  <p>为了排除 \(h = 0\)，规定 \(\lVert h\rVert = 1\)（反正 \(H\) 的整体尺度没有意义）。问题变成：在所有长度为 1 的向量里，找一个让 \(\lVert A\cdot h\rVert\) 最小的。</p>
+  <p>答案是 <strong>\(V\) 的最后一列</strong>，即最小奇异值对应的方向。推导只有三行：</p>
   <ol>
-    <li><span class="m">‖A·h‖ = ‖U·Σ·Vᵀ·h‖ = ‖Σ·Vᵀ·h‖</span>。旋转不改变长度，所以 <span class="m">U</span> 可以去掉。</li>
-    <li>令 <span class="m">y = Vᵀ·h</span>。旋转不改变长度，所以 <span class="m">‖y‖ = 1</span>。于是 <span class="m">‖A·h‖² = σ<sub>1</sub>²y<sub>1</sub>² + σ<sub>2</sub>²y<sub>2</sub>² + … + σ<sub>n</sub>²y<sub>n</sub>²</span>。</li>
-    <li>要让这个和最小，就把全部权重放在最小的 <span class="m">σ<sub>n</sub></span> 上：<span class="m">y = (0, …, 0, 1)</span>。对应的 <span class="m">h = V·y</span> 就是 V 的最后一列。</li>
+    <li>\(\lVert A\cdot h\rVert = \lVert U\cdot \Sigma \cdot V^\top\cdot h\rVert = \lVert \Sigma \cdot V^\top\cdot h\rVert\)。旋转不改变长度，所以 \(U\) 可以去掉。</li>
+    <li>令 \(y = V^\top\cdot h\)。旋转不改变长度，所以 \(\lVert y\rVert = 1\)。于是 \(\lVert A\cdot h\rVert ^2 = \sigma _{1}^2y_{1}^2 + \sigma _{2}^2y_{2}^2 + \ldots  + \sigma _{n}^2y_{n}^2\)。</li>
+    <li>要让这个和最小，就把全部权重放在最小的 \(\sigma _{n}\) 上：\(y = (0, \ldots, 0, 1)\)。对应的 \(h = V\cdot y\) 就是 \(V\) 的最后一列。</li>
   </ol>
-  <p>实验台当前 <span class="m">A</span> 的奇异值如下。严格地说 8×9 的矩阵只有 8 个奇异值；A 只有 8 行，所以 9 维的输入空间里必然有一个方向被它压成 0（null space，V 的第 9 列），这里把它记成 σ<sub>9</sub> = 0（数值上是极小的数）。这个方向就是我们要的 h。</p>
+  <p>实验台当前 \(A\) 的奇异值如下。严格地说 \(8\times 9\) 的矩阵只有 8 个奇异值；\(A\) 只有 8 行，所以 9 维的输入空间里必然有一个方向被它压成 0（null space，\(V\) 的第 9 列），这里把它记成 \(\sigma_9 = 0\)（数值上是极小的数）。这个方向就是我们要的 \(h\)。</p>
   <div class="sig" id="sig-list"></div>
-  <p class="cap" style="margin-bottom:14px">高亮的是最小奇异值。它对应的 V 的那一列，除以最后一个元素后重排成 3×3，就是实验台里显示的 H。</p>
-  <p>正好 4 个点时，最小奇异值恰好为 0，解是精确的。如果用更多的点（比如标定棋盘格），方程多于未知数，最小奇异值不再是 0，这时 V 的最后一列是最小二乘意义下的最优解。两种情况用同一段代码。</p>
+  <p class="cap" style="margin-bottom:14px">高亮的是最小奇异值。它对应的 \(V\) 的那一列，除以最后一个元素后重排成 \(3\times 3\)，就是实验台里显示的 \(H\)。</p>
+  <p>正好 4 个点时，最小奇异值恰好为 0，解是精确的。如果用更多的点（比如标定棋盘格），方程多于未知数，最小奇异值不再是 0，这时 \(V\) 的最后一列是最小二乘意义下的最优解。两种情况用同一段代码。</p>
   <h3>用途二：把矩阵拉回成旋转矩阵</h3>
-  <p>像素有噪声时，下一节算出的 <span class="m">r1</span> 和 <span class="m">r2</span> 不会严格垂直，拼出的矩阵 <span class="m">R̃</span> 不是合法的旋转矩阵。对它做 SVD，<span class="m">R̃ = U·Σ·Vᵀ</span>，然后把 <span class="m">Σ</span> 换成单位矩阵：</p>
-  <div class="eq">R = U · Vᵀ</div>
-  <p>合法的旋转矩阵没有缩放，奇异值应该全是 1。把"缩放"部分丢掉，只留"旋转"部分，得到的就是离 <span class="m">R̃</span> 最近的旋转矩阵。最后检查行列式：若为 −1，说明得到的是镜像，把 <span class="m">U</span> 的最后一列取反。</p>
+  <p>像素有噪声时，下一节算出的 \(r_1\) 和 \(r_2\) 不会严格垂直，拼出的矩阵 \(\tilde R\) 不是合法的旋转矩阵。对它做 SVD，\(\tilde R = U\cdot \Sigma \cdot V^\top\)，然后把 \(\Sigma\) 换成单位矩阵：</p>
+  <div class="eq">
+\[
+R = U\,V^\top
+\]
+<div class="sym">
+  <span>\(R\)</span><span>离 \(\tilde R\) 最近的旋转矩阵</span>
+  <span>\(\tilde R\)</span><span>由噪声数据拼出的近似旋转矩阵，\(\tilde R = U\Sigma V^\top\)</span>
+  <span>\(U,\ V\)</span><span>\(\tilde R\) 的 SVD 中的两个正交矩阵</span>
+</div>
+</div>
+  <p>合法的旋转矩阵没有缩放，奇异值应该全是 1。把"缩放"部分丢掉，只留"旋转"部分，得到的就是离 \(\tilde R\) 最近的旋转矩阵。最后检查行列式：若为 −1，说明得到的是镜像，把 \(U\) 的最后一列取反。</p>
 </section>
 
 <section id="pose">
-  <h2><span class="n">09</span>从 H 恢复位姿</h2>
-  <p>已知 <span class="m ca">H = λ · K · [r1 r2 t]</span>，其中 <span class="m">λ</span> 是那个没有意义的整体尺度。分五步把它拆开。每一步下面的数字来自实验台的当前状态。</p>
+  <h2><span class="n">09</span>从 \(H\) 恢复位姿</h2>
+  <p>已知 <span class="ca">\(H = \lambda  \cdot  K \cdot  [r_1 r_2 t]\)</span>，其中 \(\lambda\) 是那个没有意义的整体尺度。分五步把它拆开。每一步下面的数字来自实验台的当前状态。</p>
   <div class="steps">
     <div class="step"><span class="k">1</span><div>
-      <p><strong>去掉 K。</strong>计算 <span class="m">M = K⁻¹ · H</span>。它的三列记为 <span class="m">m1、m2、m3</span>，理论上等于 <span class="m">λ·r1、λ·r2、λ·t</span>。</p>
+      <p><strong>去掉 \(K\)。</strong>计算 \(M = K^{-1} \cdot  H\)。它的三列记为 \(m_1,\ m_2,\ m_3\)，理论上等于 \(\lambda \cdot r_1、\lambda \cdot r_2、\lambda \cdot t\)。</p>
       <div class="live" id="st-m"></div>
     </div></div>
     <div class="step"><span class="k">2</span><div>
-      <p><strong>定尺度。</strong>旋转矩阵的每一列长度都是 1，所以 <span class="m">‖m1‖</span> 和 <span class="m">‖m2‖</span> 都应该等于 <span class="m">λ</span>。取两者的平均，减小噪声影响。若算出的 <span class="m">t<sub>z</sub></span> 为负，说明 tag 跑到了相机后面，把 <span class="m">λ</span> 取反。</p>
+      <p><strong>定尺度。</strong>旋转矩阵的每一列长度都是 1，所以 \(\lVert m_1\rVert\) 和 \(\lVert m_2\rVert\) 都应该等于 \(\lambda\)。取两者的平均，减小噪声影响。若算出的 \(t_{z}\) 为负，说明 tag 跑到了相机后面，把 \(\lambda\) 取反。</p>
       <div class="live" id="st-lam"></div>
     </div></div>
     <div class="step"><span class="k">3</span><div>
-      <p><strong>取出 r1、r2、t。</strong>三列各除以 <span class="m">λ</span>。</p>
+      <p><strong>取出 \(r_{1},\ r_{2},\ t\)。</strong>三列各除以 \(\lambda\)。</p>
       <div class="live" id="st-rt"></div>
     </div></div>
     <div class="step"><span class="k">4</span><div>
-      <p><strong>补上 r3。</strong><span class="m"><span class="cz">r3</span> = <span class="cx">r1</span> × <span class="cy">r2</span></span>（叉乘）。这就是第 6 节说的"Z 轴方向没有丢"。</p>
+      <p><strong>补上 \(r_{3}\)。</strong>\(r_3 = r_1 \times r_2\)（叉乘）。这就是第 6 节说的"\(Z\) 轴方向没有丢"。</p>
       <div class="live" id="st-r3"></div>
     </div></div>
     <div class="step"><span class="k">5</span><div>
-      <p><strong>正交化。</strong>检查 <span class="m">r1 · r2</span>，它应该是 0。有噪声时不是，用 SVD 拉回最近的旋转矩阵（第 8 节用途二）。</p>
+      <p><strong>正交化。</strong>检查 \(r_1 \cdot  r_2\)，它应该是 0。有噪声时不是，用 SVD 拉回最近的旋转矩阵（第 8 节用途二）。</p>
       <div class="live" id="st-R"></div>
     </div></div>
   </div>
-  <p>点实验台的"上次截图的例子"，可以复现这组数字：第 1 列 <span class="m">(0, 1000, 0)</span> 乘以 <span class="m">K⁻¹</span> 得 <span class="m">(0, 2.5, 0)</span>，所以 <span class="m">λ = 2.5</span>，<span class="m cx">r1 = (0, 1, 0)</span>，<span class="m">t = (0.08, 0, 0.40)</span>。</p>
-  <div class="note"><p><span class="q">为什么 t 带真实尺度（米）？</span>因为输入的角点坐标 <span class="m">(X, Y)</span> 是以米为单位的。<span class="m ca">H</span> 把米映射到像素，拆出来的 <span class="m">t</span> 自然是米。推论：tag 边长填错多少倍，<span class="m">t</span> 就错多少倍，而 <span class="m">R</span> 不受影响。</p></div>
+  <p>点实验台的"上次截图的例子"，可以复现这组数字：第 1 列 \((0, 1000, 0)\) 乘以 \(K^{-1}\) 得 \((0, 2.5, 0)\)，所以 \(\lambda  = 2.5\)，<span class="cx">\(r_1 = (0, 1, 0)\)</span>，\(t = (0.08, 0, 0.40)\)。</p>
+  <div class="note"><p><span class="q">为什么 \(t\) 带真实尺度（米）？</span>因为输入的角点坐标 \((X, Y)\) 是以米为单位的。<span class="ca">\(H\)</span> 把米映射到像素，拆出来的 \(t\) 自然是米。推论：tag 边长填错多少倍，\(t\) 就错多少倍，而 \(R\) 不受影响。</p></div>
   <h3>完整代码</h3>
   <pre><code>import numpy as np
 
@@ -511,24 +758,36 @@ def pose_from_H(H, K):
     U, _, Vt = np.linalg.svd(R)          # 拉回最近的旋转矩阵
     R = U @ np.diag([1, 1, np.linalg.det(U @ Vt)]) @ Vt
     return R, t</code></pre>
-  <p>实际使用的库（<code>apriltag</code>、<code>pupil-apriltags</code>）在这之后还会做一次迭代优化，让四个角点的重投影误差最小。你只需提供 <span class="m">f<sub>x</sub>, f<sub>y</sub>, c<sub>x</sub>, c<sub>y</sub></span> 和 tag 边长。</p>
+  <p>实际使用的库（<code>apriltag</code>、<code>pupil-apriltags</code>）在这之后还会做一次迭代优化，让四个角点的重投影误差最小。你只需提供 \(f_{x}, f_{y}, c_{x}, c_{y}\) 和 tag 边长。</p>
 </section>
 
 <section id="decode">
   <h2><span class="n">10</span>解码 tag 的 ID</h2>
-  <p>四个角点只用来求 <span class="m ca">H</span>。tag 内部的黑白格子用来确认"这确实是一个 tag"，并读出它是哪一个。</p>
+  <p>四个角点只用来求 <span class="ca">\(H\)</span>。tag 内部的黑白格子用来确认"这确实是一个 tag"，并读出它是哪一个。</p>
   <ol>
-    <li>把 tag 内部划成网格。用 <span class="m ca">H</span> 把每个格子的中心 <span class="m">(X, Y)</span> 映射到像素，在那里读图像是黑还是白，得到一串比特。实验台右图里的格子就是这样贴上去的。</li>
+    <li>把 tag 内部划成网格。用 <span class="ca">\(H\)</span> 把每个格子的中心 \((X, Y)\) 映射到像素，在那里读图像是黑还是白，得到一串比特。实验台右图里的格子就是这样贴上去的。</li>
     <li>把这串比特与码本逐一比较，数有几位不同（汉明距离）。差得足够少就认为匹配成功。</li>
-    <li>因为不知道 tag 转了多少，要按 0°、90°、180°、270° 四种朝向各比一次。匹配上的那个朝向同时确定了哪个角点是"左上角"。</li>
+    <li>因为不知道 tag 转了多少，要按 \(0^\circ,\ 90^\circ,\ 180^\circ,\ 270^\circ\) 四种朝向各比一次。匹配上的那个朝向同时确定了哪个角点是"左上角"。</li>
   </ol>
-  <p>以常用的 <code>tag36h11</code> 为例：36 表示 6×6 共 36 位数据，h11 表示任意两个合法码字之间至少有 11 位不同。所以即使读错 5 位，仍然能唯一确定是哪个 tag，自然场景里碰巧出现合法码字的概率也极低。</p>
+  <p>以常用的 <code>tag36h11</code> 为例：36 表示 \(6\times 6\) 共 36 位数据，h11 表示任意两个合法码字之间至少有 11 位不同。所以即使读错 5 位，仍然能唯一确定是哪个 tag，自然场景里碰巧出现合法码字的概率也极低。</p>
 </section>
 
 <section id="chain">
   <h2><span class="n">11</span>Pick and place 变换链</h2>
   <p>把 tag 贴在方块顶面，相机就能得到方块的位姿和编号，不需要训练检测网络。但 AprilTag 给的是 tag 相对相机的位姿，机械臂需要的是方块相对基座的位姿。中间用变换链连起来：</p>
-  <div class="eq">T<sub>base_block</sub> = T<sub>base_ee</sub> · T<sub>ee_cam</sub> · <span class="ca">T<sub>cam_tag</sub></span> · T<sub>tag_block</sub></div>
+  <div class="eq">
+\[
+T_{\text{base\_block}} = T_{\text{base\_ee}}\; T_{\text{ee\_cam}}\; T_{\text{cam\_tag}}\; T_{\text{tag\_block}}
+\]
+<div class="sym">
+  <span>\(T_{\text{a\_b}}\)</span><span>4×4 刚体变换：b 在 a 坐标系中的位姿</span>
+  <span>\(\text{base}\)</span><span>机械臂基座坐标系</span>
+  <span>\(\text{ee}\)</span><span>末端执行器（end-effector）坐标系</span>
+  <span>\(\text{cam}\)</span><span>相机坐标系</span>
+  <span>\(\text{tag}\)</span><span>tag 坐标系</span>
+  <span>\(\text{block}\)</span><span>方块坐标系</span>
+</div>
+</div>
   <figure class="fig">
     <svg viewBox="0 0 680 170" role="img" aria-label="变换链：基座、末端、相机、tag、方块">
       <rect x="40" y="36" width="84" height="56" rx="6" class="d-box"/><text x="82" y="60" text-anchor="middle" class="d-t">基座</text><text x="82" y="80" text-anchor="middle" class="d-s">base</text>
@@ -546,16 +805,16 @@ def pose_from_H(H, K):
       <text x="404.5" y="130" text-anchor="middle" class="d-s">AprilTag + K</text><text x="404.5" y="150" text-anchor="middle" class="d-s">T_cam_tag</text>
       <text x="533.5" y="130" text-anchor="middle" class="d-s">已知偏移</text><text x="533.5" y="150" text-anchor="middle" class="d-s">T_tag_block</text>
     </svg>
-    <figcaption>每个箭头是一个 4×4 刚体变换。四个相乘，就是方块在基座坐标系下的位姿。</figcaption>
+    <figcaption>每个箭头是一个 \(4\times 4\) 刚体变换。四个相乘，就是方块在基座坐标系下的位姿。</figcaption>
   </figure>
   <div class="tw"><table>
     <tr><th>变换</th><th>来源</th><th>是否变化</th></tr>
-    <tr><td class="m">T<sub>base_ee</sub></td><td>读关节角，用正运动学计算</td><td>机械臂每动一次都变</td></tr>
-    <tr><td class="m">T<sub>ee_cam</sub></td><td>手眼标定，测一次</td><td>常数（相机固定在末端上）</td></tr>
-    <tr><td class="m ca">T<sub>cam_tag</sub></td><td>本页的全部内容。整条链中唯一靠视觉实时测量的一环，也是唯一用到 K 的地方</td><td>每帧都变</td></tr>
-    <tr><td class="m">T<sub>tag_block</sub></td><td>tag 贴在顶面中心，所以只是沿 tag 的 Z 轴平移半个方块边长</td><td>常数</td></tr>
+    <tr><td>\(T_{\text{base\_ee}}\)</td><td>读关节角，用正运动学计算</td><td>机械臂每动一次都变</td></tr>
+    <tr><td>\(T_{\text{ee\_cam}}\)</td><td>手眼标定，测一次</td><td>常数（相机固定在末端上）</td></tr>
+    <tr><td class="ca">\(T_{\text{cam\_tag}}\)</td><td>本页的全部内容。整条链中唯一靠视觉实时测量的一环，也是唯一用到 \(K\) 的地方</td><td>每帧都变</td></tr>
+    <tr><td>\(T_{\text{tag\_block}}\)</td><td>tag 贴在顶面中心，所以只是沿 tag 的 \(Z\) 轴平移半个方块边长</td><td>常数</td></tr>
   </table></div>
-  <p>得到 <span class="m">T<sub>base_block</sub></span> 后，位置决定夹爪去哪里，朝向（主要是绕竖直轴的转角）决定夹爪转多少度才能对齐方块的侧面。然后用逆运动学求关节角。</p>
+  <p>得到 \(T_{\text{base\_block}}\) 后，位置决定夹爪去哪里，朝向（主要是绕竖直轴的转角）决定夹爪转多少度才能对齐方块的侧面。然后用逆运动学求关节角。</p>
 </section>
 
 <section id="pitfalls">
@@ -570,10 +829,10 @@ def pose_from_H(H, K):
   <div class="tw"><table>
     <tr><th>现象</th><th>最可能的原因</th></tr>
     <tr><td>距离整体偏大或偏小，比例固定</td><td>tag 边长填错（注意是黑色外框的边长，不含白边），或单位写成了毫米</td></tr>
-    <tr><td>离图像中心越远，误差越大</td><td><span class="m">K</span> 不准，或没有做畸变校正</td></tr>
-    <tr><td>误差随机械臂姿态变化</td><td>手眼标定 <span class="m">T<sub>ee_cam</sub></span> 有误差</td></tr>
-    <tr><td>位置有固定偏移</td><td>tag 没贴在方块中心，或 <span class="m">T<sub>tag_block</sub></span> 的方向、符号写反</td></tr>
-    <tr><td>夹爪转角偶尔差 90° 或翻转</td><td>位姿歧义，或矩阵乘法的顺序、求逆写反</td></tr>
+    <tr><td>离图像中心越远，误差越大</td><td>\(K\) 不准，或没有做畸变校正</td></tr>
+    <tr><td>误差随机械臂姿态变化</td><td>手眼标定 \(T_{\text{ee\_cam}}\) 有误差</td></tr>
+    <tr><td>位置有固定偏移</td><td>tag 没贴在方块中心，或 \(T_{\text{tag\_block}}\) 的方向、符号写反</td></tr>
+    <tr><td>夹爪转角偶尔差 \(90^\circ\) 或翻转</td><td>位姿歧义，或矩阵乘法的顺序、求逆写反</td></tr>
   </table></div>
 </section>
 
@@ -581,19 +840,19 @@ def pose_from_H(H, K):
   <h2><span class="n">13</span>符号速查表</h2>
   <div class="tw"><table>
     <tr><th>符号</th><th>含义</th><th>单位</th><th>状态</th><th>来源</th></tr>
-    <tr><td class="m">(X, Y)</td><td>角点在 tag 坐标系中的坐标</td><td>米</td><td><span class="pill known">已知</span></td><td>量 tag 边长</td></tr>
-    <tr><td class="m">(u, v)</td><td>角点在图像中的像素坐标</td><td>像素</td><td><span class="pill known">已知</span></td><td>角点检测</td></tr>
-    <tr><td class="m">K</td><td>内参：f<sub>x</sub>, f<sub>y</sub>, c<sub>x</sub>, c<sub>y</sub></td><td>像素</td><td><span class="pill known">已知</span></td><td>相机标定</td></tr>
-    <tr><td class="m">(x, y)</td><td>归一化坐标 = <span class="m">K⁻¹</span> 作用后的像素，表示光线方向</td><td>无</td><td><span class="pill mid">中间量</span></td><td>计算</td></tr>
-    <tr><td class="m">s</td><td>投影方程里的比例因子，等于深度 Zc</td><td>米</td><td><span class="pill mid">中间量</span></td><td>被除掉</td></tr>
-    <tr><td class="m">A</td><td>8×9 系数矩阵，由 X、Y、u、v 拼成</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>由已知量构造</td></tr>
-    <tr><td class="m">h</td><td>H 的 9 个元素按行排成的列向量</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>A 的 SVD，V 的最后一列</td></tr>
-    <tr><td class="m ca">H</td><td>单应矩阵，<span class="m">K·[r1 r2 t]</span> 乘以任意尺度</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>h 重排</td></tr>
-    <tr><td class="m">λ</td><td>H 的整体尺度，由 ‖r1‖ = 1 确定</td><td>无</td><td><span class="pill mid">中间量</span></td><td>‖K⁻¹H 的第 1 列‖</td></tr>
-    <tr><td class="m">U, Σ, V</td><td>SVD 的三个因子：旋转、缩放、旋转</td><td>无</td><td><span class="pill mid">中间量</span></td><td><code>np.linalg.svd</code></td></tr>
-    <tr><td class="m">R</td><td>tag 相对相机的朝向，列为 tag 三个轴的方向</td><td>无</td><td><span class="pill unk">待求</span></td><td>分解 H</td></tr>
-    <tr><td class="m">t</td><td>tag 中心在相机坐标系中的位置</td><td>米</td><td><span class="pill unk">待求</span></td><td>分解 H</td></tr>
-    <tr><td class="m">T<sub>a_b</sub></td><td>4×4 刚体变换：b 在 a 坐标系中的位姿</td><td>无 / 米</td><td>视情况</td><td>R 和 t 拼成</td></tr>
+    <tr><td>\((X, Y)\)</td><td>角点在 tag 坐标系中的坐标</td><td>米</td><td><span class="pill known">已知</span></td><td>量 tag 边长</td></tr>
+    <tr><td>\((u, v)\)</td><td>角点在图像中的像素坐标</td><td>像素</td><td><span class="pill known">已知</span></td><td>角点检测</td></tr>
+    <tr><td>\(K\)</td><td>内参：\(f_x,\ f_y,\ c_x,\ c_y\)</td><td>像素</td><td><span class="pill known">已知</span></td><td>相机标定</td></tr>
+    <tr><td>\((x, y)\)</td><td>归一化坐标 = \(K^{-1}\) 作用后的像素，表示光线方向</td><td>无</td><td><span class="pill mid">中间量</span></td><td>计算</td></tr>
+    <tr><td>\(s\)</td><td>投影方程里的比例因子，等于深度 \(Z_c\)</td><td>米</td><td><span class="pill mid">中间量</span></td><td>被除掉</td></tr>
+    <tr><td>\(A\)</td><td>\(8\times 9\) 系数矩阵，由 \(X,\ Y,\ u,\ v\) 拼成</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>由已知量构造</td></tr>
+    <tr><td>\(h\)</td><td>\(H\) 的 9 个元素按行排成的列向量</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>\(A\) 的 SVD，\(V\) 的最后一列</td></tr>
+    <tr><td class="ca">\(H\)</td><td>单应矩阵，\(K\cdot [r_1 r_2 t]\) 乘以任意尺度</td><td>混合</td><td><span class="pill mid">中间量</span></td><td>\(h\) 重排</td></tr>
+    <tr><td>\(\lambda\)</td><td>\(H\) 的整体尺度，由 \(\lVert r_1\rVert = 1\) 确定</td><td>无</td><td><span class="pill mid">中间量</span></td><td>\(\lVert K^{-1}H \text{ 的第 1 列}\rVert\)</td></tr>
+    <tr><td>\(U, \Sigma , V\)</td><td>SVD 的三个因子：旋转、缩放、旋转</td><td>无</td><td><span class="pill mid">中间量</span></td><td><code>np.linalg.svd</code></td></tr>
+    <tr><td>\(R\)</td><td>tag 相对相机的朝向，列为 tag 三个轴的方向</td><td>无</td><td><span class="pill unk">待求</span></td><td>分解 \(H\)</td></tr>
+    <tr><td>\(t\)</td><td>tag 中心在相机坐标系中的位置</td><td>米</td><td><span class="pill unk">待求</span></td><td>分解 \(H\)</td></tr>
+    <tr><td>\(T_{\text{a\_b}}\)</td><td>\(4\times 4\) 刚体变换：\(b\) 在 \(a\) 坐标系中的位姿</td><td>无 / 米</td><td>视情况</td><td>\(R\) 和 \(t\) 拼成</td></tr>
   </table></div>
 </section>
 </main>

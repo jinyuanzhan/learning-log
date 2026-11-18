@@ -70,7 +70,13 @@ ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
 li{margin-bottom:6px}
 strong{font-weight:600}
 code,.m{font-family:var(--mono);font-size:.92em}
-.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.eq{padding:6px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+/* KaTeX 公式 */
+.katex{font-size:1.08em}
+.katex-display{margin:.7em 0;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14.5px;line-height:1.6;margin:0 0 10px;padding-top:10px;border-top:1px dashed var(--line)}
+.sym>span:nth-child(2n+1){text-align:right}
+.sym>span:nth-child(2n){color:var(--muted)}
 .note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
 .note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
 .note p:last-child,.note ul:last-child{margin-bottom:0}
@@ -216,6 +222,9 @@ ul.check input{flex:none;transform:translateY(2px)}
 @media print{.np,.np-tab{display:none}}
 /* notes-panel:end */
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false})"></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -304,17 +313,17 @@ ul.check input{flex:none;transform:translateY(2px)}
 <p>MAPF 是 Multi-Agent Path Finding 的缩写：给很多 robot 同时规划 path，保证它们互相不撞。下文里 agent 就是 robot。</p>
 <h3>输入</h3>
 <ul>
-<li>一张 graph <span class="m">G = (V, E)</span>。仓库里通常是 4-connected grid：每个 cell 是一个 vertex，上下左右相邻的 cell 之间有一条 edge。</li>
-<li><span class="m">k</span> 个 agent。第 <span class="m">i</span> 个 agent 有一个 start <span class="m">s<sub>i</sub></span> 和一个 goal <span class="m">g<sub>i</sub></span>。</li>
+<li>一张 graph \(G = (V, E)\)，其中 \(V\) 是 vertex 集合，\(E\) 是 edge 集合。仓库里通常是 4-connected grid：每个 cell 是一个 vertex，上下左右相邻的 cell 之间有一条 edge。</li>
+<li>\(k\) 个 agent。第 \(i\) 个 agent 有一个 start \(s_i\) 和一个 goal \(g_i\)。</li>
 </ul>
 <h3>规则</h3>
 <ul>
-<li>时间是离散的：<span class="m">t = 0, 1, 2, …</span></li>
+<li>时间是离散的：\(t = 0, 1, 2, \dots\)</li>
 <li>每一步，每个 agent 只能做两件事之一：move 到相邻的 cell，或者 wait 在原地。两种 action 都花 1 个 timestep。</li>
 <li>agent 到达 goal 之后一直停在那里，并且<strong>继续占着那个 cell</strong>。</li>
 </ul>
 <h3>输出</h3>
-<p>每个 agent 一条 path。和单 robot 的 A* 不同，这里的 path 是一张<strong>时刻表</strong>：<span class="m">path[t]</span> 是它在时刻 <span class="m">t</span> 所在的 cell。</p>
+<p>每个 agent 一条 path。和单 robot 的 A* 不同，这里的 path 是一张<strong>时刻表</strong>：<span class="m">path[t]</span> 是它在时刻 \(t\) 所在的 cell。</p>
 <pre>A 的 path:  (1,0)  (1,0)  (1,1)  (1,2)      # t=0 在 (1,0)，t=1 原地 wait，t=2 到 (1,1)，t=3 到 goal
 B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在 (2,1)</pre>
 <p>一组 path 是合法的 solution，条件是任意两条 path 之间都没有 conflict。conflict 的定义在下一节。</p>
@@ -325,8 +334,8 @@ B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在
 <h2><span class="n">03</span>Conflict 的类型</h2>
 <div class="tw"><table>
 <tr><th>名字</th><th>定义</th><th>记法</th><th>标准 MAPF 里</th></tr>
-<tr><td><strong>vertex conflict</strong></td><td>同一时刻，两个 agent 在同一个 cell</td><td class="m">⟨a<sub>i</sub>, a<sub>j</sub>, v, t⟩</td><td>禁止</td></tr>
-<tr><td><strong>edge conflict</strong>，也叫 swap conflict</td><td>从 t 到 t+1，两个 agent 互换位置</td><td class="m">⟨a<sub>i</sub>, a<sub>j</sub>, u, v, t⟩</td><td>禁止</td></tr>
+<tr><td><strong>vertex conflict</strong></td><td>同一时刻，两个 agent 在同一个 cell</td><td>\(\langle a_i, a_j, v, t\rangle\)</td><td>禁止</td></tr>
+<tr><td><strong>edge conflict</strong>，也叫 swap conflict</td><td>从 t 到 t+1，两个 agent 互换位置</td><td>\(\langle a_i, a_j, u, v, t\rangle\)</td><td>禁止</td></tr>
 <tr><td>following conflict</td><td>一个 agent 进入另一个 agent 刚离开的 cell</td><td></td><td>允许。真实 robot 要留安全距离，常常禁止</td></tr>
 <tr><td>cycle conflict</td><td>一圈 agent 同时各往前挪一格</td><td></td><td>允许。真实 robot 常常禁止</td></tr>
 </table></div>
@@ -357,10 +366,10 @@ B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在
 
 <section id="hard">
 <h2><span class="n">05</span>为什么难：joint state space</h2>
-<p>最直接的想法是把 k 个 agent 看成一个“大 agent”，state 是所有 agent 的位置 <span class="m">(v<sub>1</sub>, …, v<sub>k</sub>)</span>，然后直接跑 A*。这样做是 complete 而且 optimal 的，但规模撑不住：</p>
+<p>最直接的想法是把 \(k\) 个 agent 看成一个“大 agent”，state 是所有 agent 的位置 \((v_1, \dots, v_k)\)，\(v_i\) 是第 \(i\) 个 agent 所在的 cell，然后直接跑 A*。这样做是 complete 而且 optimal 的，但规模撑不住：</p>
 <ul>
-<li><strong>state 数是 |V|<sup>k</sup>。</strong>20×20 的 grid 有 400 个 cell，10 个 agent 就是 400<sup>10</sup> ≈ 10<sup>26</sup> 个 state。</li>
-<li><strong>branching factor 是 5<sup>k</sup>。</strong>每个 agent 有 5 个 action（4 个方向加 wait），10 个 agent 每 expand 一次要生成 5<sup>10</sup> ≈ 980 万个 successor。</li>
+<li><strong>state 数是 \(|V|^k\)。</strong>\(20\times 20\) 的 grid 有 400 个 cell，10 个 agent 就是 \(400^{10} \approx 10^{26}\) 个 state。</li>
+<li><strong>branching factor 是 \(5^k\)。</strong>每个 agent 有 5 个 action（4 个方向加 wait），10 个 agent 每 expand 一次要生成 \(5^{10}\) ≈ 980 万个 successor。</li>
 </ul>
 <p>求 SoC 或 makespan optimal 的 MAPF 是 NP-hard 的。所以实用算法都在想办法回避 joint state space，区别只在回避的方式：</p>
 <div class="tw"><table>
@@ -380,28 +389,36 @@ B 的 path:  (0,1)  (1,1)  (2,1)             # t=2 到 goal，之后一直停在
 <h2><span class="n">06</span>A* 回顾：可能被追问的理论</h2>
 <p>A* 你已经会写了，这一节只列容易被追问的点。</p>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with A*?”</span>“Yes. A* is a shortest-path search on a graph, for example a grid map. It’s best-first search: it always expands the node with the smallest f, where f is g, the cost from the start so far, plus h, a heuristic estimate of the remaining cost to the goal. The heuristic is what makes it faster than Dijkstra, because it pulls the search toward the goal instead of spreading out in every direction. As long as the heuristic is admissible, meaning it never overestimates, the path it returns is optimal. On a 4-connected grid the usual heuristic is Manhattan distance, and in MAPF people often precompute the true distance to each goal with a backward BFS.”</p></div>
-<div class="eq">f(n) = g(n) + h(n)
-g(n)：从 start 到 n 已经花掉的 cost
-h(n)：从 n 到 goal 还要花多少的估计，也就是 heuristic
-每次从 OPEN 里 pop 出 f 最小的 node</div>
+<div class="eq">
+\[
+f(n) = g(n) + h(n)
+\]
+<div class="sym">
+<span>\(f(n)\)</span><span>经过 node \(n\) 的 path 的估计总 cost，A* 按它排序</span>
+<span>\(g(n)\)</span><span>从 start 到 \(n\) 已经花掉的 cost</span>
+<span>\(h(n)\)</span><span>从 \(n\) 到 goal 还要花多少的估计，也就是 heuristic</span>
+<span>\(n\)</span><span>搜索图里的一个 node（grid 上的一个 cell）</span>
+</div>
+</div>
+<p>每次从 OPEN 里 pop 出 \(f\) 最小的 node。</p>
 <h3>Admissible 和 consistent</h3>
 <ul>
-<li><strong>admissible</strong>：h(n) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的。</li>
-<li><strong>consistent</strong>：对每条 edge (n, n′) 都有 h(n) ≤ c(n, n′) + h(n′)，并且 h(goal) = 0。直观上就是 heuristic 满足三角不等式。满足它，f 沿着任何 path 都不会下降，每个 node 只需要 expand 一次。</li>
+<li><strong>admissible</strong>：\(h(n)\) 永远不高估真实的剩余 cost。满足它，A* 返回的 path 就是 optimal 的。</li>
+<li><strong>consistent</strong>：对每条 edge \((n, n')\) 都有 \(h(n) \le c(n, n') + h(n')\)（\(c(n, n')\) 是这条 edge 的 cost），并且 \(h(\text{goal}) = 0\)。直观上就是 heuristic 满足三角不等式。满足它，\(f\) 沿着任何 path 都不会下降，每个 node 只需要 expand 一次。</li>
 <li>consistent 的 heuristic 一定 admissible，反过来不一定。只 admissible 不 consistent 时，已经进了 CLOSED 的 node 可能要 reopen，否则结果可能不是 optimal。</li>
 </ul>
 <h3>Grid 上用什么 heuristic</h3>
 <ul>
 <li><strong>Manhattan distance</strong>：在 4-connected grid 上是 consistent 的。但它看不见障碍物，障碍物多的时候估得太低，A* 会 expand 很多没用的 node。</li>
-<li><strong>true-distance heuristic</strong>：从 goal 出发做一次反向 BFS（edge 有权重时用反向 Dijkstra），得到每个 cell 到 goal 的真实最短距离，存成一张表，之后查表是 O(1)。MAPF 里基本都这么做：每个 goal 预计算一次，后面成百上千次搜索都复用这张表。</li>
+<li><strong>true-distance heuristic</strong>：从 goal 出发做一次反向 BFS（edge 有权重时用反向 Dijkstra），得到每个 cell 到 goal 的真实最短距离，存成一张表，之后查表是 \(O(1)\)。MAPF 里基本都这么做：每个 goal 预计算一次，后面成百上千次搜索都复用这张表。</li>
 </ul>
 <h3>几个常见追问</h3>
 <div class="tw"><table>
 <tr><th>问题</th><th>答案</th></tr>
 <tr><td>f 相同的 node 先 pop 哪个？</td><td>先 pop g 大的。g 大说明离 goal 更近，能少 expand 很多 node。这叫 tie-breaking。</td></tr>
 <tr><td>怎么让 A* 更快？</td><td>更准的 heuristic，好的 tie-breaking，或者用 weighted A* 牺牲一点 optimality。</td></tr>
-<tr><td>weighted A* 是什么？</td><td>f = g + w·h，其中 w &gt; 1。搜索更贪心、更快，返回的 path cost 不超过 optimal 的 w 倍。这种有上界的次优叫 bounded-suboptimal。</td></tr>
-<tr><td>A* 和 Dijkstra、BFS 的关系？</td><td>h = 0 的 A* 就是 Dijkstra。edge cost 全是 1 的 Dijkstra 就是 BFS。</td></tr>
+<tr><td>weighted A* 是什么？</td><td>\(f = g + w \cdot h\)，其中 \(w \gt 1\)。搜索更贪心、更快，返回的 path cost 不超过 optimal 的 \(w\) 倍。这种有上界的次优叫 bounded-suboptimal。</td></tr>
+<tr><td>A* 和 Dijkstra、BFS 的关系？</td><td>\(h = 0\) 的 A* 就是 Dijkstra。edge cost 全是 1 的 Dijkstra 就是 BFS。</td></tr>
 </table></div>
 </section>
 
@@ -410,20 +427,20 @@ h(n)：从 n 到 goal 还要花多少的估计，也就是 heuristic
 <p>先解决最小的多 agent 问题：<strong>别的 agent 的 path 已经定了，给我这一个规划一条不撞它们的 path</strong>。后面的 Prioritized Planning 和 CBS，底层都是反复调用这一步。</p>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with space-time A*?”</span>“Space-time A* is A* extended to multi-robot settings. The state is a cell plus a time step, and besides moving to a neighbor, the robot can also wait in place. The paths of other robots go into a reservation table, so the search just skips any cell-and-time, or any edge, that’s already taken. That lets one robot plan around robots whose paths are already fixed. It’s the building block of both prioritized planning and CBS. One subtle point is the goal test: reaching the goal only counts if no other robot needs to pass through that cell later.”</p></div>
 <h3>思路：把时间加进 state</h3>
-<p>普通 A* 的 state 是位置 <span class="m">v</span>。多 agent 时，一个 cell 现在被占，不代表两步之后还被占，所以 state 要变成 <span class="m">(v, t)</span>：在时刻 t 位于 v。</p>
+<p>普通 A* 的 state 是位置 \(v\)。多 agent 时，一个 cell 现在被占，不代表两步之后还被占，所以 state 要变成 \((v, t)\)：在时刻 t 位于 v。</p>
 <div class="tw"><table>
 <tr><th></th><th>普通 A*</th><th>space-time A*</th></tr>
-<tr><td>state</td><td class="m">v</td><td class="m">(v, t)</td></tr>
+<tr><td>state</td><td>\(v\)</td><td>\((v, t)\)</td></tr>
 <tr><td>action</td><td>move 到相邻的 cell</td><td>move 到相邻的 cell，或者 <strong>wait</strong>。两者都让 t 加 1</td></tr>
 <tr><td>障碍物</td><td>静态的墙</td><td>墙，加上 reservation table 里别人占用的时空位置</td></tr>
 <tr><td>heuristic</td><td>到 goal 的距离</td><td>不变，还是到 goal 的空间距离</td></tr>
 <tr><td>goal 条件</td><td class="m">v == goal</td><td><span class="m">v == goal</span>，<strong>并且之后没有人再预约 goal</strong></td></tr>
 </table></div>
 <h3>Reservation table</h3>
-<p>一张 hash table，记录别的 agent 已经占用的时空位置，查询是 O(1)。它存三种东西，正好对应 03 节的 conflict：</p>
+<p>一张 hash table，记录别的 agent 已经占用的时空位置，查询是 \(O(1)\)。它存三种东西，正好对应 03 节的 conflict：</p>
 <ul>
-<li><strong>vertex reservation</strong> <span class="m">(v, t)</span>：时刻 t，cell v 有人。用来防 vertex conflict。</li>
-<li><strong>edge reservation</strong> <span class="m">(u→v, t)</span>：别人在 t 到 t+1 从 v 走到 u，所以我不能同时从 u 走到 v。用来防 edge conflict。</li>
+<li><strong>vertex reservation</strong> \((v, t)\)：时刻 t，cell v 有人。用来防 vertex conflict。</li>
+<li><strong>edge reservation</strong> \((u \to v, t)\)：别人在 t 到 t+1 从 v 走到 u，所以我不能同时从 u 走到 v。用来防 edge conflict。</li>
 <li><strong>停在 goal 的 agent</strong>：从它到达的时刻起，goal 那个 cell 永久被占。</li>
 </ul>
 <h3>Pseudo-code</h3>
@@ -446,10 +463,10 @@ h(n)：从 n 到 goal 还要花多少的估计，也就是 heuristic
 <h3>三个容易漏的细节</h3>
 <ol>
 <li><strong>goal 条件。</strong>agent 到达 goal 之后会停在那里。如果之后某个时刻别人要经过这个 cell，现在就不能算完成，要继续搜。实验台的第三个场景演示的就是这一点。</li>
-<li><strong>T_max。</strong>问题无解时，wait 可以无限重复，搜索不会自己停。可以取 T_max = 最后一个 reservation 的时刻 + free cell 的个数。理由是：过了最后一个 reservation，环境就是静态的了，而静态环境里的最短路不会超过 free cell 的个数。</li>
+<li><strong>\(T_{\max}\)。</strong>问题无解时，wait 可以无限重复，搜索不会自己停。可以取 \(T_{\max}\) = 最后一个 reservation 的时刻 + free cell 的个数。理由是：过了最后一个 reservation，环境就是静态的了，而静态环境里的最短路不会超过 free cell 的个数。</li>
 <li><strong>heuristic 为什么还 admissible。</strong>加了时间只会让实际 cost 变大，多出来的是 wait 和绕路。空间上的最短距离仍然不会高估。</li>
 </ol>
-<p>复杂度：state 最多有 |V| × T_max 个，每个 state 有 5 个 successor。</p>
+<p>复杂度：state 最多有 \(|V| \times T_{\max}\) 个，每个 state 有 5 个 successor。</p>
 <div class="lab" id="lab-sta"></div>
 <p class="try">橙色的 B 的 path 已经定了，蓝色的 A 是 space-time A* 当场规划出来的。前两个场景都试一次<b>关掉 wait</b>，看 A 的结果怎么变。第三个场景看 A 到了 goal 之后为什么还要让开。</p>
 <details class="qa code"><summary>可以直接运行的 Python：space-time A* 和 Prioritized Planning</summary><div class="a">
@@ -520,7 +537,7 @@ if __name__ == '__main__':
     grid = ['...', '...', '...']                                    # 十字路口
     starts, goals = {'A': (1, 0), 'B': (0, 1)}, {'A': (1, 2), 'B': (2, 1)}
     print(prioritized_planning(grid, starts, goals, ['B', 'A']))</pre>
-<p>运行结果：B 先规划，走最短路。A 后规划，在 t=1 原地 wait 一步。面试时写到 pseudo-code 的程度就够，这段代码用来自己动手改着玩。</p>
+<p>运行结果：B 先规划，走最短路。A 后规划，在 \(t = 1\) 原地 wait 一步。面试时写到 pseudo-code 的程度就够，这段代码用来自己动手改着玩。</p>
 </div></details>
 <div class="note say"><p><span class="q">面试怎么说</span>“I’d start from single-agent space-time A*: the state is (cell, time) and the actions include waiting. Paths of other robots go into a reservation table with vertex and edge reservations; the edge ones prevent swaps. The heuristic is the precomputed true distance to the goal, which is still admissible. One detail: reaching the goal isn’t enough, the goal also has to stay free afterwards.”</p></div>
 </section>
@@ -575,7 +592,7 @@ if __name__ == '__main__':
 <p>PP 的毛病在于顺序一开始就定死了。CBS 换了一个思路：<strong>先让每个 agent 各走各的最短路，完全不管别人。发现 conflict 之后，再用 constraint 一点一点把 conflict 消掉</strong>。</p>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with CBS?”</span>“Yes. CBS, conflict-based search, is a classic optimal algorithm for multi-agent path finding, and it has two levels. At the low level, each robot plans its own shortest path, ignoring the others. At the high level, CBS checks those paths for conflicts, like two robots in the same cell at the same time, or two robots swapping cells. When it finds one, it branches into two children: in one, robot A gets a constraint to stay out of that cell at that time; in the other, robot B does. Only that one robot replans. The high level searches this constraint tree best-first by total cost, so the first conflict-free solution it finds is optimal. It works well when conflicts are sparse, but it can grow exponentially in dense areas like narrow corridors.”</p></div>
 <h3>核心观察</h3>
-<p>假设 A 和 B 在时刻 t 都在 cell v，也就是有一个 vertex conflict <span class="m">⟨A, B, v, t⟩</span>。那么在任何合法的 solution 里，下面两件事至少有一件成立：</p>
+<p>假设 A 和 B 在时刻 t 都在 cell v，也就是有一个 vertex conflict \(\langle A, B, v, t\rangle\)。那么在任何合法的 solution 里，下面两件事至少有一件成立：</p>
 <ul>
 <li>A 在时刻 t 不在 v。</li>
 <li>B 在时刻 t 不在 v。</li>
@@ -589,8 +606,8 @@ if __name__ == '__main__':
 </table></div>
 <p>constraint 有两种，和 conflict 一一对应：</p>
 <ul>
-<li><strong>vertex constraint</strong> <span class="m">⟨a, v, t⟩</span>：agent a 在时刻 t 不能在 v。</li>
-<li><strong>edge constraint</strong> <span class="m">⟨a, u, v, t⟩</span>：agent a 不能在 t 到 t+1 从 u 走到 v。</li>
+<li><strong>vertex constraint</strong> \(\langle a, v, t\rangle\)：agent a 在时刻 t 不能在 v。</li>
+<li><strong>edge constraint</strong> \(\langle a, u, v, t\rangle\)：agent a 不能在 t 到 t+1 从 u 走到 v。</li>
 </ul>
 <h3>Pseudo-code</h3>
 <pre>function CBS(agents):
@@ -611,7 +628,7 @@ if __name__ == '__main__':
                 push M
     return FAIL</pre>
 <h3>手推：十字路口</h3>
-<p>3×3 的 grid。A 从 (1,0) 到 (1,2)，从左往右。B 从 (0,1) 到 (2,1)，从上往下。两条最短路在正中间的 (1,1) 交叉。</p>
+<p>\(3\times 3\) 的 grid。A 从 (1,0) 到 (1,2)，从左往右。B 从 (0,1) 到 (2,1)，从上往下。两条最短路在正中间的 (1,1) 交叉。</p>
 <figure class="fig">
 <svg viewBox="0 0 720 262" role="img" aria-label="十字路口例子的 constraint tree：Root N0 分成 N1 和 N2 两个子 node，N1 没有 conflict，是 optimal 解">
   <rect class="d-box" x="215" y="12" width="290" height="92" rx="6"/>
@@ -637,8 +654,8 @@ if __name__ == '__main__':
 <figcaption>面试时在白板上画的就是这张图：一个 root，两个子 node，每个 node 写上 constraint、cost 和 conflict。</figcaption>
 </figure>
 <ol>
-<li><strong>Root。</strong>没有 constraint。A 走 (1,0) (1,1) (1,2)，cost 2。B 走 (0,1) (1,1) (2,1)，cost 2。SoC = 4。检查 conflict：t=1 时两个都在 (1,1)。</li>
-<li><strong>分两支。</strong>N1 给 A 加 constraint：A 在 t=1 不能在 (1,1)。A 重新规划，先 wait 一步再走，cost 3，B 不变，SoC = 5。N2 对称，给 B 加 constraint，SoC 也是 5。</li>
+<li><strong>Root。</strong>没有 constraint。A 走 (1,0) (1,1) (1,2)，cost 2。B 走 (0,1) (1,1) (2,1)，cost 2。SoC = 4。检查 conflict：\(t = 1\) 时两个都在 (1,1)。</li>
+<li><strong>分两支。</strong>N1 给 A 加 constraint：A 在 \(t = 1\) 不能在 (1,1)。A 重新规划，先 wait 一步再走，cost 3，B 不变，SoC = 5。N2 对称，给 B 加 constraint，SoC 也是 5。</li>
 <li><strong>继续。</strong>OPEN 里是 N1 和 N2，cost 都是 5。pop N1，检查 conflict，没有。返回 N1 的 path，optimal SoC = 5。</li>
 </ol>
 <p>A 也可以绕路，但绕路的 cost 是 4，比 wait 一步的 3 大，所以 low level 选了 wait。</p>
@@ -679,7 +696,7 @@ if __name__ == '__main__':
 <h3>两者之间还有什么</h3>
 <p>下面两个知道名字和一句话就够，不用会写。</p>
 <ul>
-<li><strong>ECBS</strong>：允许 solution 的 cost 最多是 optimal 的 w 倍，比如 w = 1.2，换来快几个数量级。做法是在 cost 不超过 w 倍 lower bound 的 node 里，优先 expand conflict 最少的那个。思想和 06 节的 weighted A* 一样，都是 bounded-suboptimal。</li>
+<li><strong>ECBS</strong>：允许 solution 的 cost 最多是 optimal 的 \(w\) 倍，比如 \(w = 1.2\)，换来快几个数量级。做法是在 cost 不超过 \(w\) 倍 lower bound 的 node 里，优先 expand conflict 最少的那个。思想和 06 节的 weighted A* 一样，都是 bounded-suboptimal。</li>
 <li><strong>PBS</strong>：和 CBS 一样在 conflict 处分支，但分支的内容是“A 的 priority 高于 B”还是反过来，然后按这个顺序跑 PP。相当于自动搜索 PP 的 priority 顺序。</li>
 </ul>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with ECBS?”</span><span class="hint">只要求知道思路的算法，开头先说清楚没有实现过，比硬撑更好。</span>“I know the idea, though I haven’t implemented it. ECBS is a bounded-suboptimal version of CBS. You choose a factor, say 1.2, and it guarantees the solution cost is at most 1.2 times the optimal. In exchange it’s much faster, because among the nodes within that bound it expands the ones with the fewest conflicts first. It’s the same idea as weighted A*: trade a bounded amount of quality for a lot of speed.”</p></div>
@@ -737,8 +754,8 @@ if __name__ == '__main__':
 <h3>Rolling horizon</h3>
 <p>折中的办法是定时 replan，但每次只管眼前的一段。有两个参数：</p>
 <ul>
-<li><strong>planning window w</strong>：只保证未来 w 步内没有 conflict。path 仍然规划到 goal，但 w 步之后的 conflict 不检查。</li>
-<li><strong>replanning period h</strong>：每执行 h 步，重新规划一次。要求 <span class="m">h ≤ w</span>，这样真正执行掉的那 h 步都在已经消除 conflict 的范围里。</li>
+<li><strong>planning window w</strong>：只保证未来 \(w\) 步内没有 conflict。path 仍然规划到 goal，但 \(w\) 步之后的 conflict 不检查。</li>
+<li><strong>replanning period h</strong>：每执行 \(h\) 步，重新规划一次。要求 \(h \le w\)，这样真正执行掉的那 \(h\) 步都在已经消除 conflict 的范围里。</li>
 </ul>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with rolling-horizon planning?”</span>“Rolling-horizon planning is how you handle lifelong MAPF, where robots keep getting new tasks and the problem never ends. Instead of solving everything once, you replan every h time steps, and each time you only resolve conflicts within the next w steps, with h no larger than w. Robots still plan all the way to their goals, but conflicts beyond the window are ignored, because the situation will have changed by then. The two parameters trade quality against planning time: a short window is fast but short-sighted, a long one is slower. Inside the window you can run any MAPF solver, and windowed prioritized planning is the common choice.”</p></div>
 <pre>loop 每 h 个 timestep:
@@ -775,7 +792,7 @@ if __name__ == '__main__':
     <path class="d-ln" d="M555 160 V168"/><text x="555" y="184">35</text>
   </g>
 </svg>
-<figcaption>深色是真正执行的 h 步。浅色是 window 里剩下的部分：已经消除了 conflict，但会被下一轮的规划覆盖。</figcaption>
+<figcaption>深色是真正执行的 \(h\) 步。浅色是 window 里剩下的部分：已经消除了 conflict，但会被下一轮的规划覆盖。</figcaption>
 </figure>
 <p><span class="m">WindowedMAPF</span> 可以是任何 one-shot 算法的 window 版本。最简单的是 windowed PP：在 space-time A* 里，t 超过 w 之后就不再查 reservation table。</p>
 <h3>w 和 h 怎么选</h3>
@@ -784,24 +801,33 @@ if __name__ == '__main__':
 <tr><td>w</td><td>短视。看不到稍远的 conflict，容易把 robot 带进堵点</td><td>规划慢。远处的 conflict 解了也白解</td></tr>
 <tr><td>h</td><td>replan 太频繁，算力开销大</td><td>对新 task 和延误的反应慢</td></tr>
 </table></div>
-<p>常见的取法是 w 为 h 的几倍，然后在仿真里扫参数。一篇和 Symbotic 合作的公开论文用的是 w = 20、h = 5。</p>
+<p>常见的取法是 \(w\) 为 \(h\) 的几倍，然后在仿真里扫参数。一篇和 Symbotic 合作的公开论文用的是 \(w = 20\)、\(h = 5\)。</p>
 <h3>规划和执行是重叠的</h3>
 <ul>
 <li>规划需要时间，这段时间里 robot 还在走。所以规划的起点不是现在的位置，而是这一轮规划结束时预计到达的位置。</li>
-<li>规划超时怎么办：继续执行上一轮 path 剩下的部分。因为 w 大于 h，上一轮的 path 还有 w − h 步没有 conflict 的余量。</li>
+<li>规划超时怎么办：继续执行上一轮 path 剩下的部分。因为 \(w\) 大于 \(h\)，上一轮的 path 还有 \(w - h\) 步没有 conflict 的余量。</li>
 </ul>
 <div class="note say"><p><span class="q">面试怎么说</span>“A warehouse is a lifelong problem, so I’d use a rolling horizon: replan every h steps, and only resolve conflicts within the next w steps, with h ≤ w. A small w is fast but myopic; a large w is slow and wastes effort on conflicts that will change anyway. If planning times out, robots keep following the leftover part of the previous plan.”</p></div>
 </section>
 
 <section id="assign">
 <h2><span class="n">13</span>Task assignment</h2>
-<p>n 个空闲的 robot，m 个待做的 task。把 robot i 派去做 task j 的代价是 <span class="m">c<sub>ij</sub></span>。每个 robot 最多做一个 task，每个 task 最多给一个 robot，要让总 cost 最小。这叫 linear assignment problem。</p>
+<p>\(n\) 个空闲的 robot，\(m\) 个待做的 task。把 robot \(i\) 派去做 task \(j\) 的代价是 \(c_{ij}\)。每个 robot 最多做一个 task，每个 task 最多给一个 robot，要让总 cost 最小。这叫 linear assignment problem。</p>
 <div class="note intro"><p><span class="q">被问 “Are you familiar with the Hungarian algorithm?”</span>“Yes. The Hungarian algorithm solves the linear assignment problem: given n robots, n tasks, and a cost for every robot–task pair, it finds the one-to-one matching with the minimum total cost. It’s optimal and runs in O(n³). In a warehouse, the cost could be the travel time to the pickup plus terms for the deadline and congestion. Compared with greedy nearest-robot assignment, which can be far from optimal, it gives the globally best matching. In practice I’d just call a library, like linear_sum_assignment in SciPy.”</p></div>
 <h3>Cost matrix 怎么建</h3>
-<div class="eq">c_ij = robot i 到 pickup 的距离          # 用 06 节的 true distance，不用 Manhattan distance
-     + pickup 到 delivery 的距离
-     + deadline 项                         # task 越急，cost 越低
-     + congestion penalty                  # 目的地附近已经派去了多少 robot</div>
+<div class="eq">
+\[
+c_{ij} = d_{\text{pickup}}(i) + d_{\text{deliv}}(j) + w_1\, u_j + w_2\, p_j
+\]
+<div class="sym">
+<span>\(c_{ij}\)</span><span>把 robot \(i\) 派去做 task \(j\) 的总 cost</span>
+<span>\(d_{\text{pickup}}(i)\)</span><span>robot \(i\) 到 pickup 的距离，用 06 节的 true distance，不用 Manhattan distance</span>
+<span>\(d_{\text{deliv}}(j)\)</span><span>task \(j\) 从 pickup 到 delivery 的距离</span>
+<span>\(u_j\)</span><span>deadline 项：task \(j\) 越急，这一项越小（cost 越低）</span>
+<span>\(p_j\)</span><span>congestion penalty：目的地附近已经派去了多少 robot</span>
+<span>\(w_1, w_2\)</span><span>各项的权重，按实际需要调</span>
+</div>
+</div>
 <h3>Greedy 不是 optimal 的</h3>
 <div class="tw"><table style="width:auto">
 <tr><th></th><th class="num">task T1</th><th class="num">task T2</th></tr>
@@ -813,7 +839,7 @@ if __name__ == '__main__':
 <div class="tw"><table>
 <tr><th>做法</th><th>质量</th><th>复杂度</th><th>什么时候用</th></tr>
 <tr><td>greedy：每次选 cost 最小的一对</td><td>没有保证</td><td>排序的开销</td><td>最快的 baseline</td></tr>
-<tr><td><strong>Hungarian algorithm</strong></td><td>optimal</td><td>O(n³)</td><td>默认选择。当黑盒用，Python 里直接调 <code>scipy.optimize.linear_sum_assignment</code>，它解的是同一个问题</td></tr>
+<tr><td><strong>Hungarian algorithm</strong></td><td>optimal</td><td>\(O(n^3)\)</td><td>默认选择。当黑盒用，Python 里直接调 <code>scipy.optimize.linear_sum_assignment</code>，它解的是同一个问题</td></tr>
 <tr><td>一个 robot 要串起多个 task，或者有时间窗</td><td>看 solver</td><td>NP-hard</td><td>问题变成了 vehicle routing problem，要用专门的 solver。知道这个名字就够</td></tr>
 </table></div>
 <h3>Assignment 和 path 是耦合的</h3>
@@ -878,7 +904,7 @@ if __name__ == '__main__':
 <h2><span class="n">16</span>规模再大怎么办</h2>
 <p>1000 个以上的 robot，每几秒就要 replan 一次。办法按从简单到复杂排：</p>
 <ol>
-<li><strong>window。</strong>rolling horizon 已经把每次规划的时间范围砍到了 w 步。</li>
+<li><strong>window。</strong>rolling horizon 已经把每次规划的时间范围砍到了 \(w\) 步。</li>
 <li><strong>分区。</strong>按楼层或者区域把仓库切开，每块各自规划，可以并行。区域边界上的 cell 用 reservation 来协调。每层 100 多个 robot、层与层之间独立，就是天然的分区。</li>
 <li><strong>只 replan 受影响的。</strong>没有新 task、path 也没被别人影响的 robot，沿用旧 path。</li>
 <li><strong>anytime。</strong>先用最快的方法拿到一个可行解，剩下的时间预算再用来改进质量。</li>
@@ -890,7 +916,7 @@ if __name__ == '__main__':
 <section id="design">
 <h2><span class="n">17</span>设计题完整示范</h2>
 <p>假设题目是：<strong>一个仓库里有 1000 个 robot，在 grid 上不停地取货、送货。请设计它们的 planner。</strong>不管题目怎么变，都按下面六步走。面试一开始就把这六个词写在白板角上。</p>
-<div class="eq">澄清 → baseline → 扩展 → tradeoff → 边界情况 → 指标</div>
+<pre>澄清 → baseline → 扩展 → tradeoff → 边界情况 → 指标</pre>
 <h3>第 1 步：澄清</h3>
 <p>挑 5 个左右来问。面试官没有给答案时，说出自己的默认假设然后继续。</p>
 <div class="tw"><table>
@@ -914,7 +940,7 @@ if __name__ == '__main__':
 <p>对着刚才说的缺陷，一条一条修。</p>
 <div class="tw"><table>
 <tr><th>缺陷</th><th>改进</th><th>章节</th></tr>
-<tr><td>1000 个 robot 算不完</td><td>rolling horizon：每 h 步 replan，只管未来 w 步。按楼层或区域分区，并行规划</td><td><a href="#lifelong">12</a>、<a href="#scale">16</a></td></tr>
+<tr><td>1000 个 robot 算不完</td><td>rolling horizon：每 \(h\) 步 replan，只管未来 \(w\) 步。按楼层或区域分区，并行规划</td><td><a href="#lifelong">12</a>、<a href="#scale">16</a></td></tr>
 <tr><td>PP 会失败</td><td>换顺序重试；失败的 robot 先 wait；卡住的一小撮用 CBS 局部求解</td><td><a href="#pp">08</a>、<a href="#cbs">09</a></td></tr>
 <tr><td>aisle 堵死</td><td>corridor 当成资源整段预约；出 corridor 的优先；出口有空位才放行</td><td><a href="#deadlock">14</a></td></tr>
 <tr><td>assignment 不看拥堵</td><td>Hungarian algorithm，cost 里加 congestion penalty</td><td><a href="#assign">13</a></td></tr>
@@ -987,19 +1013,19 @@ if __name__ == '__main__':
 <div class="qa-tools"><button class="pre" type="button" id="qa-open">全部展开</button><button class="pre" type="button" id="qa-close">全部收起</button></div>
 
 <h3>问题定义</h3>
-<details class="qa"><summary>MAPF 的输入和输出是什么？</summary><div class="a"><p>输入是一张 graph 和 k 个 agent 的 start、goal。时间离散，每一步每个 agent 要么 move 到相邻的 cell，要么 wait。输出是每个 agent 一条带时间的 path，任意两条之间没有 vertex conflict 和 edge conflict。目标通常是最小化 SoC 或 makespan，lifelong 场景看 throughput。</p></div></details>
+<details class="qa"><summary>MAPF 的输入和输出是什么？</summary><div class="a"><p>输入是一张 graph 和 \(k\) 个 agent 的 start、goal。时间离散，每一步每个 agent 要么 move 到相邻的 cell，要么 wait。输出是每个 agent 一条带时间的 path，任意两条之间没有 vertex conflict 和 edge conflict。目标通常是最小化 SoC 或 makespan，lifelong 场景看 throughput。</p></div></details>
 <details class="qa"><summary>为什么只检查 vertex conflict 不够？</summary><div class="a"><p>两个 agent 对穿时，每个时刻它们都在不同的 cell 里，vertex conflict 检查不出来，但物理上已经撞了。所以要单独检查 edge conflict：t 到 t+1 之间两个 agent 互换了位置。</p></div></details>
-<details class="qa"><summary>为什么不直接在 joint state space 上跑 A*？</summary><div class="a"><p>state 数是 |V|<sup>k</sup>，branching factor 是 5<sup>k</sup>，都随 agent 数指数增长。20×20 的 grid 上 10 个 agent 就有大约 10<sup>26</sup> 个 state，每次 expand 要生成约 980 万个 successor。所以实用算法都是先各自规划，再处理 conflict。</p></div></details>
+<details class="qa"><summary>为什么不直接在 joint state space 上跑 A*？</summary><div class="a"><p>state 数是 \(|V|^k\)，branching factor 是 \(5^k\)，都随 agent 数指数增长。\(20\times 20\) 的 grid 上 10 个 agent 就有大约 10<sup>26</sup> 个 state，每次 expand 要生成约 980 万个 successor。所以实用算法都是先各自规划，再处理 conflict。</p></div></details>
 <details class="qa"><summary>SoC 和 makespan 有什么区别？仓库里看哪个？</summary><div class="a"><p>SoC 是所有 agent 到达时间的和，makespan 是最晚到达的那个时间。仓库是 lifelong 场景，看的是 throughput。SoC optimal 不等于 throughput optimal，因为 throughput 还取决于 task assignment、拥堵和执行时的延误。</p></div></details>
 
 <h3>A* 和 space-time A*</h3>
-<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 h 从不高估真实的剩余 cost，它保证 A* 返回 optimal 的 path。consistent 是 h(n) ≤ c(n, n′) + h(n′)，它保证 f 沿 path 不下降，每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。只 admissible 不 consistent 时，CLOSED 里的 node 可能要 reopen。</p></div></details>
+<details class="qa"><summary>admissible 和 consistent 有什么区别？</summary><div class="a"><p>admissible 是 \(h\) 从不高估真实的剩余 cost，它保证 A* 返回 optimal 的 path。consistent 是 \(h(n) \le c(n, n') + h(n')\)（\(c(n, n')\) 是 edge 的 cost），它保证 \(f\) 沿 path 不下降，每个 node 只需要 expand 一次。consistent 一定 admissible，反过来不一定。只 admissible 不 consistent 时，CLOSED 里的 node 可能要 reopen。</p></div></details>
 <details class="qa"><summary>有障碍物的 grid 上，怎么得到比 Manhattan distance 更准的 heuristic？</summary><div class="a"><p>从 goal 做一次反向 BFS，edge 有权重时用反向 Dijkstra，得到每个 cell 到 goal 的真实最短距离，存成表。它考虑了障碍物，仍然 admissible 而且 consistent。每个 goal 只算一次，之后所有搜索都复用。</p></div></details>
 <details class="qa"><summary>space-time A* 和普通 A* 差在哪？</summary><div class="a"><p>state 从 v 变成 (v, t)。action 多了一个 wait。障碍物除了墙，还有 reservation table 里别人占用的时空位置，分 vertex 和 edge 两种。goal 条件多了一条：到达之后 goal 不能再被别人预约。heuristic 不变。</p></div></details>
 <details class="qa"><summary>agent 一到 goal 就能结束搜索吗？</summary><div class="a"><p>不能。agent 到达之后会停在 goal 上。如果之后某个时刻别人要经过这个 cell，那么现在停下就会撞。必须检查 goal 在这之后没有任何 reservation，否则继续搜，结果可能是先让开再回来。</p></div></details>
 <details class="qa"><summary>加了时间维之后，heuristic 还 admissible 吗？</summary><div class="a"><p>还是。heuristic 是到 goal 的空间最短距离。加了时间和 reservation 之后，实际的 cost 只会更大，因为多出来的是 wait 和绕路，所以空间距离仍然不会高估。</p></div></details>
-<details class="qa"><summary>问题无解时，space-time A* 怎么停下来？</summary><div class="a"><p>因为有 wait，state 可以无限多，所以要设一个 T_max。可以取最后一个 reservation 的时刻加上 free cell 的个数：过了最后一个 reservation，环境是静态的，最短路不会超过 free cell 的个数。超过 T_max 的 state 不再 expand。</p></div></details>
-<details class="qa"><summary>reservation table 用什么数据结构？</summary><div class="a"><p>hash set。vertex reservation 的 key 是 (cell, t)，edge reservation 的 key 是 (u, v, t)，查询都是 O(1)。停在 goal 上的 agent 另外存一张 cell 到起始时刻的表。配合 rolling horizon 时，只需要存未来 w 步。</p></div></details>
+<details class="qa"><summary>问题无解时，space-time A* 怎么停下来？</summary><div class="a"><p>因为有 wait，state 可以无限多，所以要设一个 \(T_{\max}\)。可以取最后一个 reservation 的时刻加上 free cell 的个数：过了最后一个 reservation，环境是静态的，最短路不会超过 free cell 的个数。超过 \(T_{\max}\) 的 state 不再 expand。</p></div></details>
+<details class="qa"><summary>reservation table 用什么数据结构？</summary><div class="a"><p>hash set。vertex reservation 的 key 是 \((\text{cell}, t)\)，edge reservation 的 key 是 \((u, v, t)\)，查询都是 \(O(1)\)。停在 goal 上的 agent 另外存一张 cell 到起始时刻的表。配合 rolling horizon 时，只需要存未来 \(w\) 步。</p></div></details>
 
 <h3>Prioritized Planning 和 CBS</h3>
 <details class="qa"><summary>PP 为什么不 complete？举一个例子。</summary><div class="a"><p>高 priority 的 agent 规划时不考虑后面的 agent，path 定了也不再改。例子：one-wide corridor 中间有一个避让位，A 和 B 从两头对穿。不管谁先规划，先规划的都径直穿过去，后规划的没有任何合法的 path。但问题有解，其中一个先进避让位就行。</p></div></details>
@@ -1009,13 +1035,13 @@ if __name__ == '__main__':
 <details class="qa"><summary>CBS 为什么是 optimal 的？</summary><div class="a"><p>三点。第一，分支不丢解：任何合法的 solution 一定满足两个子 node 之一的 constraint。第二，node 的 cost 是 lower bound：每个 agent 走的是满足 constraint 的最短路，还没处理的 conflict 被忽略了。第三，high level 按 cost 做 best-first，所以第一个没有 conflict 的 node 的 cost，不大于其他所有 node 的 lower bound。</p></div></details>
 <details class="qa"><summary>CBS 什么时候会很慢？</summary><div class="a"><p>conflict 多的时候。每个 conflict 让 tree 分一次叉，最坏情况是指数级。典型的坏情况是 one-wide corridor 里对头：其中一个必须等另一个完全通过，cost 要增加很多，而每条 constraint 只抬高一点 cost。corridor 每长一格，node 数大约翻一倍。</p></div></details>
 <details class="qa"><summary>PP 和 CBS 怎么选？</summary><div class="a"><p>看规模和时间预算。几十个 agent、需要质量保证，用 CBS。上百上千个 agent、每几秒 replan，用 PP 做主干。常见的组合是 PP 负责全局，PP 卡住的地方用 CBS 做局部修复。</p></div></details>
-<details class="qa"><summary>想比 PP 质量好、又比 CBS 快，有什么办法？</summary><div class="a"><p>两个方向。一是 bounded-suboptimal 的 CBS，比如 ECBS：允许 cost 最多是 optimal 的 w 倍，换来快几个数量级。二是 PBS：在 conflict 处搜索两个 agent 的 priority 谁高谁低，相当于自动找 PP 的顺序。</p></div></details>
+<details class="qa"><summary>想比 PP 质量好、又比 CBS 快，有什么办法？</summary><div class="a"><p>两个方向。一是 bounded-suboptimal 的 CBS，比如 ECBS：允许 cost 最多是 optimal 的 \(w\) 倍，换来快几个数量级。二是 PBS：在 conflict 处搜索两个 agent 的 priority 谁高谁低，相当于自动找 PP 的顺序。</p></div></details>
 
 <h3>系统设计</h3>
-<details class="qa"><summary>lifelong MAPF 和 one-shot MAPF 有什么不同？</summary><div class="a"><p>one-shot 里每个 agent 只有一个 goal，全部到达就结束，目标是 SoC 或 makespan。lifelong 里 agent 到达之后马上有新的 goal，永远不结束，目标是 throughput。做法是 rolling horizon：每隔 h 步用 one-shot 算法的 window 版本重新规划一次。</p></div></details>
-<details class="qa"><summary>window w 和 replan 周期 h 怎么选？</summary><div class="a"><p>必须 h ≤ w。w 小了短视，容易把 robot 带进堵点；w 大了规划慢，而且远处的 conflict 解了也白解。h 小了算力开销大；h 大了对新 task 和延误的反应慢。实际是在仿真里扫参数，看 throughput 和 planning time 的 p99。</p></div></details>
-<details class="qa"><summary>这一轮规划超时了怎么办？</summary><div class="a"><p>继续执行上一轮 path 剩下的部分。因为 w 大于 h，上一轮还有 w − h 步没有 conflict 的余量。同时可以缩小 window，或者只给一部分 robot 重新规划，保证下一轮能按时算完。</p></div></details>
-<details class="qa"><summary>task assignment 怎么建模？greedy 有什么问题？</summary><div class="a"><p>建一个 cost matrix，c<sub>ij</sub> 是 robot i 做 task j 的代价，包括到 pickup 的距离、pickup 到 delivery 的距离、deadline 项和 congestion penalty。用 Hungarian algorithm 求 optimal 的一对一匹配，复杂度 O(n³)。greedy 每次选最小的一对，可能把最近的 robot 抢走，让别的 task 只能分给很远的 robot。</p></div></details>
+<details class="qa"><summary>lifelong MAPF 和 one-shot MAPF 有什么不同？</summary><div class="a"><p>one-shot 里每个 agent 只有一个 goal，全部到达就结束，目标是 SoC 或 makespan。lifelong 里 agent 到达之后马上有新的 goal，永远不结束，目标是 throughput。做法是 rolling horizon：每隔 \(h\) 步用 one-shot 算法的 window 版本重新规划一次。</p></div></details>
+<details class="qa"><summary>window w 和 replan 周期 h 怎么选？</summary><div class="a"><p>必须 \(h \le w\)。\(w\) 小了短视，容易把 robot 带进堵点；\(w\) 大了规划慢，而且远处的 conflict 解了也白解。\(h\) 小了算力开销大；\(h\) 大了对新 task 和延误的反应慢。实际是在仿真里扫参数，看 throughput 和 planning time 的 p99。</p></div></details>
+<details class="qa"><summary>这一轮规划超时了怎么办？</summary><div class="a"><p>继续执行上一轮 path 剩下的部分。因为 \(w\) 大于 \(h\)，上一轮还有 \(w - h\) 步没有 conflict 的余量。同时可以缩小 window，或者只给一部分 robot 重新规划，保证下一轮能按时算完。</p></div></details>
+<details class="qa"><summary>task assignment 怎么建模？greedy 有什么问题？</summary><div class="a"><p>建一个 cost matrix，\(c_{ij}\) 是 robot \(i\) 做 task \(j\) 的代价，包括到 pickup 的距离、pickup 到 delivery 的距离、deadline 项和 congestion penalty。用 Hungarian algorithm 求 optimal 的一对一匹配，复杂度 \(O(n^3)\)。greedy 每次选最小的一对，可能把最近的 robot 抢走，让别的 task 只能分给很远的 robot。</p></div></details>
 <details class="qa"><summary>one-wide corridor 里两个 robot 对头，怎么办？</summary><div class="a"><p>以预防为主：把 corridor 当成一个资源，同一时间只允许一个方向；出 corridor 的 robot 优先；出口有空位才允许进入；或者干脆规定成 one-way。兜底是在执行时维护 wait-for graph，发现环就让 priority 最低的 robot 退到最近的空位，然后局部 replan。</p></div></details>
 <details class="qa"><summary>一个 robot 晚到了 2 秒，原来的 plan 还安全吗？</summary><div class="a"><p>如果死守时刻表，就不安全。办法是执行时只保证先后顺序：plan 里 A 先过某个 cell、B 后过，那么 B 等 A 真的离开之后再进。这样任意延误下都不会撞。代价是延误会沿着依赖关系传播，超过阈值就 replan。</p></div></details>
 <details class="qa"><summary>为什么让每个 robot 都走自己的最短路，往往是错的？</summary><div class="a"><p>因为最短路会在同一个地方交汇，造成拥堵。全局更好的做法常常是让一部分 robot 绕路，或者先让开。PP 实验台里的“3 个 agent”就是例子：每个 agent 贪心地选最短路，SoC 是 9 或 10，协调之后是 7。</p></div></details>
@@ -1028,12 +1054,12 @@ if __name__ == '__main__':
 <h3>基础算法</h3>
 <div class="tw"><table>
 <tr><th>算法</th><th>一句话</th><th>complete</th><th>optimal</th><th>代价</th></tr>
-<tr><td>A*</td><td>f = g + h，每次 pop f 最小的 node</td><td>是</td><td>h admissible 时是</td><td>单个 agent</td></tr>
-<tr><td>space-time A*</td><td>state 是 (v, t)，多一个 wait，查 reservation table</td><td>是，需要 T_max</td><td>是</td><td>|V| × T_max 个 state</td></tr>
+<tr><td>A*</td><td>\(f = g + h\)，每次 pop \(f\) 最小的 node</td><td>是</td><td>\(h\) admissible 时是</td><td>单个 agent</td></tr>
+<tr><td>space-time A*</td><td>state 是 \((v, t)\)，多一个 wait，查 reservation table</td><td>是，需要 \(T_{\max}\)</td><td>是</td><td>\(|V| \times T_{\max}\) 个 state</td></tr>
 <tr><td>Prioritized Planning</td><td>排好 priority，逐个跑 space-time A*</td><td>否</td><td>否</td><td>k 次搜索</td></tr>
 <tr><td>CBS</td><td>各走各的最短路，有 conflict 就分两支加 constraint</td><td>是</td><td>是，对 SoC</td><td>最坏指数级</td></tr>
-<tr><td>rolling horizon</td><td>每 h 步 replan，只管未来 w 步，h ≤ w</td><td colspan="2">取决于 window 里用的 solver</td><td>每 h 步规划一次</td></tr>
-<tr><td>Hungarian algorithm</td><td>robot 和 task 一对一匹配，总 cost 最小</td><td>是</td><td>是</td><td>O(n³)</td></tr>
+<tr><td>rolling horizon</td><td>每 \(h\) 步 replan，只管未来 \(w\) 步，\(h \le w\)</td><td colspan="2">取决于 window 里用的 solver</td><td>每 \(h\) 步规划一次</td></tr>
+<tr><td>Hungarian algorithm</td><td>robot 和 task 一对一匹配，总 cost 最小</td><td>是</td><td>是</td><td>\(O(n^3)\)</td></tr>
 </table></div>
 <h3>只需要认识名字的</h3>
 <p>这些不用学。面试官提到时，知道它大概是什么就行。</p>
@@ -1057,7 +1083,7 @@ if __name__ == '__main__':
 <li><input type="checkbox" id="ck4"><label for="ck4">画出一个 Prioritized Planning 失败的例子。</label></li>
 <li><input type="checkbox" id="ck5"><label for="ck5">在纸上手推十字路口的 CBS，画出 3 个 node 的 constraint tree。</label></li>
 <li><input type="checkbox" id="ck6"><label for="ck6">用三句话讲清 CBS 为什么是 optimal 的。</label></li>
-<li><input type="checkbox" id="ck7"><label for="ck7">说清 rolling horizon 里 w 和 h 的含义，以及为什么 h ≤ w。</label></li>
+<li><input type="checkbox" id="ck7"><label for="ck7">说清 rolling horizon 里 \(w\) 和 \(h\) 的含义，以及为什么 \(h \le w\)。</label></li>
 <li><input type="checkbox" id="ck8"><label for="ck8">写出 assignment 的 cost 由哪几项组成，举一个 greedy 不 optimal 的例子。</label></li>
 <li><input type="checkbox" id="ck9"><label for="ck9">画一个 wait-for graph 的环，说出 3 种预防 deadlock 的办法。</label></li>
 <li><input type="checkbox" id="ck10"><label for="ck10">对着 17 节的题目，用英文出声讲满 30 分钟。</label></li>

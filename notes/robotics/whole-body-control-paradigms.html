@@ -69,7 +69,13 @@ ul,ol{max-width:44em;padding-left:1.3em;margin:0 0 14px}
 li{margin-bottom:6px}
 strong{font-weight:600}
 code,.m{font-family:var(--mono);font-size:.92em}
-.eq{font-family:var(--mono);font-size:14.5px;white-space:pre-wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto;line-height:1.7}
+.eq{padding:6px 18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow-x:auto}
+/* KaTeX 公式 */
+.katex{font-size:1.08em}
+.katex-display{margin:.7em 0;overflow-x:auto;overflow-y:hidden;padding:2px 0}
+.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-size:14.5px;line-height:1.6;margin:0 0 10px;padding-top:10px;border-top:1px dashed var(--line)}
+.sym>span:nth-child(2n+1){text-align:right}
+.sym>span:nth-child(2n){color:var(--muted)}
 .note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;margin:0 0 14px;max-width:46em}
 .note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
 .note p:last-child,.note ul:last-child{margin-bottom:0}
@@ -203,6 +209,9 @@ details.code .a{padding:12px 12px 0}
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .cnt{font-size:13px;color:var(--muted);margin:0 0 8px}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false,strict:false})"></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -291,17 +300,24 @@ details.code .a{padding:12px 12px 0}
 <section id="problem">
 <h2><span class="n">02</span>问题到底难在哪</h2>
 <p>所有范式面对的是同一个方程。带腿的机器人的 dynamics 可以写成：</p>
-<div class="eq">M(q) q̈ + h(q, q̇) = Sᵀ τ + J_c(q)ᵀ f
-
-q   关节角 + 机身的位置和姿态（floating base，6 维）
-τ   电机力矩，只作用在关节上；S 把机身那 6 维选掉
-f   地面给脚（或手）的 contact force
-J_c contact Jacobian，把 contact force 映射到每个自由度上</div>
+<div class="eq">
+\[ M(q)\,\ddot{q} + h(q,\dot{q}) = S^\top \tau + J_c(q)^\top f \]
+<div class="sym">
+  <span>\(q\)</span><span>关节角 + 机身的位置和姿态（floating base，6 维）</span>
+  <span>\(\dot{q},\ \ddot{q}\)</span><span>广义速度、广义加速度</span>
+  <span>\(M(q)\)</span><span>mass matrix（惯性矩阵），随姿态变化</span>
+  <span>\(h(q,\dot{q})\)</span><span>Coriolis、离心力和 gravity 合在一起的项</span>
+  <span>\(\tau\)</span><span>电机力矩，只作用在关节上</span>
+  <span>\(S\)</span><span>actuation 选择矩阵；\(S^\top\tau\) 在机身那 6 维上是 0，只在关节维度上有值</span>
+  <span>\(f\)</span><span>地面给脚（或手）的 contact force</span>
+  <span>\(J_c\)</span><span>contact Jacobian，把 contact force 映射到每个自由度上</span>
+</div>
+</div>
 <p>难点全在这个方程里：</p>
 <ul>
-  <li><strong>Underactuated</strong>：机身的 6 个自由度没有电机直接驱动（<code>Sᵀτ</code> 在那 6 维上是 0）。想移动机身，只能通过 contact force <code>f</code> 间接实现。</li>
-  <li><strong>Contact 有约束</strong>：地面只能推不能拉（<code>f_z ≥ 0</code>），切向力不能超过 friction cone，否则打滑。</li>
-  <li><strong>Hybrid</strong>：脚落地和离地的瞬间，<code>J_c</code> 的结构会变，dynamics 在不同 contact mode 之间切换。决定"哪只脚什么时候着地"是一个离散的组合问题。</li>
+  <li><strong>Underactuated</strong>：机身的 6 个自由度没有电机直接驱动（\(S^\top\tau\) 在那 6 维上是 0）。想移动机身，只能通过 contact force \(f\) 间接实现。</li>
+  <li><strong>Contact 有约束</strong>：地面只能推不能拉（\(f_z \ge 0\)），切向力不能超过 friction cone，否则打滑。</li>
+  <li><strong>Hybrid</strong>：脚落地和离地的瞬间，\(J_c\) 的结构会变，dynamics 在不同 contact mode 之间切换。决定"哪只脚什么时候着地"是一个离散的组合问题。</li>
   <li><strong>不稳定且高维</strong>：本质上是倒立摆，要高频 feedback；humanoid 有 20–50 个自由度。</li>
 </ul>
 <p>所以所有方法都在回答同一件事：<strong>下一刻每个关节出多少力，使得 contact force 合起来能把机身带到想去的地方。</strong>区别只在于谁来算、什么时候算、依据什么算。</p>
@@ -385,12 +401,28 @@ J_c contact Jacobian，把 contact force 映射到每个自由度上</div>
 <h2><span class="n">05</span>Whole-body QP：把任务目标变成关节力矩</h2>
 <p>简化模型给出"质心该怎么动、脚该踩哪"，还需要一层把它变成几十个关节的力矩。这就是狭义的 whole-body control。</p>
 <p>源头是 Khatib 的 operational space control：<strong>在任务空间（手、脚、质心的位置）里写控制目标，而不是在关节空间里写。</strong>后来发展成每个控制周期解一个 QP：</p>
-<div class="eq">min   Σ wᵢ ‖ Jᵢ q̈ + J̇ᵢ q̇ − ẍᵢ_des ‖²        每个任务的期望加速度
-over  q̈, τ, f
-s.t.  M q̈ + h = Sᵀτ + J_cᵀ f               dynamics
-      f 在 friction cone 内，f_z ≥ 0          contact 约束
-      τ_min ≤ τ ≤ τ_max                      力矩限制
-      J_c q̈ + J̇_c q̇ = 0                     支撑脚不动</div>
+<div class="eq">
+\[
+\begin{aligned}
+\min_{\ddot{q},\,\tau,\,f}\quad & \sum_i w_i \left\| J_i\ddot{q} + \dot{J}_i\dot{q} - \ddot{x}_i^{\,\text{des}} \right\|^2 && \text{每个任务的期望加速度} \\
+\text{s.t.}\quad & M\ddot{q} + h = S^\top\tau + J_c^\top f && \text{dynamics} \\
+& f \in \text{friction cone},\quad f_z \ge 0 && \text{contact 约束} \\
+& \tau_{\min} \le \tau \le \tau_{\max} && \text{力矩限制} \\
+& J_c\ddot{q} + \dot{J}_c\dot{q} = 0 && \text{支撑脚不动}
+\end{aligned}
+\]
+<div class="sym">
+  <span>\(\ddot{q},\ \tau,\ f\)</span><span>决策变量：广义加速度、关节力矩、contact force，三者一起解</span>
+  <span>\(J_i\)</span><span>第 \(i\) 个任务（例如手的位置、躯干姿态、质心）的 task Jacobian，把 \(\dot{q}\) 映射成任务空间速度</span>
+  <span>\(\dot{J}_i\dot{q}\)</span><span>Jacobian 随时间变化带来的那部分任务加速度，与 \(\ddot{q}\) 无关</span>
+  <span>\(\ddot{x}_i^{\,\text{des}}\)</span><span>第 \(i\) 个任务的期望加速度，通常由上层 PD 反馈或参考轨迹给出</span>
+  <span>\(w_i\)</span><span>第 \(i\) 个任务的权重，越大越优先</span>
+  <span>\(M,\ h,\ S\)</span><span>同上一节：mass matrix、Coriolis + gravity 项、actuation 选择矩阵</span>
+  <span>\(f_z\)</span><span>contact force 的法向分量，\(\ge 0\) 表示地面只能推</span>
+  <span>\(\tau_{\min},\ \tau_{\max}\)</span><span>电机力矩上下限</span>
+  <span>\(J_c\ddot{q} + \dot{J}_c\dot{q}\)</span><span>接触点的加速度；令它为 0 表示支撑脚不滑、不离地</span>
+</div>
+</div>
 <p>多个任务冲突时，用权重或严格优先级（hierarchical QP）处理，例如"保持平衡"优先于"手到达目标"。</p>
 <div class="four">
   <div class="why"><h4>为什么兴起</h4><p>力矩控制的硬件出现了，QP solver 能在 1 ms 内解完。2015 年 DARPA Robotics Challenge 上，几乎所有队伍都是"footstep planner、质心规划、whole-body QP"三层架构。</p></div>
