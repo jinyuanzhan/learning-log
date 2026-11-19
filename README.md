@@ -23,3 +23,6 @@ Read online: **[jinyuanzhan.github.io/learning-log](https://jinyuanzhan.github.i
 
 **Foundations**
 - [A Knowledge Framework for Robot Learning: From First Principles to VLA](https://jinyuanzhan.github.io/learning-log/notes/ml-llm/robot-learning-foundations.html)
+
+**Tools**
+- [NumPy · PyTorch · SciPy Visual Guide: Interactive Demos and Convention Differences](https://jinyuanzhan.github.io/learning-log/notes/ml-llm/numpy-torch-scipy-visual-guide.html)
