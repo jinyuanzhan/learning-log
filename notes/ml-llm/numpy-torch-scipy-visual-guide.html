@@ -11,26 +11,21 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F5F7FA; --surface:#FFFFFF; --ink:#1A2233; --muted:#5E6878; --line:#DDE2EA; --line2:#B9C1CE; --soft:#EEF1F5;
-  --np:#2B6CC4; --np-soft:#E6EFFB; --pt:#D2492A; --pt-soft:#FCEAE4; --sp:#12805C; --sp-soft:#E1F3EC;
-  --warn:#8F5600; --warn-soft:#FFF3DA; --bad:#C7362F;
-  --cs:78%; --cl:86%; --cell-ink:#16202E; --cell-n:#EBEEF3; --cell-line:rgba(20,30,50,.18);
+  /* 默认浅色，不跟随系统；深色只在点了侧栏的切换按钮后生效 */
+  color-scheme:light;
+  --bg:#ECEFF4; --surface:#FFFFFF; --ink:#0F172A; --muted:#475266; --line:#CCD3DE; --line2:#94A0B3; --soft:#E7EBF2; --code:#F3F5F9; --cm:#3B7A57;
+  --np:#1A5FC4; --np-soft:#D3E4FC; --pt:#C7381A; --pt-soft:#FCD8CC; --sp:#0A7550; --sp-soft:#C9ECDB;
+  --warn:#7A4700; --warn-soft:#FFEBB5; --bad:#B91C1C;
+  --cs:90%; --cl:77%; --bs:62%; --bl:44%; --cell-ink:#0B1220; --cell-n:#DCE1E9; --cell-line:rgba(15,23,42,.34);
   --body:"IBM Plex Sans","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
   --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#13161B; --surface:#1B1F26; --ink:#E7EAF0; --muted:#9BA5B4; --line:#2C323C; --line2:#465061; --soft:#232831;
-    --np:#74ABF2; --np-soft:#1A2A40; --pt:#F2805F; --pt-soft:#3A211B; --sp:#4CC79A; --sp-soft:#15332A;
-    --warn:#E5B454; --warn-soft:#33290F; --bad:#F0736B;
-    --cs:42%; --cl:31%; --cell-ink:#F1F4F8; --cell-n:#272D37; --cell-line:rgba(255,255,255,.16);
-  }
-}
 :root[data-theme="dark"]{
-  --bg:#13161B; --surface:#1B1F26; --ink:#E7EAF0; --muted:#9BA5B4; --line:#2C323C; --line2:#465061; --soft:#232831;
-  --np:#74ABF2; --np-soft:#1A2A40; --pt:#F2805F; --pt-soft:#3A211B; --sp:#4CC79A; --sp-soft:#15332A;
-  --warn:#E5B454; --warn-soft:#33290F; --bad:#F0736B;
-  --cs:42%; --cl:31%; --cell-ink:#F1F4F8; --cell-n:#272D37; --cell-line:rgba(255,255,255,.16);
+  color-scheme:dark;
+  --bg:#13161B; --surface:#1B1F26; --ink:#E7EAF0; --muted:#A3ADBB; --line:#2F3641; --line2:#4D586A; --soft:#242A33; --code:#171B21; --cm:#7FB899;
+  --np:#74ABF2; --np-soft:#1A2D47; --pt:#F2805F; --pt-soft:#40241C; --sp:#4CC79A; --sp-soft:#16382D;
+  --warn:#E5B454; --warn-soft:#352A10; --bad:#F0736B;
+  --cs:48%; --cl:33%; --bs:45%; --bl:52%; --cell-ink:#F4F6FA; --cell-n:#2A313C; --cell-line:rgba(255,255,255,.2);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -79,7 +74,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .code .lib{font:600 11px var(--mono);display:flex;align-items:center;justify-content:center}
 .code.np .lib{background:var(--np-soft);color:var(--np)} .code.pt .lib{background:var(--pt-soft);color:var(--pt)} .code.sp .lib{background:var(--sp-soft);color:var(--sp)}
 .code pre{margin:0;padding:8px 12px;font:13px/1.6 var(--mono);overflow-x:auto;white-space:pre}
-.cm{color:var(--muted)}
+.cm{color:var(--cm)}
+.code pre{background:var(--code)}
 .viz{overflow-x:auto;padding:4px 2px 6px}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:14px 18px}
 .row.top{align-items:flex-start}
@@ -90,10 +86,10 @@ figure.arr figcaption b{color:var(--ink);font-weight:600}
 .shp em{font-style:normal;color:var(--ink);font-weight:600;padding:0 3px;border-radius:4px}
 .shp em.hl{background:var(--pt-soft);color:var(--pt)}
 .g{display:inline-grid;grid-template-columns:repeat(var(--w),minmax(34px,auto));gap:3px}
-.c{min-width:34px;height:30px;padding:0 5px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:1px solid var(--cell-line);font:500 12.5px var(--mono);font-style:normal;background:hsl(var(--h) var(--cs) var(--cl));color:var(--cell-ink)}
-.c.n{background:var(--cell-n)}
-.c.dim{opacity:.38}
-.c.gh{border-style:dashed;opacity:.5}
+.c{min-width:34px;height:30px;padding:0 5px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:1px solid hsl(var(--h) var(--bs) var(--bl));font:600 13px var(--mono);font-style:normal;background:hsl(var(--h) var(--cs) var(--cl));color:var(--cell-ink)}
+.c.n{background:var(--cell-n);border-color:var(--cell-line)}
+.c.dim{opacity:.5;font-weight:500}
+.c.gh{border-style:dashed;opacity:.6}
 .c.sp{visibility:hidden}
 .c.hot{outline:2.5px solid var(--pt);outline-offset:1px}
 .c.pick{box-shadow:inset 0 0 0 2px var(--ink)}
@@ -103,8 +99,8 @@ figure.arr figcaption b{color:var(--ink);font-weight:600}
 .blk{display:flex;flex-direction:column;gap:3px}
 .bl{font:11px var(--mono);color:var(--muted)}
 pre.repr{margin:0;padding:8px 12px;background:var(--soft);border-radius:8px;font:12.5px/1.5 var(--mono);color:var(--ink);max-height:240px;overflow:auto}
-.msg{margin:10px 0 0;padding:10px 14px;background:var(--soft);border-radius:8px;font-size:14.5px}
-.conv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;margin:12px 0 0;padding:10px 14px;background:var(--warn-soft);border-radius:8px;font-size:14px}
+.msg{margin:10px 0 0;padding:10px 14px;background:var(--soft);border-left:3px solid var(--line2);border-radius:0 8px 8px 0;font-size:14.5px}
+.conv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;margin:12px 0 0;padding:10px 14px;background:var(--warn-soft);border-left:3px solid var(--warn);border-radius:0 8px 8px 0;font-size:14px}
 .conv .tag{font:600 11px var(--mono);color:var(--warn);padding-top:4px}
 .conv ul{margin:0;padding-left:18px}
 code{font:.9em var(--mono);background:var(--soft);padding:1px 5px;border-radius:4px}
@@ -169,7 +165,7 @@ footer{margin-top:50px;color:var(--muted);font-size:13px}
   <nav id="toc"></nav>
   <div class="tools">
     <button id="quizBtn" class="act">自测模式：关</button>
-    <button id="themeBtn" class="act">切换深色 / 浅色</button>
+    <button id="themeBtn" class="act">切换到深色</button>
   </div>
 </aside>
 <main id="top">
@@ -939,7 +935,11 @@ function mountConv(){const host=document.querySelector('#s-conv .cards');
   const qb=document.getElementById('quizBtn');
   qb.onclick=()=>{const on=document.body.classList.toggle('quiz');qb.textContent='自测模式：'+(on?'开':'关');qb.classList.toggle('on',on)};
   document.addEventListener('click',e=>{if(!document.body.classList.contains('quiz'))return;const r=e.target.closest('.reveal,.msg,.codes');if(r)r.classList.add('shown')});
-  document.getElementById('themeBtn').onclick=()=>{const root=document.documentElement;const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;root.dataset.theme=dark?'light':'dark'};
+  const root=document.documentElement,tb=document.getElementById('themeBtn');
+  const setTheme=t=>{root.dataset.theme=t;tb.textContent=t==='dark'?'切换到浅色':'切换到深色';try{localStorage.setItem('nts-theme',t)}catch(e){}};
+  let saved='light';try{saved=localStorage.getItem('nts-theme')||'light'}catch(e){}
+  setTheme(saved==='dark'?'dark':'light');
+  tb.onclick=()=>setTheme(root.dataset.theme==='dark'?'light':'dark');
 })();
 </script>
 </body>
